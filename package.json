@@ -1,0 +1,149 @@
+{
+  "name": "cursor-ime-hud",
+  "displayName": "Cursor IME HUD",
+  "description": "Semi-transparent Chinese/English IME state HUD near the caret for VS Code on Windows.",
+  "version": "0.0.1",
+  "publisher": "your-publisher-name",
+  "license": "MIT",
+  "icon": "resources/icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/your-publisher-name/cursor-ime-hud.git"
+  },
+  "files": [
+    "out/extension.js",
+    "out/commands/**/*.js",
+    "out/controller/**/*.js",
+    "out/detector/**/*.js",
+    "out/model/**/*.js",
+    "out/presenters/**/*.js",
+    "out/renderer/**/*.js",
+    "out/services/**/*.js",
+    "resources/icon.png",
+    "resources/bin/win-x64/WinImeWatcher.exe",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "engines": {
+    "vscode": "^1.107.0"
+  },
+  "categories": [
+    "Other",
+    "Productivity"
+  ],
+  "keywords": [
+    "ime",
+    "input method",
+    "cursor",
+    "hud",
+    "windows",
+    "wechat input"
+  ],
+  "extensionKind": [
+    "ui"
+  ],
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "cursorImeHud.toggleOverlay",
+        "title": "Cursor IME HUD: Toggle Overlay",
+        "category": "Cursor IME HUD"
+      },
+      {
+        "command": "cursorImeHud.refreshImeState",
+        "title": "Cursor IME HUD: Refresh IME State",
+        "category": "Cursor IME HUD"
+      },
+      {
+        "command": "cursorImeHud.showDiagnostics",
+        "title": "Cursor IME HUD: Show Diagnostics",
+        "category": "Cursor IME HUD"
+      }
+    ],
+    "configuration": {
+      "title": "Cursor IME HUD",
+      "properties": {
+        "cursorImeHud.overlay.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable the caret-adjacent overlay in active text editors."
+        },
+        "cursorImeHud.overlay.cnLabel": {
+          "type": "string",
+          "default": "中",
+          "description": "Label shown when the detector reports Chinese input mode."
+        },
+        "cursorImeHud.overlay.enLabel": {
+          "type": "string",
+          "default": "英",
+          "description": "Label shown when the detector reports English input mode."
+        },
+        "cursorImeHud.overlay.opacity": {
+          "type": "number",
+          "default": 0.78,
+          "minimum": 0.15,
+          "maximum": 1,
+          "description": "Overlay background opacity between 0.15 and 1."
+        },
+        "cursorImeHud.overlay.mode": {
+          "type": "string",
+          "enum": [
+            "text",
+            "text+icon"
+          ],
+          "default": "text",
+          "markdownDescription": "Overlay rendering mode. `text+icon` currently falls back to text-only rendering."
+        },
+        "cursorImeHud.statusBar.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show the current IME state in the status bar."
+        },
+        "cursorImeHud.overlay.hideWhenEditorUnfocused": {
+          "type": "boolean",
+          "default": true,
+          "description": "Hide the editor overlay when the VS Code window loses focus."
+        },
+        "cursorImeHud.overlay.offsetX": {
+          "type": "number",
+          "default": 6,
+          "minimum": 0,
+          "maximum": 32,
+          "description": "Horizontal margin offset applied to the overlay."
+        },
+        "cursorImeHud.overlay.offsetY": {
+          "type": "number",
+          "default": 0,
+          "minimum": -16,
+          "maximum": 16,
+          "description": "Vertical margin offset applied to the overlay."
+        }
+      }
+    }
+  },
+  "scripts": {
+    "clean": "powershell -ExecutionPolicy Bypass -File ./scripts/clean.ps1",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "build:helper": "powershell -ExecutionPolicy Bypass -File ./scripts/build-helper.ps1",
+    "test:extension": "node ./scripts/run-extension-tests.js",
+    "test:helper": "node ./scripts/assert-helper-once.js",
+    "test": "npm run compile && npm run build:helper && npm run test:extension && npm run test:helper",
+    "vscode:prepublish": "npm run compile && npm run build:helper",
+    "package:vsix": "npx @vscode/vsce package"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^25.6.0",
+    "@types/vscode": "1.107.0",
+    "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^3.9.1",
+    "mocha": "^11.7.5",
+    "typescript": "^6.0.3"
+  }
+}

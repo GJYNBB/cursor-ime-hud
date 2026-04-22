@@ -1,0 +1,8 @@
+node_modules/
+out/
+.vscode-test/
+*.vsix
+coverage/
+resources/bin/
+native/WinImeWatcher/bin/
+native/WinImeWatcher/obj/

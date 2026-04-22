@@ -1,0 +1,17 @@
+Param()
+
+$ErrorActionPreference = "Stop"
+
+$paths = @(
+  (Join-Path $PSScriptRoot "..\\out"),
+  (Join-Path $PSScriptRoot "..\\.vscode-test"),
+  (Join-Path $PSScriptRoot "..\\resources\\bin"),
+  (Join-Path $PSScriptRoot "..\\native\\WinImeWatcher\\bin"),
+  (Join-Path $PSScriptRoot "..\\native\\WinImeWatcher\\obj")
+)
+
+foreach ($path in $paths) {
+  if (Test-Path $path) {
+    Remove-Item -Recurse -Force $path
+  }
+}
