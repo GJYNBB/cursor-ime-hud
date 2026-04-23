@@ -10,6 +10,10 @@ export function run(): Promise<void> {
 
   const testsRoot = __dirname;
   mocha.addFile(path.resolve(testsRoot, "./extension.test.js"));
+  mocha.addFile(path.resolve(testsRoot, "./hudController.test.js"));
+  mocha.addFile(path.resolve(testsRoot, "./renderState.test.js"));
+  mocha.addFile(path.resolve(testsRoot, "./detectorLifecycle.test.js"));
+  mocha.addFile(path.resolve(testsRoot, "./helperProtocol.test.js"));
   mocha.addFile(path.resolve(testsRoot, "./positionStrategy.test.js"));
 
   return new Promise((resolve, reject) => {

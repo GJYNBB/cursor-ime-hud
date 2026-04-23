@@ -6,6 +6,8 @@ export class SampleImeDetector implements ImeDetector {
   private readonly onDidChangeSnapshotEmitter = new vscode.EventEmitter<ImeSnapshot>();
   private readonly onDidLogEmitter = new vscode.EventEmitter<DetectorLogEntry>();
   private snapshot: ImeSnapshot;
+  private started = false;
+  private disposed = false;
 
   public readonly onDidChangeSnapshot = this.onDidChangeSnapshotEmitter.event;
   public readonly onDidLog = this.onDidLogEmitter.event;
@@ -15,11 +17,20 @@ export class SampleImeDetector implements ImeDetector {
   }
 
   public async start(): Promise<void> {
+    if (this.started || this.disposed) {
+      return;
+    }
+
+    this.started = true;
     this.emitLog("warn", this.reason ?? "Using sample detector.");
     this.onDidChangeSnapshotEmitter.fire(this.snapshot);
   }
 
   public refresh(): void {
+    if (this.disposed) {
+      return;
+    }
+
     this.snapshot = this.createSnapshot();
     this.emitLog("info", "Sample detector refresh requested.");
     this.onDidChangeSnapshotEmitter.fire(this.snapshot);
@@ -34,11 +45,13 @@ export class SampleImeDetector implements ImeDetector {
       source: this.source,
       backendName: "SampleImeDetector",
       usingFallback: this.source !== "sample",
-      fallbackReason: this.reason
+      fallbackReason: this.reason,
+      lifecycleState: this.disposed ? "disposed" : this.started ? "running" : "idle"
     };
   }
 
   public dispose(): void {
+    this.disposed = true;
     this.onDidChangeSnapshotEmitter.dispose();
     this.onDidLogEmitter.dispose();
   }
@@ -46,11 +59,13 @@ export class SampleImeDetector implements ImeDetector {
   private createSnapshot(): ImeSnapshot {
     return {
       type: "state",
-      state: "en",
+      state: "unknown",
       timestamp: new Date().toISOString(),
       source: this.source,
       imeName: this.source === "sample" ? "Sample Detector" : "Fallback Detector",
-      isOpen: false
+      reason: this.reason ?? "sample-detector",
+      confidence: 0,
+      rawStateAvailable: false
     };
   }
 

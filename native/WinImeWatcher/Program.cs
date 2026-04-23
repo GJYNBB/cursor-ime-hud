@@ -108,15 +108,10 @@ internal static class Program
         }
         catch (Exception exception)
         {
-            snapshot = new ProbeSnapshot(
-                State: "unknown",
-                ImeName: null,
-                IsOpen: null,
-                LayoutHex: null,
-                ThreadId: null,
-                Hwnd: null,
-                Timestamp: DateTimeOffset.UtcNow
-            );
+            snapshot = CreateUnknownSnapshot(
+                reason: "probe-exception",
+                confidence: 0,
+                rawStateAvailable: false);
             WriteLog("error", "Failed to probe IME state.", new { error = exception.Message, exception.StackTrace });
         }
 
@@ -136,7 +131,10 @@ internal static class Program
             isOpen = snapshot.IsOpen,
             layoutHex = snapshot.LayoutHex,
             threadId = snapshot.ThreadId,
-            hwnd = snapshot.Hwnd
+            hwnd = snapshot.Hwnd,
+            reason = snapshot.Reason,
+            confidence = snapshot.Confidence,
+            rawStateAvailable = snapshot.RawStateAvailable
         }, standardError: false);
     }
 
@@ -145,13 +143,17 @@ internal static class Program
         var foregroundWindow = NativeMethods.GetForegroundWindow();
         if (foregroundWindow == IntPtr.Zero)
         {
-            return CreateUnknownSnapshot();
+            return CreateUnknownSnapshot(reason: "foreground-window-missing", confidence: 0, rawStateAvailable: false);
         }
 
         var threadId = NativeMethods.GetWindowThreadProcessId(foregroundWindow, out _);
         if (threadId == 0)
         {
-            return CreateUnknownSnapshot();
+            return CreateUnknownSnapshot(
+                reason: "thread-id-missing",
+                confidence: 0,
+                rawStateAvailable: false,
+                hwnd: FormatHandle(foregroundWindow));
         }
 
         var guiThreadInfo = new NativeMethods.GuiThreadInfo
@@ -160,61 +162,161 @@ internal static class Program
         };
 
         var hasGuiThreadInfo = NativeMethods.GetGUIThreadInfo(threadId, ref guiThreadInfo);
-        var focusHandle = hasGuiThreadInfo && guiThreadInfo.hwndFocus != IntPtr.Zero
-            ? guiThreadInfo.hwndFocus
-            : foregroundWindow;
+        if (!hasGuiThreadInfo || guiThreadInfo.hwndFocus == IntPtr.Zero)
+        {
+            return CreateUnknownSnapshot(
+                reason: "focus-hwnd-missing",
+                confidence: 0,
+                rawStateAvailable: false,
+                threadId: threadId,
+                hwnd: FormatHandle(foregroundWindow));
+        }
 
+        var focusHandle = guiThreadInfo.hwndFocus;
         var keyboardLayout = NativeMethods.GetKeyboardLayout(threadId);
-        var layoutHex = $"0x{keyboardLayout.ToInt64():X}";
-        var imeName = GetImeDescription(keyboardLayout);
-        var isChineseLayout = IsChineseLayout(keyboardLayout);
+        if (keyboardLayout == IntPtr.Zero)
+        {
+            return CreateUnknownSnapshot(
+                reason: "keyboard-layout-missing",
+                confidence: 0,
+                rawStateAvailable: false,
+                threadId: threadId,
+                hwnd: FormatHandle(focusHandle));
+        }
 
-        bool? isOpen = null;
-        var inputContext = focusHandle != IntPtr.Zero ? NativeMethods.ImmGetContext(focusHandle) : IntPtr.Zero;
-        if (inputContext != IntPtr.Zero)
+        var layoutHex = $"0x{keyboardLayout.ToInt64():X}";
+        if (!TryResolveIsChineseLayout(keyboardLayout, out var isChineseLayout))
+        {
+            return CreateUnknownSnapshot(
+                reason: "keyboard-layout-unrecognized",
+                confidence: 0,
+                rawStateAvailable: false,
+                layoutHex: layoutHex,
+                threadId: threadId,
+                hwnd: FormatHandle(focusHandle));
+        }
+
+        var imeName = GetImeDescription(keyboardLayout);
+        var inputContext = NativeMethods.ImmGetContext(focusHandle);
+        if (inputContext == IntPtr.Zero)
+        {
+            return CreateUnknownSnapshot(
+                reason: "ime-context-missing",
+                confidence: 0,
+                rawStateAvailable: false,
+                imeName: imeName,
+                layoutHex: layoutHex,
+                threadId: threadId,
+                hwnd: FormatHandle(focusHandle));
+        }
+
+        bool isOpen;
+        try
         {
             isOpen = NativeMethods.ImmGetOpenStatus(inputContext);
+        }
+        finally
+        {
             NativeMethods.ImmReleaseContext(focusHandle, inputContext);
         }
 
-        var state = isChineseLayout && isOpen == true ? "cn" : "en";
+        if (isChineseLayout)
+        {
+            return new ProbeSnapshot(
+                State: isOpen ? "cn" : "en",
+                ImeName: imeName,
+                IsOpen: isOpen,
+                LayoutHex: layoutHex,
+                ThreadId: threadId,
+                Hwnd: FormatHandle(focusHandle),
+                Timestamp: DateTimeOffset.UtcNow,
+                Reason: isOpen ? "confirmed-open-chinese-layout" : "confirmed-closed-chinese-layout",
+                Confidence: 1.0,
+                RawStateAvailable: true
+            );
+        }
 
-        return new ProbeSnapshot(
-            State: state,
-            ImeName: string.IsNullOrWhiteSpace(imeName) ? null : imeName,
-            IsOpen: isOpen,
-            LayoutHex: layoutHex,
-            ThreadId: threadId,
-            Hwnd: $"0x{focusHandle.ToInt64():X}",
-            Timestamp: DateTimeOffset.UtcNow
-        );
+        if (!isOpen)
+        {
+            return new ProbeSnapshot(
+                State: "en",
+                ImeName: imeName,
+                IsOpen: isOpen,
+                LayoutHex: layoutHex,
+                ThreadId: threadId,
+                Hwnd: FormatHandle(focusHandle),
+                Timestamp: DateTimeOffset.UtcNow,
+                Reason: "confirmed-closed-non-chinese-layout",
+                Confidence: 1.0,
+                RawStateAvailable: true
+            );
+        }
+
+        return CreateUnknownSnapshot(
+            reason: "open-non-chinese-layout-conflict",
+            confidence: 0.25,
+            rawStateAvailable: true,
+            imeName: imeName,
+            isOpen: isOpen,
+            layoutHex: layoutHex,
+            threadId: threadId,
+            hwnd: FormatHandle(focusHandle));
     }
 
     private static string? GetImeDescription(IntPtr keyboardLayout)
     {
         var builder = new StringBuilder(256);
-        _ = NativeMethods.ImmGetDescriptionW(keyboardLayout, builder, (uint)builder.Capacity);
-        return builder.ToString();
+        var length = NativeMethods.ImmGetDescriptionW(keyboardLayout, builder, (uint)builder.Capacity);
+        if (length == 0)
+        {
+            return null;
+        }
+
+        var description = builder.ToString().Trim();
+        return description.Length == 0 ? null : description;
     }
 
-    private static bool IsChineseLayout(IntPtr keyboardLayout)
+    private static bool TryResolveIsChineseLayout(IntPtr keyboardLayout, out bool isChineseLayout)
     {
         var lowWord = (ushort)((ulong)keyboardLayout.ToInt64() & 0xFFFF);
         var primaryLanguageId = lowWord & 0x03FF;
-        return primaryLanguageId == 0x0004;
+        if (primaryLanguageId == 0)
+        {
+            isChineseLayout = false;
+            return false;
+        }
+
+        isChineseLayout = primaryLanguageId == 0x0004;
+        return true;
     }
 
-    private static ProbeSnapshot CreateUnknownSnapshot()
+    private static ProbeSnapshot CreateUnknownSnapshot(
+        string reason,
+        double confidence,
+        bool rawStateAvailable,
+        string? imeName = null,
+        bool? isOpen = null,
+        string? layoutHex = null,
+        uint? threadId = null,
+        string? hwnd = null)
     {
         return new ProbeSnapshot(
             State: "unknown",
-            ImeName: null,
-            IsOpen: null,
-            LayoutHex: null,
-            ThreadId: null,
-            Hwnd: null,
-            Timestamp: DateTimeOffset.UtcNow
+            ImeName: imeName,
+            IsOpen: isOpen,
+            LayoutHex: layoutHex,
+            ThreadId: threadId,
+            Hwnd: hwnd,
+            Timestamp: DateTimeOffset.UtcNow,
+            Reason: reason,
+            Confidence: confidence,
+            RawStateAvailable: rawStateAvailable
         );
+    }
+
+    private static string FormatHandle(IntPtr handle)
+    {
+        return $"0x{handle.ToInt64():X}";
     }
 
     private static void WriteLog(string level, string message, object? details = null)
@@ -257,7 +359,10 @@ internal static class Program
         string? LayoutHex,
         uint? ThreadId,
         string? Hwnd,
-        DateTimeOffset Timestamp
+        DateTimeOffset Timestamp,
+        string Reason,
+        double Confidence,
+        bool RawStateAvailable
     );
 
     private static class NativeMethods

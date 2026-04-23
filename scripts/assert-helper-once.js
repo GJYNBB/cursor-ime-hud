@@ -60,5 +60,25 @@ child.on("exit", (code) => {
     process.exit(1);
   }
 
+  if (parsed.reason !== undefined && typeof parsed.reason !== "string") {
+    console.error(`Unexpected reason type: ${typeof parsed.reason}`);
+    process.exit(1);
+  }
+
+  if (parsed.confidence !== undefined && typeof parsed.confidence !== "number") {
+    console.error(`Unexpected confidence type: ${typeof parsed.confidence}`);
+    process.exit(1);
+  }
+
+  if (parsed.rawStateAvailable !== undefined && typeof parsed.rawStateAvailable !== "boolean") {
+    console.error(`Unexpected rawStateAvailable type: ${typeof parsed.rawStateAvailable}`);
+    process.exit(1);
+  }
+
+  if (parsed.state === "unknown" && typeof parsed.reason !== "string") {
+    console.error("Unknown helper states must include a reason.");
+    process.exit(1);
+  }
+
   process.stdout.write(`helper-once ok: ${parsed.state}\n`);
 });

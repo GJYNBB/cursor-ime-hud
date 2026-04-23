@@ -3,24 +3,32 @@ import { ChildProcessWithoutNullStreams, spawn } from "node:child_process";
 import * as vscode from "vscode";
 import { DetectorLogEntry, ImeDetectorDebugInfo, ImeSnapshot } from "../model/types";
 import { ImeDetector } from "./ImeDetector";
+import { parseLogLine, parseSnapshotLine } from "./helperProtocol";
 
 const STARTUP_TIMEOUT_MS = 4000;
 const RESTART_DELAY_MS = 1500;
+
+type HelperLifecycleState = "idle" | "starting" | "running" | "stopping" | "disposed";
 
 export class NativeHelperImeDetector implements ImeDetector {
   private readonly onDidChangeSnapshotEmitter = new vscode.EventEmitter<ImeSnapshot>();
   private readonly onDidLogEmitter = new vscode.EventEmitter<DetectorLogEntry>();
   private child?: ChildProcessWithoutNullStreams;
+  private childCleanup?: () => void;
   private stdoutBuffer = "";
   private stderrBuffer = "";
   private disposed = false;
-  private ready = false;
-  private startingPromise?: Promise<void>;
+  private lifecycleState: HelperLifecycleState = "idle";
+  private startPromise?: Promise<void>;
+  private restartTimer?: NodeJS.Timeout;
   private snapshot: ImeSnapshot = {
     type: "state",
     state: "unknown",
     timestamp: new Date(0).toISOString(),
-    source: "native-helper"
+    source: "native-helper",
+    reason: "detector-idle",
+    confidence: 0,
+    rawStateAvailable: false
   };
 
   public readonly onDidChangeSnapshot = this.onDidChangeSnapshotEmitter.event;
@@ -29,24 +37,42 @@ export class NativeHelperImeDetector implements ImeDetector {
   public constructor(private readonly helperPath: string) {}
 
   public async start(): Promise<void> {
-    if (this.ready && this.child && !this.child.killed) {
+    if (this.disposed || this.lifecycleState === "disposed") {
+      throw new Error("NativeHelperImeDetector has been disposed.");
+    }
+
+    if (this.lifecycleState === "running" && this.child && !this.child.killed) {
       return;
     }
 
-    if (this.startingPromise) {
-      return this.startingPromise;
+    if (this.startPromise) {
+      return this.startPromise;
     }
 
-    this.startingPromise = this.spawnAndWaitForFirstSnapshot();
-    try {
-      await this.startingPromise;
-    } finally {
-      this.startingPromise = undefined;
-    }
+    this.clearRestartTimer();
+    this.lifecycleState = "starting";
+    this.startPromise = this.spawnAndWaitForFirstSnapshot()
+      .then(() => {
+        if (!this.disposed) {
+          this.lifecycleState = "running";
+        }
+      })
+      .catch((error) => {
+        if (!this.disposed) {
+          this.lifecycleState = "idle";
+        }
+
+        throw error;
+      })
+      .finally(() => {
+        this.startPromise = undefined;
+      });
+
+    return this.startPromise;
   }
 
   public refresh(): void {
-    this.writeCommand({ command: "refresh" });
+    this.tryWriteCommand({ command: "refresh" }, this.child);
   }
 
   public getSnapshot(): ImeSnapshot {
@@ -58,13 +84,21 @@ export class NativeHelperImeDetector implements ImeDetector {
       source: "native-helper",
       backendName: "WinImeWatcher",
       helperPath: this.helperPath,
-      usingFallback: false
+      usingFallback: false,
+      lifecycleState: this.lifecycleState
     };
   }
 
   public dispose(): void {
+    if (this.disposed) {
+      return;
+    }
+
     this.disposed = true;
-    this.child?.kill();
+    this.lifecycleState = "stopping";
+    this.clearRestartTimer();
+    this.teardownChild(true);
+    this.lifecycleState = "disposed";
     this.onDidChangeSnapshotEmitter.dispose();
     this.onDidLogEmitter.dispose();
   }
@@ -75,78 +109,124 @@ export class NativeHelperImeDetector implements ImeDetector {
     }
 
     await new Promise<void>((resolve, reject) => {
-      let settled = false;
-      const startupTimer = setTimeout(() => {
-        if (settled) {
-          return;
-        }
-
-        settled = true;
-        this.child?.kill();
-        reject(new Error(`IME helper did not produce a snapshot within ${STARTUP_TIMEOUT_MS}ms.`));
-      }, STARTUP_TIMEOUT_MS);
-
       const child = spawn(this.helperPath, [], {
         stdio: ["pipe", "pipe", "pipe"],
         windowsHide: true
       });
 
+      let startupCompleted = false;
+      let startupFailed = false;
+      const startupTimer = setTimeout(() => {
+        startupFailed = true;
+        this.teardownSpecificChild(child, true);
+        reject(new Error(`IME helper did not produce a snapshot within ${STARTUP_TIMEOUT_MS}ms.`));
+      }, STARTUP_TIMEOUT_MS);
+
       this.child = child;
       this.stdoutBuffer = "";
       this.stderrBuffer = "";
-      this.ready = false;
 
       child.stdout.setEncoding("utf8");
       child.stderr.setEncoding("utf8");
 
-      child.on("error", (error: Error) => {
-        this.emitLog("error", "Failed to spawn IME helper.", { error: error.message });
-        if (!settled) {
-          settled = true;
-          clearTimeout(startupTimer);
-          reject(error);
-        }
-      });
+      const clearStartupTimer = (): void => {
+        clearTimeout(startupTimer);
+      };
 
-      child.stdout.on("data", (chunk: string) => {
+      const onChildError = (error: Error): void => {
+        startupFailed = true;
+        this.emitLog("error", "Failed to spawn IME helper.", { error: error.message });
+        clearStartupTimer();
+        this.teardownSpecificChild(child, true);
+        reject(error);
+      };
+
+      const onStdoutData = (chunk: string): void => {
+        if (this.child !== child || this.disposed) {
+          return;
+        }
+
         this.stdoutBuffer += chunk;
-        this.consumeBufferedLines("stdout");
-        if (this.ready && !settled) {
-          settled = true;
-          clearTimeout(startupTimer);
+        const receivedSnapshot = this.consumeBufferedLines("stdout");
+        if (receivedSnapshot && !startupCompleted) {
+          startupCompleted = true;
+          clearStartupTimer();
           resolve();
         }
-      });
+      };
 
-      child.stderr.on("data", (chunk: string) => {
+      const onStderrData = (chunk: string): void => {
+        if (this.child !== child || this.disposed) {
+          return;
+        }
+
         this.stderrBuffer += chunk;
         this.consumeBufferedLines("stderr");
-      });
+      };
 
-      child.on("exit", (code: number | null, signal: NodeJS.Signals | null) => {
+      const onStdinError = (error: Error): void => {
+        if (this.disposed || this.lifecycleState === "stopping" || this.child !== child) {
+          return;
+        }
+
+        this.emitLog("warn", "IME helper stdin stream reported an error.", { error: error.message });
+      };
+
+      const onExit = (code: number | null, signal: NodeJS.Signals | null): void => {
         const details = { code, signal };
-        if (!settled) {
-          settled = true;
-          clearTimeout(startupTimer);
+        clearStartupTimer();
+        this.teardownSpecificChild(child, false);
+
+        if (this.disposed || this.lifecycleState === "stopping" || this.lifecycleState === "disposed") {
+          return;
+        }
+
+        this.lifecycleState = "idle";
+
+        if (startupFailed) {
+          return;
+        }
+
+        if (!startupCompleted) {
           reject(new Error(`IME helper exited before initialization: ${JSON.stringify(details)}`));
           return;
         }
 
         this.emitLog("warn", "IME helper exited. Scheduling restart.", details);
-        this.child = undefined;
-        this.ready = false;
+        this.scheduleRestart(RESTART_DELAY_MS);
+      };
 
-        if (!this.disposed) {
-          setTimeout(() => {
-            if (!this.disposed) {
-              void this.restart();
-            }
-          }, RESTART_DELAY_MS);
-        }
-      });
+      this.childCleanup = () => {
+        clearStartupTimer();
+        child.removeListener("error", onChildError);
+        child.removeListener("exit", onExit);
+        child.stdout.removeListener("data", onStdoutData);
+        child.stderr.removeListener("data", onStderrData);
+        child.stdin.removeListener("error", onStdinError);
+      };
 
-      this.writeCommand({ command: "refresh" });
+      child.on("error", onChildError);
+      child.on("exit", onExit);
+      child.stdout.on("data", onStdoutData);
+      child.stderr.on("data", onStderrData);
+      child.stdin.on("error", onStdinError);
+
+      this.tryWriteCommand({ command: "refresh" }, child);
     });
+  }
+
+  private scheduleRestart(delayMs: number): void {
+    this.clearRestartTimer();
+    if (this.disposed) {
+      return;
+    }
+
+    this.restartTimer = setTimeout(() => {
+      this.restartTimer = undefined;
+      if (!this.disposed) {
+        void this.restart();
+      }
+    }, delayMs);
   }
 
   private async restart(): Promise<void> {
@@ -156,17 +236,11 @@ export class NativeHelperImeDetector implements ImeDetector {
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       this.emitLog("error", "IME helper restart failed.", { error: message });
-      if (!this.disposed) {
-        setTimeout(() => {
-          if (!this.disposed) {
-            void this.restart();
-          }
-        }, RESTART_DELAY_MS * 2);
-      }
+      this.scheduleRestart(RESTART_DELAY_MS * 2);
     }
   }
 
-  private consumeBufferedLines(stream: "stdout" | "stderr"): void {
+  private consumeBufferedLines(stream: "stdout" | "stderr"): boolean {
     const buffer = stream === "stdout" ? this.stdoutBuffer : this.stderrBuffer;
     const lines = buffer.split(/\r?\n/);
     const remainder = lines.pop() ?? "";
@@ -177,6 +251,7 @@ export class NativeHelperImeDetector implements ImeDetector {
       this.stderrBuffer = remainder;
     }
 
+    let receivedSnapshot = false;
     for (const line of lines) {
       const trimmed = line.trim();
       if (trimmed.length === 0) {
@@ -184,62 +259,47 @@ export class NativeHelperImeDetector implements ImeDetector {
       }
 
       if (stream === "stdout") {
-        this.handleSnapshotLine(trimmed);
+        receivedSnapshot = this.handleSnapshotLine(trimmed) || receivedSnapshot;
       } else {
         this.handleLogLine(trimmed);
       }
     }
+
+    return receivedSnapshot;
   }
 
-  private handleSnapshotLine(line: string): void {
-    try {
-      const parsed = JSON.parse(line) as Partial<ImeSnapshot>;
-      if (parsed.type !== "state") {
-        return;
-      }
-
-      const nextState = parsed.state === "cn" || parsed.state === "en" || parsed.state === "unknown" ? parsed.state : "unknown";
-      this.snapshot = {
-        type: "state",
-        state: nextState,
-        timestamp: typeof parsed.timestamp === "string" ? parsed.timestamp : new Date().toISOString(),
-        source: "native-helper",
-        imeName: typeof parsed.imeName === "string" ? parsed.imeName : undefined,
-        isOpen: typeof parsed.isOpen === "boolean" ? parsed.isOpen : undefined,
-        layoutHex: typeof parsed.layoutHex === "string" ? parsed.layoutHex : undefined,
-        threadId: typeof parsed.threadId === "number" ? parsed.threadId : undefined,
-        hwnd: typeof parsed.hwnd === "string" ? parsed.hwnd : undefined
-      };
-      this.ready = true;
-      this.onDidChangeSnapshotEmitter.fire(this.snapshot);
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      this.emitLog("warn", "Failed to parse IME helper stdout line.", { line, error: message });
+  private handleSnapshotLine(line: string): boolean {
+    const snapshot = parseSnapshotLine(line);
+    if (!snapshot) {
+      this.emitLog("warn", "Failed to parse IME helper stdout line.", { line });
+      return false;
     }
+
+    this.snapshot = snapshot;
+    if (!this.disposed) {
+      this.onDidChangeSnapshotEmitter.fire(snapshot);
+    }
+
+    return true;
   }
 
   private handleLogLine(line: string): void {
-    try {
-      const parsed = JSON.parse(line) as Partial<DetectorLogEntry>;
-      if (parsed.type === "log" && typeof parsed.message === "string") {
-        this.onDidLogEmitter.fire({
-          type: "log",
-          level: parsed.level === "error" || parsed.level === "warn" ? parsed.level : "info",
-          message: parsed.message,
-          timestamp: typeof parsed.timestamp === "string" ? parsed.timestamp : new Date().toISOString(),
-          details: parsed.details,
-          source: typeof parsed.source === "string" ? parsed.source : "native-helper"
-        });
-        return;
+    const entry = parseLogLine(line);
+    if (entry) {
+      if (!this.disposed) {
+        this.onDidLogEmitter.fire(entry);
       }
-    } catch {
-      // fall through to raw log handling
+      return;
     }
 
     this.emitLog("info", line);
   }
 
   private emitLog(level: DetectorLogEntry["level"], message: string, details?: unknown): void {
+    if (this.disposed) {
+      return;
+    }
+
     this.onDidLogEmitter.fire({
       type: "log",
       level,
@@ -250,12 +310,63 @@ export class NativeHelperImeDetector implements ImeDetector {
     });
   }
 
-  private writeCommand(command: Record<string, string>): void {
-    const child = this.child;
-    if (!child || child.killed) {
+  private tryWriteCommand(command: Record<string, string>, child: ChildProcessWithoutNullStreams | undefined): boolean {
+    if (
+      !child ||
+      child.killed ||
+      this.disposed ||
+      this.lifecycleState === "stopping" ||
+      this.lifecycleState === "disposed"
+    ) {
+      return false;
+    }
+
+    const stdin = child.stdin;
+    if (!stdin || stdin.destroyed || !stdin.writable || stdin.writableEnded) {
+      return false;
+    }
+
+    try {
+      stdin.write(`${JSON.stringify(command)}\n`);
+      return true;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.emitLog("warn", "Failed to write a command to the IME helper.", { error: message, command });
+      return false;
+    }
+  }
+
+  private clearRestartTimer(): void {
+    if (this.restartTimer) {
+      clearTimeout(this.restartTimer);
+      this.restartTimer = undefined;
+    }
+  }
+
+  private teardownChild(killProcess: boolean): void {
+    if (!this.child) {
       return;
     }
 
-    child.stdin.write(`${JSON.stringify(command)}\n`);
+    this.teardownSpecificChild(this.child, killProcess);
+  }
+
+  private teardownSpecificChild(child: ChildProcessWithoutNullStreams, killProcess: boolean): void {
+    if (this.childCleanup) {
+      this.childCleanup();
+      this.childCleanup = undefined;
+    }
+
+    if (killProcess && !child.killed) {
+      try {
+        child.kill();
+      } catch {
+        // Ignore shutdown races.
+      }
+    }
+
+    if (this.child === child) {
+      this.child = undefined;
+    }
   }
 }

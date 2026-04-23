@@ -14,6 +14,9 @@ export interface ImeSnapshot {
   layoutHex?: string;
   threadId?: number;
   hwnd?: string;
+  reason?: string;
+  confidence?: number;
+  rawStateAvailable?: boolean;
 }
 
 export interface DetectorLogEntry {
@@ -37,10 +40,13 @@ export interface CursorImeHudSettings {
   offsetY: number;
 }
 
+export type HudDisplayReason = "direct" | "grace-period" | "unknown";
+
 export interface ImeDetectorDebugInfo {
   source: DetectorSource;
   backendName: string;
   helperPath?: string;
   usingFallback: boolean;
   fallbackReason?: string;
+  lifecycleState?: string;
 }

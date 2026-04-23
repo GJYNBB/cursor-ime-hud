@@ -25,8 +25,8 @@ export class SettingsService implements vscode.Disposable {
 
     return {
       overlayEnabled: this.asBoolean(overlay.enabled, true),
-      cnLabel: this.asNonEmptyString(overlay.cnLabel, "中"),
-      enLabel: this.asNonEmptyString(overlay.enLabel, "英"),
+      cnLabel: this.asNonEmptyString(overlay.cnLabel, "\u4e2d"),
+      enLabel: this.asNonEmptyString(overlay.enLabel, "\u82f1"),
       opacity: this.clampNumber(overlay.opacity, 0.78, 0.15, 1),
       overlayMode: overlay.mode === "text+icon" ? "text+icon" : "text",
       statusBarEnabled: this.asBoolean(statusBar.enabled, true),
@@ -36,7 +36,7 @@ export class SettingsService implements vscode.Disposable {
     };
   }
 
-  public getLabelForState(state: ImeState): string {
+  public getLabelForState(state: ImeState): string | undefined {
     const settings = this.getSettings();
     if (state === "cn") {
       return settings.cnLabel;
@@ -46,7 +46,7 @@ export class SettingsService implements vscode.Disposable {
       return settings.enLabel;
     }
 
-    return "--";
+    return undefined;
   }
 
   public async toggleOverlay(): Promise<void> {

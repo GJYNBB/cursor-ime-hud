@@ -3,12 +3,16 @@
   "displayName": "Cursor IME HUD",
   "description": "Semi-transparent Chinese/English IME state HUD near the caret for VS Code on Windows.",
   "version": "0.0.1",
-  "publisher": "your-publisher-name",
+  "publisher": "publisher-placeholder",
   "license": "MIT",
   "icon": "resources/icon.png",
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-publisher-name/cursor-ime-hud.git"
+    "url": "https://github.com/GJYNBB/cursor-ime-hud.git"
+  },
+  "homepage": "https://github.com/GJYNBB/cursor-ime-hud#readme",
+  "bugs": {
+    "url": "https://github.com/GJYNBB/cursor-ime-hud/issues"
   },
   "files": [
     "out/extension.js",
@@ -75,12 +79,12 @@
         },
         "cursorImeHud.overlay.cnLabel": {
           "type": "string",
-          "default": "中",
+          "default": "\u4e2d",
           "description": "Label shown when the detector reports Chinese input mode."
         },
         "cursorImeHud.overlay.enLabel": {
           "type": "string",
-          "default": "英",
+          "default": "\u82f1",
           "description": "Label shown when the detector reports English input mode."
         },
         "cursorImeHud.overlay.opacity": {
@@ -97,7 +101,7 @@
             "text+icon"
           ],
           "default": "text",
-          "markdownDescription": "Overlay rendering mode. `text+icon` currently falls back to text-only rendering."
+          "markdownDescription": "Overlay rendering mode. `text+icon` is reserved for future work and currently renders the same text-only HUD as `text`."
         },
         "cursorImeHud.statusBar.enabled": {
           "type": "boolean",
