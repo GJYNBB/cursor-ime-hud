@@ -2,11 +2,43 @@
 
 All notable changes to this project will be documented in this file.
 
+The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+
+## [Unreleased]
+
+### Added
+- GitHub Actions CI workflow running lint and tests on Ubuntu and Windows
+- GitHub Actions release workflow that packages the extension on tag push
+- Dependabot configuration for `npm` and `github-actions` updates
+- ESLint (flat config for v9) and Prettier tooling with `lint` / `format` scripts
+- Coverage tooling (`c8`) and a `coverage` script surfaced in CI
+- `galleryBanner` metadata in `package.json` for the VS Code Marketplace
+- `engines.node` requirement and explicit `engines.vscode` range
+- `prepublishOnly` guard that fails when the publisher is still the placeholder
+
+### Changed
+- `npm test` now splits into `test:unit` (cross-platform) and
+  `test:integration` (Windows-only) so contributors on Linux/macOS can run
+  the unit suite without a Windows toolchain
+- `package.json` declares a `resources/screenshots/**/*` slot ready for
+  future Marketplace imagery
+
+### Fixed
+- `scripts/assert-helper-once.js` no longer fails on non-Windows platforms
+  (skips with a clear message)
+- Header comment on `src/test/runTest.ts` clarifies it is an alternative
+  runner, with `scripts/run-extension-tests.js` as the canonical entry
+
 ## [0.0.1] - 2026-04-22
 
+### Added
 - Initial release scaffold for Cursor IME HUD
-- Added caret-adjacent overlay rendering with `TextEditorDecorationType`
-- Added Windows native `WinImeWatcher` helper with JSONL protocol
-- Added status bar fallback, diagnostics command, settings service, and logger service
-- Added extension smoke tests, position strategy tests, and helper smoke test
-- Added Marketplace packaging scripts and documentation
+- Caret-adjacent overlay rendering with `TextEditorDecorationType`
+- Windows native `WinImeWatcher` helper with JSONL protocol
+- Status bar fallback, diagnostics command, settings service, and logger service
+- Extension smoke tests, position strategy tests, and helper smoke test
+- Marketplace packaging scripts and documentation
+
+[Unreleased]: https://github.com/GJYNBB/cursor-ime-hud/compare/v0.0.1...HEAD
+[0.0.1]: https://github.com/GJYNBB/cursor-ime-hud/releases/tag/v0.0.1

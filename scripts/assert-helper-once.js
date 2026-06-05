@@ -2,6 +2,15 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { spawn } = require("node:child_process");
 
+// The Windows native helper only ships as a .exe, so a meaningful
+// "spawn the helper once and parse a JSONL line" smoke test can only
+// run on win32. On other platforms we skip with a clear message so the
+// cross-platform `npm run test:integration` script does not fail.
+if (process.platform !== "win32") {
+  console.log("[skip] assert-helper-once requires Windows; current platform is " + process.platform);
+  process.exit(0);
+}
+
 const helperPath = path.join(__dirname, "..", "resources", "bin", "win-x64", "WinImeWatcher.exe");
 
 if (!fs.existsSync(helperPath)) {

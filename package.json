@@ -3,9 +3,14 @@
   "displayName": "Cursor IME HUD",
   "description": "Semi-transparent Chinese/English IME state HUD near the caret for VS Code on Windows.",
   "version": "0.0.1",
+  "// publisher": "TODO: replace with your Marketplace publisher id from https://aka.ms/vscode-publishers before first release",
   "publisher": "publisher-placeholder",
   "license": "MIT",
   "icon": "resources/icon.png",
+  "galleryBanner": {
+    "color": "#1e1e1e",
+    "theme": "dark"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/GJYNBB/cursor-ime-hud.git"
@@ -25,11 +30,13 @@
     "out/services/**/*.js",
     "resources/icon.png",
     "resources/bin/win-x64/WinImeWatcher.exe",
+    "resources/screenshots/**/*",
     "README.md",
     "CHANGELOG.md",
     "LICENSE"
   ],
   "engines": {
+    "node": ">=20.0.0",
     "vscode": "^1.107.0"
   },
   "categories": [
@@ -79,12 +86,12 @@
         },
         "cursorImeHud.overlay.cnLabel": {
           "type": "string",
-          "default": "\u4e2d",
+          "default": "中",
           "description": "Label shown when the detector reports Chinese input mode."
         },
         "cursorImeHud.overlay.enLabel": {
           "type": "string",
-          "default": "\u82f1",
+          "default": "英",
           "description": "Label shown when the detector reports English input mode."
         },
         "cursorImeHud.overlay.opacity": {
@@ -137,17 +144,34 @@
     "build:helper": "powershell -ExecutionPolicy Bypass -File ./scripts/build-helper.ps1",
     "test:extension": "node ./scripts/run-extension-tests.js",
     "test:helper": "node ./scripts/assert-helper-once.js",
-    "test": "npm run compile && npm run build:helper && npm run test:extension && npm run test:helper",
-    "vscode:prepublish": "npm run compile && npm run build:helper",
-    "package:vsix": "npx @vscode/vsce package"
+    "test:unit": "npm run compile && npm run test:extension",
+    "test:integration": "npm run build:helper && npm run test:helper",
+    "test": "npm run test:unit && npm run test:integration",
+    "hash:helper": "node ./scripts/hash-helper.js",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "coverage": "c8 --reporter=text --reporter=lcov npm run test:extension",
+    "vscode:prepublish": "node ./scripts/check-publisher.js && npm run compile && npm run build:helper",
+    "package:vsix": "npx @vscode/vsce package",
+    "prepublishOnly": "node ./scripts/check-publisher.js"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",
     "@types/node": "^25.6.0",
+    "@types/sinon": "^17.0.4",
     "@types/vscode": "1.107.0",
+    "@typescript-eslint/eslint-plugin": "^8.60.1",
+    "@typescript-eslint/parser": "^8.60.1",
     "@vscode/test-electron": "^2.5.2",
     "@vscode/vsce": "^3.9.1",
+    "c8": "^10.1.3",
+    "eslint": "^9.39.4",
+    "eslint-config-prettier": "^9.1.2",
     "mocha": "^11.7.5",
+    "prettier": "^3.8.3",
+    "sinon": "^19.0.5",
     "typescript": "^6.0.3"
   }
 }

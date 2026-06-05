@@ -1,0 +1,67 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch:
+
+# Allow only one concurrent release job. The publish step is still done
+# locally by the maintainer; this workflow produces the .vsix artifact
+# and uploads it so the maintainer can grab it from the run page.
+concurrency:
+  group: release-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: Package VSIX (windows)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Setup .NET SDK
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Install NuGet caching
+        uses: actions/cache@v4
+        with:
+          path: ~/.nuget/packages
+          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          restore-keys: |
+            ${{ runner.os }}-nuget-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Pre-flight (publisher check)
+        # Refuse to package when the publisher field is still the
+        # upstream placeholder, so the maintainer catches the issue
+        # locally and not in front of the Marketplace. The
+        # `vscode:prepublish` script also runs the TypeScript compile and
+        # helper build, so we get all three gates from a single step.
+        run: npm run vscode:prepublish
+
+      - name: Package .vsix
+        run: npm run package:vsix
+
+      - name: Upload .vsix artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cursor-ime-hud-${{ github.ref_name }}
+          path: "*.vsix"
+          if-no-files-found: error
+          retention-days: 30

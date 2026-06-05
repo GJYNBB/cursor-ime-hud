@@ -1,11 +1,21 @@
 import * as vscode from "vscode";
 import { DetectorLogEntry, LogLevel } from "../model/types";
 
+// Covers a typical "Show Diagnostics" session (user opens output, scrolls
+// back through the last few seconds of activity) without unbounded growth.
 const MAX_LOG_ENTRIES = 200;
 
+/**
+ * Application-level logger that mirrors entries to a VS Code output channel
+ * and keeps a bounded in-memory ring buffer (capped at `MAX_LOG_ENTRIES`)
+ * for the diagnostics command. Constructed by the composition root with the
+ * `vscode.OutputChannel` already created so the service is a pure consumer
+ * of the channel and can be unit tested with a fake.
+ */
 export class LoggerService implements vscode.Disposable {
-  private readonly outputChannel = vscode.window.createOutputChannel("Cursor IME HUD");
   private readonly entries: DetectorLogEntry[] = [];
+
+  public constructor(private readonly outputChannel: vscode.OutputChannel) {}
 
   public info(message: string, details?: unknown): void {
     this.append({

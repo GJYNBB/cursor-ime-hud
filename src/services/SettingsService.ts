@@ -1,6 +1,15 @@
 import * as vscode from "vscode";
 import { CursorImeHudSettings, ImeState } from "../model/types";
 
+/**
+ * Wraps `vscode.workspace.getConfiguration` for the
+ * `cursorImeHud` configuration section. The class validates every read
+ * and falls back to a safe default if a value is missing or the wrong
+ * type, so the HUD always has a usable settings object.
+ *
+ * Emits `onDidChange` whenever the user changes a value through the
+ * settings UI so the controller can re-render.
+ */
 export class SettingsService implements vscode.Disposable {
   private readonly onDidChangeEmitter = new vscode.EventEmitter<CursorImeHudSettings>();
   private readonly configurationSection = "cursorImeHud";
@@ -25,8 +34,8 @@ export class SettingsService implements vscode.Disposable {
 
     return {
       overlayEnabled: this.asBoolean(overlay.enabled, true),
-      cnLabel: this.asNonEmptyString(overlay.cnLabel, "\u4e2d"),
-      enLabel: this.asNonEmptyString(overlay.enLabel, "\u82f1"),
+      cnLabel: this.asNonEmptyString(overlay.cnLabel, "中"),
+      enLabel: this.asNonEmptyString(overlay.enLabel, "英"),
       opacity: this.clampNumber(overlay.opacity, 0.78, 0.15, 1),
       overlayMode: overlay.mode === "text+icon" ? "text+icon" : "text",
       statusBarEnabled: this.asBoolean(statusBar.enabled, true),
@@ -67,10 +76,20 @@ export class SettingsService implements vscode.Disposable {
     return typeof value === "boolean" ? value : fallback;
   }
 
+  /**
+   * Coerce a configuration value into a non-empty string. Empty / whitespace
+   * strings and non-string values both fall back to the default so the HUD
+   * never has to render an empty chip.
+   */
   private asNonEmptyString(value: unknown, fallback: string): string {
     return typeof value === "string" && value.trim().length > 0 ? value : fallback;
   }
 
+  /**
+   * Clamp a numeric configuration value into `[minimum, maximum]`. Non-number
+   * values (including `NaN`) fall back to `fallback`, which is also clamped
+   * to the same range so a misconfigured default cannot break the renderer.
+   */
   private clampNumber(value: unknown, fallback: number, minimum: number, maximum: number): number {
     if (typeof value !== "number" || Number.isNaN(value)) {
       return fallback;

@@ -21,9 +21,9 @@ The extension is intentionally narrow in scope:
 - Status bar fallback with tooltip details
 - Diagnostics command with raw detector information and recent logs
 
-## Screenshots
+### Assets
 
-Screenshots coming soon.
+<!-- TODO: Add a screenshot of the HUD in cn and en modes. A real animated GIF is preferred but static PNGs are acceptable. Drop the file under resources/screenshots/ and reference it here; the marketplace metadata will pick it up automatically. -->
 
 ## Requirements
 
@@ -84,6 +84,13 @@ The repository already includes `.vscode/launch.json` and `.vscode/tasks.json` s
 | `cursorImeHud.overlay.offsetX` | `6` | Horizontal offset for the overlay. |
 | `cursorImeHud.overlay.offsetY` | `0` | Vertical offset for the overlay. |
 
+### Configuration deep-dive
+
+- **500ms grace period.** When a snapshot reports `unknown`, the controller keeps the last stable `cn` or `en` state for up to 500ms before falling back to `unknown`. This avoids flicker when Windows briefly drops IME signals (e.g. when a context menu opens). The grace window resets on every fresh `cn`/`en` snapshot.
+- **`overlay.opacity` (0.15 - 1.0).** The value is a multiplier on the background alpha used by `TextEditorDecorationType`. Values below `0.15` may become hard to see; values above `1.0` are clamped. The default `0.78` is tuned for typical light and dark themes.
+- **`overlay.mode = "text+icon"`.** Reserved for a future dual-render mode (label plus a tiny icon glyph). In v1 it behaves identically to `"text"`. The setting is exposed so user `settings.json` does not need to change when the icon path lands.
+- **`overlay.hideWhenEditorUnfocused`.** When `true` (default), the overlay is cleared whenever the active editor loses focus, the workbench is hidden, or the window is minimized. The status bar continues to reflect the latest state. Set to `false` if you want the HUD to remain visible across window blur (rarely useful).
+
 ## Validation
 
 ### Automated
@@ -118,6 +125,42 @@ This runs:
 - The native helper is conservative and can return `unknown` when Windows does not expose enough reliable IME signals
 - `text+icon` is not a distinct rendering mode yet
 - The bundled helper is a self-contained single-file executable, so package size is still relatively large
+
+### Language support
+
+The native helper currently detects Chinese IME only (Win32 primary language id `0x0004`). Japanese (`0x0011`), Korean (`0x0012`), and other CJK IMEs will be reported as `en` or `unknown`. Generalizing the detector to additional primary language ids and to non-Chinese input methods is tracked as future work; see `docs/helper-protocol.md` for the wire format and `ARCHITECTURE.md` for the detector extension points.
+
+## How it works
+
+The native helper uses Windows IMM32 APIs (`ImmGetOpenStatus`, `ImmGetDescription`) and `GetKeyboardLayout` to detect the Chinese primary language id `0x0004` for the foreground window. It streams state, log, and snapshot messages to the extension over a line-delimited JSON protocol on stdio (UTF-8, max 64KB per line, 1MB rolling buffer) - see `docs/helper-protocol.md` for the full wire format. The extension parses each line via `src/detector/helperProtocol.ts` and forwards the result to a `ImeDetector` chain (`SampleOrNativeDetector`) that prefers the native helper and falls back to the in-process `SampleImeDetector` on macOS/Linux or if the helper is unavailable. The extension never reads file contents, the clipboard, or typed text; the helper only inspects IME state for the foreground window.
+
+## Troubleshooting
+
+- **HUD never appears.**
+  - Open the **Output** channel and select **Cursor IME HUD**. Look for `hello` handshake failures, JSON parse errors, or helper exit events.
+  - Run the **Cursor IME HUD: Show Diagnostics** command. It prints the current detector source, lifecycle phase, last snapshot, and the rolling log buffer.
+  - Verify `resources/bin/win-x64/WinImeWatcher.exe` exists and matches the SHA-256 recorded in `native/WinImeWatcher/WinImeWatcher.csproj` / `package.json` `cursorImeHud.helper.sha256`. A mismatch disables the helper and the extension falls back to the sample detector.
+  - On macOS and Linux, the native helper cannot run. The extension automatically falls back to `SampleImeDetector`, which only emits synthetic `cn`/`en` toggles for end-to-end testing. This is expected.
+- **Status bar shows `?` persistently.**
+  - The foreground window is non-Chinese (e.g. Explorer, a browser, a non-IME-aware app) - the helper correctly reports `unknown` in that case.
+  - The active IME is not Chinese (Japanese, Korean, etc.) - see [Language support](#language-support) above.
+  - The helper process has crashed or stalled. Run **Cursor IME HUD: Refresh IME State** to force a re-probe; if the status bar recovers, the helper was alive but the foreground window was unresponsive.
+- **Extension fails to activate.**
+  - Check the **Output** channel for the host extension log. Activation requires `package.json` `engines.vscode` `^1.107.0`.
+  - If activation throws synchronously, VS Code surfaces the error in the Extensions view. Open an issue with the full stack trace from the Output channel.
+
+## Frequently Asked Questions
+
+- **Does the helper require administrator privileges?**
+  No. The helper only uses user-mode IMM32 APIs (`ImmGetOpenStatus`, `ImmGetDescription`) and `GetKeyboardLayout`. It does not require elevation, UAC consent, or a driver.
+- **What does the Diagnostics command show?**
+  It shows the current `ImeSnapshot` (state, timestamp, IME name, layout hex, hwnd, reason, confidence), the active detector source (native-helper or sample), the controller lifecycle phase, and the last ~50 log entries.
+- **Can I replace `WinImeWatcher.exe` with my own build?**
+  Yes, but the integrity check compares the file SHA-256 against the value embedded in `package.json`. A mismatch disables the helper and you will see `helper integrity check failed` in the Output channel. Rebuild with `npm run build:helper` so the SHA is regenerated, or update the expected hash in `package.json`.
+- **Why is only the primary caret rendered?**
+  Multi-caret decoration composition requires careful handling of `revealRange`, selection, and overlap. It is tracked as future work to avoid surprising layout regressions in v1.
+- **What happens on empty lines?**
+  The HUD does not render on empty lines because there is no visible character position to anchor a `TextEditorDecorationType` against. The status bar still updates with the latest state, so the signal is never lost.
 
 ## Packaging
 

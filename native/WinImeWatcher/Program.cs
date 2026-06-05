@@ -14,10 +14,13 @@ internal static class Program
 
     private static readonly object OutputLock = new();
     private static ProbeSnapshot? _lastSnapshot;
+    private static bool _imeContextFailureLogged;
 
     public static async Task<int> Main(string[] args)
     {
         Console.OutputEncoding = Encoding.UTF8;
+
+        WriteHello();
 
         var once = args.Any(static argument => string.Equals(argument, "--once", StringComparison.OrdinalIgnoreCase));
         if (once)
@@ -26,38 +29,90 @@ internal static class Program
             return 0;
         }
 
-        using var cancellationTokenSource = new CancellationTokenSource();
-        Console.CancelKeyPress += (_, eventArgs) =>
+        var cancellationTokenSource = new CancellationTokenSource();
+        ConsoleCancelEventHandler cancelHandler = (_, eventArgs) =>
         {
             eventArgs.Cancel = true;
-            cancellationTokenSource.Cancel();
+            try
+            {
+                cancellationTokenSource.Cancel();
+            }
+            catch (ObjectDisposedException)
+            {
+                // CTS already disposed; nothing to do.
+            }
         };
-
-        var inputTask = Task.Run(() => ReadCommandsAsync(cancellationTokenSource.Token), cancellationTokenSource.Token);
+        Console.CancelKeyPress += cancelHandler;
 
         try
         {
+            var inputTask = Task.Run(() => ReadCommandsAsync(cancellationTokenSource.Token), cancellationTokenSource.Token);
+
             EmitSnapshot(force: true);
 
-            using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(250));
-            while (await timer.WaitForNextTickAsync(cancellationTokenSource.Token))
+            if (_lastSnapshot is { State: "unknown" })
             {
-                EmitSnapshot(force: false);
-            }
-        }
-        catch (OperationCanceledException)
-        {
-            WriteLog("info", "WinImeWatcher cancellation requested.");
-        }
-        catch (Exception exception)
-        {
-            WriteLog("error", "Unhandled watcher exception.", new { error = exception.Message, exception.StackTrace });
-            return 1;
-        }
+                WriteLog("warn", "First probe returned unknown. Re-probing after 2s for health check.");
+                try
+                {
+                    await Task.Delay(TimeSpan.FromSeconds(2), cancellationTokenSource.Token);
+                }
+                catch (OperationCanceledException)
+                {
+                    WriteLog("info", "WinImeWatcher cancellation requested.");
+                    await inputTask;
+                    return 0;
+                }
 
-        await inputTask;
-        return 0;
+                EmitSnapshot(force: true);
+                if (_lastSnapshot is { State: "unknown" })
+                {
+                    WriteLog(
+                        "error",
+                        "Health check failed: probe is still unknown after re-probe. Exiting with code 2.");
+                    return 2;
+                }
+            }
+
+            try
+            {
+                using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(250));
+                while (await timer.WaitForNextTickAsync(cancellationTokenSource.Token))
+                {
+                    EmitSnapshot(force: false);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                WriteLog("info", "WinImeWatcher cancellation requested.");
+            }
+            catch (Exception exception)
+            {
+                WriteLog("error", "Unhandled watcher exception.", new { error = exception.Message, exception.StackTrace });
+                return 1;
+            }
+
+            await inputTask;
+            return 0;
+        }
+        finally
+        {
+            Console.CancelKeyPress -= cancelHandler;
+            cancellationTokenSource.Dispose();
+        }
     }
+
+    private static void WriteHello()
+    {
+        WriteJson(new
+        {
+            type = "hello",
+            version = ProtocolVersion,
+            capabilities = new[] { "state", "log" }
+        }, standardError: false);
+    }
+
+    private const int ProtocolVersion = 1;
 
     private static async Task ReadCommandsAsync(CancellationToken cancellationToken)
     {
@@ -108,10 +163,7 @@ internal static class Program
         }
         catch (Exception exception)
         {
-            snapshot = CreateUnknownSnapshot(
-                reason: "probe-exception",
-                confidence: 0,
-                rawStateAvailable: false);
+            snapshot = BuildProbeFailedSnapshot(exception);
             WriteLog("error", "Failed to probe IME state.", new { error = exception.Message, exception.StackTrace });
         }
 
@@ -136,6 +188,34 @@ internal static class Program
             confidence = snapshot.Confidence,
             rawStateAvailable = snapshot.RawStateAvailable
         }, standardError: false);
+    }
+
+    private static ProbeSnapshot BuildProbeFailedSnapshot(Exception exception)
+    {
+        if (_lastSnapshot is { } previous)
+        {
+            return previous with
+            {
+                State = "unknown",
+                Reason = "probe-failed",
+                Confidence = 0,
+                RawStateAvailable = false,
+                Timestamp = DateTimeOffset.UtcNow
+            };
+        }
+
+        return new ProbeSnapshot(
+            State: "unknown",
+            ImeName: null,
+            IsOpen: null,
+            LayoutHex: null,
+            ThreadId: null,
+            Hwnd: null,
+            Timestamp: DateTimeOffset.UtcNow,
+            Reason: "probe-failed",
+            Confidence: 0,
+            RawStateAvailable: false
+        );
     }
 
     private static ProbeSnapshot ProbeCurrentState()
@@ -197,11 +277,45 @@ internal static class Program
         }
 
         var imeName = GetImeDescription(keyboardLayout);
-        var inputContext = NativeMethods.ImmGetContext(focusHandle);
+        IntPtr inputContext;
+        try
+        {
+            inputContext = NativeMethods.ImmGetContext(focusHandle);
+        }
+        catch (Exception imeException)
+        {
+            if (!_imeContextFailureLogged)
+            {
+                _imeContextFailureLogged = true;
+                WriteLog(
+                    "warn",
+                    "ImmGetContext threw on probe thread. Falling back to GetKeyboardLayout data.",
+                    new { error = imeException.Message });
+            }
+
+            return CreateUnknownSnapshot(
+                reason: "probe-failed",
+                confidence: 0,
+                rawStateAvailable: false,
+                imeName: imeName,
+                layoutHex: layoutHex,
+                threadId: threadId,
+                hwnd: FormatHandle(focusHandle));
+        }
+
         if (inputContext == IntPtr.Zero)
         {
+            if (!_imeContextFailureLogged)
+            {
+                _imeContextFailureLogged = true;
+                WriteLog(
+                    "warn",
+                    "ImmGetContext returned a null handle. Falling back to GetKeyboardLayout data.",
+                    new { threadId });
+            }
+
             return CreateUnknownSnapshot(
-                reason: "ime-context-missing",
+                reason: "probe-failed",
                 confidence: 0,
                 rawStateAvailable: false,
                 imeName: imeName,
@@ -363,7 +477,45 @@ internal static class Program
         string Reason,
         double Confidence,
         bool RawStateAvailable
-    );
+    ) : IEquatable<ProbeSnapshot>
+    {
+        public bool Equals(ProbeSnapshot? other)
+        {
+            if (other is null)
+            {
+                return false;
+            }
+
+            if (ReferenceEquals(this, other))
+            {
+                return true;
+            }
+
+            return State == other.State
+                && ImeName == other.ImeName
+                && IsOpen == other.IsOpen
+                && LayoutHex == other.LayoutHex
+                && ThreadId == other.ThreadId
+                && Hwnd == other.Hwnd
+                && Reason == other.Reason
+                && Confidence.Equals(other.Confidence)
+                && RawStateAvailable == other.RawStateAvailable;
+        }
+
+        public override int GetHashCode()
+        {
+            return HashCode.Combine(
+                State,
+                ImeName,
+                IsOpen,
+                LayoutHex,
+                ThreadId,
+                Hwnd,
+                Reason,
+                Confidence,
+                RawStateAvailable);
+        }
+    }
 
     private static class NativeMethods
     {

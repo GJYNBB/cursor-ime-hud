@@ -1,13 +1,16 @@
 import * as vscode from "vscode";
 import { resolveHudDisplayState, UNKNOWN_GRACE_PERIOD_MS } from "./HudState";
+import { EditorHost, VSCodeEditorHost } from "./EditorHost";
 import { ImeDetector } from "../detector/ImeDetector";
 import { HudDisplayReason, ImeSnapshot } from "../model/types";
 import { StatusBarPresenterContract } from "../presenters/StatusBarPresenter";
 import { createOverlayRenderState, overlayRenderStateEquals, OverlayRenderState } from "../renderer/OverlayRenderState";
-import { OverlayRenderer } from "../renderer/CursorOverlayRenderer";
+import { OverlayRenderer } from "../renderer/contracts";
 import { LoggerService } from "../services/LoggerService";
 import { SettingsService } from "../services/SettingsService";
 
+// ~one 60fps frame; debounce to coalesce burst events (selection changes,
+// visible-range changes) into a single render per frame.
 const HIGH_FREQUENCY_RENDER_DELAY_MS = 16;
 
 interface HudControllerDependencies {
@@ -16,12 +19,29 @@ interface HudControllerDependencies {
   logger: LoggerService;
   overlayRenderer: OverlayRenderer;
   statusBarPresenter: StatusBarPresenterContract;
+  /**
+   * Optional for backward compatibility with tests that pre-date the
+   * `EditorHost` extraction. When omitted the controller lazily builds
+   * a `VSCodeEditorHost`, so production code never has to supply one
+   * explicitly (the composition root does it for clarity).
+   */
+  editorHost?: EditorHost;
   now?: () => number;
 }
 
+/**
+ * Top-level orchestrator for the Cursor IME HUD. Owns the lifecycle of the
+ * IME detector subscription, debounces render triggers, and translates the
+ * latest detector snapshot into both a status-bar update and a cursor
+ * overlay update. The controller never reaches into `vscode` directly — it
+ * reads the workbench through the injected `EditorHost`, which keeps the
+ * class testable without an Extension Host.
+ */
 export class HudController implements vscode.Disposable {
   private readonly subscriptions: vscode.Disposable[] = [];
   private readonly now: () => number;
+  private readonly editorHost: EditorHost;
+  private readonly ownsEditorHost: boolean;
   private latestSnapshot: ImeSnapshot;
   private lastStableSnapshot?: ImeSnapshot;
   private lastStableObservedAt?: number;
@@ -34,6 +54,19 @@ export class HudController implements vscode.Disposable {
   public constructor(private readonly dependencies: HudControllerDependencies) {
     this.now = dependencies.now ?? Date.now;
     this.latestSnapshot = dependencies.detector.getSnapshot();
+
+    if (dependencies.editorHost) {
+      this.editorHost = dependencies.editorHost;
+      this.ownsEditorHost = false;
+    } else {
+      // No host was injected (e.g. legacy tests). Build a real
+      // VSCodeEditorHost on demand and own its lifetime so disposing the
+      // controller cleans up the subscriptions.
+      const host = new VSCodeEditorHost();
+      this.editorHost = host;
+      this.ownsEditorHost = true;
+      this.subscriptions.push(host);
+    }
 
     if (this.latestSnapshot.state !== "unknown") {
       this.lastStableSnapshot = this.latestSnapshot;
@@ -51,21 +84,33 @@ export class HudController implements vscode.Disposable {
       this.dependencies.detector.onDidChangeSnapshot((snapshot) => this.handleSnapshotChange(snapshot)),
       this.dependencies.detector.onDidLog((entry) => this.dependencies.logger.recordDetectorLog(entry)),
       this.dependencies.settingsService.onDidChange(() => this.requestRender(true)),
-      vscode.window.onDidChangeActiveTextEditor(() => this.requestRender(true)),
-      vscode.window.onDidChangeTextEditorSelection((event) => {
-        if (event.textEditor === vscode.window.activeTextEditor) {
+      this.editorHost.onDidChangeActiveTextEditor(() => this.requestRender(true)),
+      this.editorHost.onDidChangeTextEditorSelection((event) => {
+        if (event.textEditor === this.editorHost.getActiveEditor()) {
           this.requestRender(false);
         }
       }),
-      vscode.window.onDidChangeTextEditorVisibleRanges((event) => {
-        if (event.textEditor === vscode.window.activeTextEditor) {
+      this.editorHost.onDidChangeTextEditorVisibleRanges((event) => {
+        if (event.textEditor === this.editorHost.getActiveEditor()) {
           this.requestRender(false);
         }
       }),
-      vscode.window.onDidChangeWindowState(() => this.requestRender(true))
+      this.editorHost.onDidChangeWindowState(() => this.requestRender(true))
     );
 
-    await this.dependencies.detector.start();
+    // Detector startup can fail (helper missing, permission denied, etc.).
+    // We must not abort activation: log the error, fall back to a
+    // "unknown" snapshot so the HUD still shows the safe "?" placeholder in
+    // the status bar, and continue running so the user can still toggle
+    // the overlay or read the diagnostics.
+    try {
+      await this.dependencies.detector.start();
+    } catch (error) {
+      this.dependencies.logger.error("Failed to start IME detector.", error);
+      this.latestSnapshot = this.dependencies.detector.getSnapshot();
+      this.requestRender(true);
+      return;
+    }
     this.dependencies.logger.info("Cursor IME HUD started.", this.dependencies.detector.getDebugInfo());
     this.requestRender(true);
   }
@@ -92,7 +137,8 @@ export class HudController implements vscode.Disposable {
     });
     const debugInfo = this.dependencies.detector.getDebugInfo();
     const logs = this.dependencies.logger.getRecentEntries(20);
-    const activeEditor = vscode.window.activeTextEditor;
+    const activeEditor = this.editorHost.getActiveEditor();
+    const windowState = this.editorHost.getWindowState();
     const reportLines = [
       "# Cursor IME HUD Diagnostics",
       "",
@@ -112,7 +158,7 @@ export class HudController implements vscode.Disposable {
       `Fallback active: ${debugInfo.usingFallback ? "yes" : "no"}`,
       `Fallback reason: ${debugInfo.fallbackReason ?? "(none)"}`,
       `Helper path: ${debugInfo.helperPath ?? "(none)"}`,
-      `Window focused: ${vscode.window.state.focused ? "yes" : "no"}`,
+      `Window focused: ${windowState.focused ? "yes" : "no"}`,
       `Active editor: ${activeEditor?.document.uri.toString() ?? "(none)"}`,
       `Active language: ${activeEditor?.document.languageId ?? "(none)"}`,
       `Overlay enabled: ${settings.overlayEnabled ? "yes" : "no"}`,
@@ -220,12 +266,13 @@ export class HudController implements vscode.Disposable {
       confidence: this.latestSnapshot.confidence
     });
 
-    const editor = vscode.window.activeTextEditor;
+    const editor = this.editorHost.getActiveEditor();
+    const windowFocused = this.editorHost.getWindowState().focused;
     const shouldShowOverlay =
       settings.overlayEnabled &&
       !!editor &&
       !!displayLabel &&
-      (!settings.hideWhenEditorUnfocused || vscode.window.state.focused);
+      (!settings.hideWhenEditorUnfocused || windowFocused);
 
     const placement = shouldShowOverlay && editor
       ? this.dependencies.overlayRenderer.resolvePlacement(editor)

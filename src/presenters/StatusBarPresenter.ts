@@ -1,6 +1,11 @@
 import * as vscode from "vscode";
 import { HudDisplayReason, ImeState } from "../model/types";
 
+/**
+ * Render payload handed to `StatusBarPresenter.render`. The presenter does
+ * not own IME detection or HUD state — it only formats the data the
+ * controller gives it into a status-bar item.
+ */
 export interface StatusBarRenderInput {
   enabled: boolean;
   label: string;
@@ -13,14 +18,22 @@ export interface StatusBarRenderInput {
   confidence?: number;
 }
 
+/**
+ * Public surface the controller depends on. `StatusBarPresenter` is the
+ * default production implementation; tests can supply their own.
+ */
 export interface StatusBarPresenterContract extends vscode.Disposable {
   render(input: StatusBarRenderInput): void;
 }
 
+/**
+ * Renders the HUD's status-bar companion. The underlying `StatusBarItem` is
+ * created by the composition root and injected so the presenter does not
+ * touch the `vscode` singleton directly (helps testability and prevents
+ * accidental double-allocation of the status-bar slot).
+ */
 export class StatusBarPresenter implements StatusBarPresenterContract {
-  private readonly item = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
-
-  public constructor() {
+  public constructor(private readonly item: vscode.StatusBarItem) {
     this.item.command = "cursorImeHud.showDiagnostics";
     this.item.name = "Cursor IME HUD";
   }

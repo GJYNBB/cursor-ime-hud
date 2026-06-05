@@ -1,3 +1,4 @@
+// NOTE: Alternative runner. Canonical entry is scripts/run-extension-tests.js. Use this only if you need to pin VS Code version.
 import * as path from "node:path";
 import { runTests } from "@vscode/test-electron";
 

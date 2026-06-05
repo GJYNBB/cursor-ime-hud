@@ -1,31 +1,57 @@
 import * as vscode from "vscode";
 import { CursorImeHudSettings } from "../model/types";
 import { OverlayPlacement, PositionStrategy } from "./PositionStrategy";
+import {
+  ContentProvider,
+  OverlayContent,
+  OverlayRenderInput,
+  OverlayRenderer,
+  TextContentProvider
+} from "./contracts";
 
-export interface OverlayRenderInput {
-  editor: vscode.TextEditor;
-  label: string;
-  settings: CursorImeHudSettings;
-  placement: OverlayPlacement;
-}
+// Re-export so existing imports of `OverlayRenderer` from this module
+// continue to work after the interface was lifted to `./contracts`.
+export type { OverlayRenderer } from "./contracts";
 
-export interface OverlayRenderer extends vscode.Disposable {
-  getStyleKey(settings: CursorImeHudSettings): string;
-  resolvePlacement(editor: vscode.TextEditor): OverlayPlacement | undefined;
-  render(input: OverlayRenderInput): void;
-  clearCurrentRender(): void;
-}
-
+/**
+ * Default concrete `OverlayRenderer` used by the HUD. Maintains two
+ * `TextEditorDecorationType` instances (one for `before` and one for `after`
+ * attachment) and a small cache that maps the visual style to the
+ * decoration types so it can rebuild them only when the user changes the
+ * opacity / offset / overlay mode settings.
+ *
+ * The class also tracks every editor that has ever been rendered into and
+ * clears them all on `clearCurrentRender` so an editor that has since left
+ * `vscode.window.visibleTextEditors` does not leak its decoration.
+ */
 export class CursorOverlayRenderer implements OverlayRenderer {
   private beforeDecorationType?: vscode.TextEditorDecorationType;
   private afterDecorationType?: vscode.TextEditorDecorationType;
+  /**
+   * Cache key for the currently-allocated decoration types. Re-computed via
+   * `getStyleKey`; when it changes the decoration types are rebuilt so the
+   * new style takes effect on the very next `render` call.
+   */
   private styleCacheKey = "";
   private currentRender?: {
     editorUri: string;
     attachment: "before" | "after";
   };
+  /**
+   * Editors we have ever rendered into, keyed by document URI. We keep this
+   * around so `clearCurrentRender` can scrub decorations from editors that
+   * are no longer in `vscode.window.visibleTextEditors` (e.g. closed
+   * editors) without leaking ghost decorations.
+   */
+  private readonly recentlyRenderedEditors = new Map<string, vscode.TextEditor>();
+  private readonly contentProvider: ContentProvider;
 
-  public constructor(private readonly positionStrategy: PositionStrategy) {}
+  public constructor(
+    private readonly positionStrategy: PositionStrategy,
+    contentProvider?: ContentProvider
+  ) {
+    this.contentProvider = contentProvider ?? new TextContentProvider();
+  }
 
   public getStyleKey(settings: CursorImeHudSettings): string {
     return JSON.stringify({
@@ -43,6 +69,10 @@ export class CursorOverlayRenderer implements OverlayRenderer {
   public render(input: OverlayRenderInput): void {
     this.ensureDecorationTypes(input.settings);
     const editorUri = input.editor.document.uri.toString();
+    // Remember this editor so a later `clearCurrentRender` can scrub it
+    // even if the editor is no longer in `visibleTextEditors` at that
+    // moment (fixes CC-002 decoration leaks on closed editors).
+    this.recentlyRenderedEditors.set(editorUri, input.editor);
 
     if (
       this.currentRender &&
@@ -51,7 +81,8 @@ export class CursorOverlayRenderer implements OverlayRenderer {
       this.clearCurrentRender();
     }
 
-    const option = this.createDecorationOption(input.placement, input.label);
+    const content = this.contentProvider.resolveContent(input, input.label);
+    const option = this.createDecorationOption(input.placement, content);
     if (input.placement.attachment === "before") {
       input.editor.setDecorations(this.beforeDecorationType!, [option]);
       input.editor.setDecorations(this.afterDecorationType!, []);
@@ -77,16 +108,23 @@ export class CursorOverlayRenderer implements OverlayRenderer {
   }
 
   public clearCurrentRender(): void {
-    if (!this.currentRender) {
-      return;
+    // Scrub the current editor first (if it is still in
+    // `visibleTextEditors`) and then every editor we have ever rendered
+    // into, so decoration types are not leaked onto editors that left the
+    // visible set.
+    if (this.currentRender) {
+      const targetEditor = vscode.window.visibleTextEditors.find(
+        (editor) => editor.document.uri.toString() === this.currentRender?.editorUri
+      );
+      if (targetEditor) {
+        this.clearEditor(targetEditor);
+      }
     }
 
-    const targetEditor = vscode.window.visibleTextEditors.find(
-      (editor) => editor.document.uri.toString() === this.currentRender?.editorUri
-    );
-    if (targetEditor) {
-      this.clearEditor(targetEditor);
+    for (const editor of this.recentlyRenderedEditors.values()) {
+      this.clearEditor(editor);
     }
+    this.recentlyRenderedEditors.clear();
 
     this.currentRender = undefined;
   }
@@ -138,15 +176,16 @@ export class CursorOverlayRenderer implements OverlayRenderer {
     this.styleCacheKey = nextCacheKey;
   }
 
-  private createDecorationOption(placement: OverlayPlacement, label: string): vscode.DecorationOptions {
+  private createDecorationOption(placement: OverlayPlacement, content: OverlayContent): vscode.DecorationOptions {
     if (placement.attachment === "before") {
       return {
         range: placement.range,
         renderOptions: {
           before: {
-            contentText: label
+            contentText: content.contentText
           }
-        }
+        },
+        hoverMessage: content.hoverMessage
       };
     }
 
@@ -154,9 +193,10 @@ export class CursorOverlayRenderer implements OverlayRenderer {
       range: placement.range,
       renderOptions: {
         after: {
-          contentText: label
+          contentText: content.contentText
         }
-      }
+      },
+      hoverMessage: content.hoverMessage
     };
   }
 }

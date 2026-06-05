@@ -86,13 +86,10 @@ export class SampleOrNativeDetector implements ImeDetector {
   }
 
   private async startInternal(): Promise<void> {
-    if (process.platform !== "win32") {
-      await this.activateDetector(this.createFallbackDetector("Windows-only detector is unavailable on this platform."));
-      this.lifecycleState = "running";
-      this.debugInfo = this.withLifecycleState(this.activeDetector.getDebugInfo());
-      return;
-    }
-
+    // Note: The platform check (process.platform !== "win32") is intentionally NOT performed
+    // here. The platform gate is enforced by the caller (extension.ts) before this wrapper
+    // is constructed. Keeping the chain logic in one place preserves the Open/Closed
+    // Principle — new detector implementations can be inserted without re-validating the OS.
     const nativeDetector = this.nativeDetectorFactory(this.helperPath);
     try {
       await this.activateDetector(nativeDetector);

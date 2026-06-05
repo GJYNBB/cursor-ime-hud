@@ -4,6 +4,35 @@ interface JsonRecord {
   [key: string]: unknown;
 }
 
+export const PROTOCOL_VERSION = 1;
+
+export interface HelloMessage {
+  type: "hello";
+  version: number;
+  capabilities: string[];
+}
+
+export function parseHelloLine(line: string): HelloMessage | undefined {
+  const parsed = parseJsonRecord(line);
+  if (!parsed || parsed.type !== "hello") {
+    return undefined;
+  }
+
+  if (typeof parsed.version !== "number") {
+    return undefined;
+  }
+
+  const capabilities = Array.isArray(parsed.capabilities)
+    ? parsed.capabilities.filter((value): value is string => typeof value === "string")
+    : [];
+
+  return {
+    type: "hello",
+    version: parsed.version,
+    capabilities
+  };
+}
+
 export function parseSnapshotLine(line: string): ImeSnapshot | undefined {
   const parsed = parseJsonRecord(line);
   if (!parsed || parsed.type !== "state") {
