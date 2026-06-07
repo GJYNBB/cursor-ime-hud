@@ -505,14 +505,15 @@ internal static class Program
         public override int GetHashCode()
         {
             return HashCode.Combine(
-                State,
-                ImeName,
-                IsOpen,
-                LayoutHex,
-                ThreadId,
-                Hwnd,
-                Reason,
-                Confidence,
+                HashCode.Combine(
+                    State,
+                    ImeName,
+                    IsOpen,
+                    LayoutHex,
+                    ThreadId,
+                    Hwnd,
+                    Reason,
+                    Confidence),
                 RawStateAvailable);
         }
     }
