@@ -91,6 +91,8 @@ Cursor IME HUD: Show Diagnostics
 | `cursorImeHud.overlay.offsetX`                 | `6`      | HUD 横向偏移。                                                                          |
 | `cursorImeHud.overlay.offsetY`                 | `0`      | HUD 纵向偏移。                                                                          |
 
+> VS Code / Cursor 设置页和命令标题会跟随编辑器显示语言自动本地化：中文界面显示中文说明，英文或未支持语言回退到英文。设置 ID（例如 `cursorImeHud.overlay.enabled`）保持不变。
+
 ## 工作原理与隐私
 
 扩展由两部分组成：

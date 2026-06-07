@@ -1,0 +1,22 @@
+{
+  "extension.displayName": "Cursor IME HUD",
+  "extension.description": "面向 Windows 的 VS Code/Cursor 光标旁半透明中英文输入法状态提示。",
+  "commands.category": "Cursor IME HUD",
+  "commands.toggleOverlay.title": "开关光标旁 HUD",
+  "commands.refreshImeState.title": "刷新输入法状态",
+  "commands.showDiagnostics.title": "显示诊断信息",
+  "configuration.title": "Cursor IME HUD",
+  "configuration.overlay.enabled.description": "在活动文本编辑器中启用光标旁 HUD。",
+  "configuration.overlay.labelPreset.description": "选择内置输入法状态标签样式，或使用自定义标签。",
+  "configuration.overlay.labelPreset.enum.custom": "使用下面的自定义中文和英文标签。",
+  "configuration.overlay.labelPreset.enum.zhEn": "显示中文字符标签：中文模式为 中，英文模式为 英。",
+  "configuration.overlay.labelPreset.enum.enZh": "显示拉丁字母标签：中文模式为 ZH，英文模式为 EN。",
+  "configuration.overlay.cnLabel.description": "当探测器报告中文输入模式且 labelPreset 为 custom 时显示的自定义标签。",
+  "configuration.overlay.enLabel.description": "当探测器报告英文输入模式且 labelPreset 为 custom 时显示的自定义标签。",
+  "configuration.overlay.opacity.description": "HUD 背景透明度，范围为 0.15 到 1。",
+  "configuration.overlay.mode.markdownDescription": "HUD 渲染模式。`text+icon` 为未来功能预留，目前与纯文本 HUD `text` 的渲染效果相同。",
+  "configuration.statusBar.enabled.description": "在状态栏显示当前输入法状态。",
+  "configuration.overlay.hideWhenEditorUnfocused.description": "当 VS Code 窗口失去焦点时隐藏编辑器中的 HUD。",
+  "configuration.overlay.offsetX.description": "应用到 HUD 的水平边距偏移。",
+  "configuration.overlay.offsetY.description": "应用到 HUD 的垂直边距偏移。"
+}

@@ -18,6 +18,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `engines.node` requirement and explicit `engines.vscode` range
 - `prepublishOnly` guard that fails when the publisher is still the placeholder
 - `cursorImeHud.overlay.labelPreset` setting for built-in `中` / `英` and `ZH` / `EN` label styles
+- English and Simplified Chinese manifest localization for VS Code Settings UI and command titles
 
 ### Changed
 

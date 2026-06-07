@@ -1,7 +1,7 @@
 {
   "name": "cursor-ime-hud",
-  "displayName": "Cursor IME HUD",
-  "description": "Semi-transparent Chinese/English IME state HUD near the caret for VS Code on Windows.",
+  "displayName": "%extension.displayName%",
+  "description": "%extension.description%",
   "version": "0.0.1",
   "// publisher": "TODO: replace with your Marketplace publisher id from https://aka.ms/vscode-publishers before first release",
   "publisher": "chestnut-ch",
@@ -32,6 +32,7 @@
     "resources/bin/win-x64/WinImeWatcher.exe",
     "resources/bin/win-x64/WinImeWatcher.exe.sha256",
     "resources/screenshots/**/*",
+    "package.nls*.json",
     "README.md",
     "README.en.md",
     "README.zh-CN.md",
@@ -65,27 +66,27 @@
     "commands": [
       {
         "command": "cursorImeHud.toggleOverlay",
-        "title": "Cursor IME HUD: Toggle Overlay",
-        "category": "Cursor IME HUD"
+        "title": "%commands.toggleOverlay.title%",
+        "category": "%commands.category%"
       },
       {
         "command": "cursorImeHud.refreshImeState",
-        "title": "Cursor IME HUD: Refresh IME State",
-        "category": "Cursor IME HUD"
+        "title": "%commands.refreshImeState.title%",
+        "category": "%commands.category%"
       },
       {
         "command": "cursorImeHud.showDiagnostics",
-        "title": "Cursor IME HUD: Show Diagnostics",
-        "category": "Cursor IME HUD"
+        "title": "%commands.showDiagnostics.title%",
+        "category": "%commands.category%"
       }
     ],
     "configuration": {
-      "title": "Cursor IME HUD",
+      "title": "%configuration.title%",
       "properties": {
         "cursorImeHud.overlay.enabled": {
           "type": "boolean",
           "default": true,
-          "description": "Enable the caret-adjacent overlay in active text editors."
+          "description": "%configuration.overlay.enabled.description%"
         },
         "cursorImeHud.overlay.labelPreset": {
           "type": "string",
@@ -95,29 +96,29 @@
             "en-zh"
           ],
           "enumDescriptions": [
-            "Use the custom Chinese and English labels below.",
-            "Show Chinese-character labels: 中 for Chinese mode and 英 for English mode.",
-            "Show Latin-letter labels: ZH for Chinese mode and EN for English mode."
+            "%configuration.overlay.labelPreset.enum.custom%",
+            "%configuration.overlay.labelPreset.enum.zhEn%",
+            "%configuration.overlay.labelPreset.enum.enZh%"
           ],
           "default": "custom",
-          "description": "Choose a built-in IME label style or use custom labels."
+          "description": "%configuration.overlay.labelPreset.description%"
         },
         "cursorImeHud.overlay.cnLabel": {
           "type": "string",
           "default": "中",
-          "description": "Custom label shown when the detector reports Chinese input mode and labelPreset is custom."
+          "description": "%configuration.overlay.cnLabel.description%"
         },
         "cursorImeHud.overlay.enLabel": {
           "type": "string",
           "default": "英",
-          "description": "Custom label shown when the detector reports English input mode and labelPreset is custom."
+          "description": "%configuration.overlay.enLabel.description%"
         },
         "cursorImeHud.overlay.opacity": {
           "type": "number",
           "default": 0.78,
           "minimum": 0.15,
           "maximum": 1,
-          "description": "Overlay background opacity between 0.15 and 1."
+          "description": "%configuration.overlay.opacity.description%"
         },
         "cursorImeHud.overlay.mode": {
           "type": "string",
@@ -126,31 +127,31 @@
             "text+icon"
           ],
           "default": "text",
-          "markdownDescription": "Overlay rendering mode. `text+icon` is reserved for future work and currently renders the same text-only HUD as `text`."
+          "markdownDescription": "%configuration.overlay.mode.markdownDescription%"
         },
         "cursorImeHud.statusBar.enabled": {
           "type": "boolean",
           "default": true,
-          "description": "Show the current IME state in the status bar."
+          "description": "%configuration.statusBar.enabled.description%"
         },
         "cursorImeHud.overlay.hideWhenEditorUnfocused": {
           "type": "boolean",
           "default": true,
-          "description": "Hide the editor overlay when the VS Code window loses focus."
+          "description": "%configuration.overlay.hideWhenEditorUnfocused.description%"
         },
         "cursorImeHud.overlay.offsetX": {
           "type": "number",
           "default": 6,
           "minimum": 0,
           "maximum": 32,
-          "description": "Horizontal margin offset applied to the overlay."
+          "description": "%configuration.overlay.offsetX.description%"
         },
         "cursorImeHud.overlay.offsetY": {
           "type": "number",
           "default": 0,
           "minimum": -16,
           "maximum": 16,
-          "description": "Vertical margin offset applied to the overlay."
+          "description": "%configuration.overlay.offsetY.description%"
         }
       }
     }

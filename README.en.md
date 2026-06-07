@@ -87,6 +87,8 @@ The repository already includes `.vscode/launch.json` and `.vscode/tasks.json` s
 | `cursorImeHud.overlay.offsetX`                 | `6`      | Horizontal offset for the overlay.                                                                   |
 | `cursorImeHud.overlay.offsetY`                 | `0`      | Vertical offset for the overlay.                                                                     |
 
+> The VS Code/Cursor Settings UI and command titles follow the editor display language automatically: Simplified Chinese uses Chinese strings, while English and unsupported locales fall back to English. Setting IDs such as `cursorImeHud.overlay.enabled` remain stable.
+
 ### Configuration deep-dive
 
 - **500ms grace period.** When a snapshot reports `unknown`, the controller keeps the last stable `cn` or `en` state for up to 500ms before falling back to `unknown`. This avoids flicker when Windows briefly drops IME signals (e.g. when a context menu opens). The grace window resets on every fresh `cn`/`en` snapshot.
