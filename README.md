@@ -182,9 +182,9 @@ code --install-extension .\cursor-ime-hud-0.0.1.vsix
 
 ## Marketplace Publishing
 
-Before publishing, replace the single placeholder value in `package.json`:
+Before publishing, make sure `package.json` contains your Marketplace publisher id:
 
-- `publisher`: `publisher-placeholder`
+- `publisher`: `chestnut-ch`
 
 The repository metadata already points to the real GitHub repository:
 
@@ -194,7 +194,7 @@ The repository metadata already points to the real GitHub repository:
 Login and publish with `vsce`:
 
 ```powershell
-npx @vscode/vsce login publisher-placeholder
+npx @vscode/vsce login chestnut-ch
 npx @vscode/vsce publish
 ```
 

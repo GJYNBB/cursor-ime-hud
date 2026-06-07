@@ -4,7 +4,7 @@
   "description": "Semi-transparent Chinese/English IME state HUD near the caret for VS Code on Windows.",
   "version": "0.0.1",
   "// publisher": "TODO: replace with your Marketplace publisher id from https://aka.ms/vscode-publishers before first release",
-  "publisher": "publisher-placeholder",
+  "publisher": "chestnut-ch",
   "license": "MIT",
   "icon": "resources/icon.png",
   "galleryBanner": {
