@@ -182,13 +182,13 @@ npm run package:vsix
 This produces a local VSIX such as:
 
 ```text
-cursor-ime-hud-0.0.1.vsix
+cursor-ime-hud-0.0.2.vsix
 ```
 
 To install the packaged extension locally:
 
 ```powershell
-code --install-extension .\cursor-ime-hud-0.0.1.vsix
+code --install-extension .\cursor-ime-hud-0.0.2.vsix
 ```
 
 ## Marketplace Publishing

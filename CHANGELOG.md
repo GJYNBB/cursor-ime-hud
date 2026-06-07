@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.2] - 2026-06-07
+
 ### Added
 
 - GitHub Actions CI workflow running lint and tests on Ubuntu and Windows
@@ -62,5 +64,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Extension smoke tests, position strategy tests, and helper smoke test
 - Marketplace packaging scripts and documentation
 
-[Unreleased]: https://github.com/GJYNBB/cursor-ime-hud/compare/v0.0.1...HEAD
+[Unreleased]: https://github.com/GJYNBB/cursor-ime-hud/compare/v0.0.2...HEAD
+[0.0.2]: https://github.com/GJYNBB/cursor-ime-hud/releases/tag/v0.0.2
 [0.0.1]: https://github.com/GJYNBB/cursor-ime-hud/releases/tag/v0.0.1
