@@ -7,7 +7,9 @@ const { spawn } = require("node:child_process");
 // run on win32. On other platforms we skip with a clear message so the
 // cross-platform `npm run test:integration` script does not fail.
 if (process.platform !== "win32") {
-  console.log("[skip] assert-helper-once requires Windows; current platform is " + process.platform);
+  console.log(
+    "[skip] assert-helper-once requires Windows; current platform is " + process.platform
+  );
   process.exit(0);
 }
 
@@ -43,18 +45,39 @@ child.on("exit", (code) => {
     process.exit(code || 1);
   }
 
-  const line = stdout.trim().split(/\r?\n/).find(Boolean);
-  if (!line) {
-    console.error("Helper did not emit a JSON line.");
+  const lines = stdout.trim().split(/\r?\n/).filter(Boolean);
+  if (lines.length === 0) {
+    console.error("Helper did not emit JSON lines.");
     process.exit(1);
   }
 
-  let parsed;
-  try {
-    parsed = JSON.parse(line);
-  } catch (error) {
-    console.error(`Invalid JSON from helper: ${line}`);
-    console.error(error);
+  const records = [];
+  for (const [index, line] of lines.entries()) {
+    try {
+      records.push(JSON.parse(line));
+    } catch (error) {
+      console.error(`Invalid JSON from helper on line ${index + 1}: ${line}`);
+      console.error(error);
+      process.exit(1);
+    }
+  }
+
+  const hello = records.find((record) => record.type === "hello");
+  if (!hello) {
+    console.error("Helper did not emit the required hello record.");
+    console.error(stdout);
+    process.exit(1);
+  }
+
+  if (hello.version !== 1) {
+    console.error(`Unexpected helper protocol version: ${hello.version}`);
+    process.exit(1);
+  }
+
+  const parsed = records.find((record) => record.type === "state");
+  if (!parsed) {
+    console.error("Helper did not emit a state record.");
+    console.error(stdout);
     process.exit(1);
   }
 

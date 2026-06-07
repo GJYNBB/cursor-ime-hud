@@ -6,14 +6,14 @@ This document describes the internal layering, data flow, helper IPC, and lifecy
 
 The TypeScript source is split into six top-level layers under `src/`. The dependency direction is strictly downward: lower layers do not import from higher layers.
 
-| Layer | Path | Responsibility |
-| --- | --- | --- |
-| `model/` | `src/model/` | Pure data types (`ImeSnapshot`, `DetectorLogEntry`, `ImeState`, `ImeDetectorDebugInfo`). No VS Code or Node imports. |
-| `detector/` | `src/detector/` | Produces `ImeSnapshot` values. Wraps the native helper, the sample detector, and the `SampleOrNativeDetector` selection chain. Owns the wire protocol parser. |
-| `controller/` | `src/controller/` | Turns snapshots into a presentable `HudState` (grace period, reason string, lifecycle). Holds `HudController` and the `EditorHost` abstraction. |
-| `renderer/` | `src/renderer/` | Renders a `HudState` as a `TextEditorDecorationType` near the primary caret. Pure: takes inputs, calls VS Code APIs, returns nothing. |
-| `presenters/` | `src/presenters/` | Renders the same `HudState` to other surfaces (status bar, diagnostics output). |
-| `services/` | `src/services/` | Cross-cutting concerns: `LoggerService`, `SettingsService`, configuration debouncing, output channel. |
+| Layer         | Path              | Responsibility                                                                                                                                                |
+| ------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `model/`      | `src/model/`      | Pure data types (`ImeSnapshot`, `DetectorLogEntry`, `ImeState`, `ImeDetectorDebugInfo`). No VS Code or Node imports.                                          |
+| `detector/`   | `src/detector/`   | Produces `ImeSnapshot` values. Wraps the native helper, the sample detector, and the `SampleOrNativeDetector` selection chain. Owns the wire protocol parser. |
+| `controller/` | `src/controller/` | Turns snapshots into a presentable `HudState` (grace period, reason string, lifecycle). Holds `HudController` and the `EditorHost` abstraction.               |
+| `renderer/`   | `src/renderer/`   | Renders a `HudState` as a `TextEditorDecorationType` near the primary caret. Pure: takes inputs, calls VS Code APIs, returns nothing.                         |
+| `presenters/` | `src/presenters/` | Renders the same `HudState` to other surfaces (status bar, diagnostics output).                                                                               |
+| `services/`   | `src/services/`   | Cross-cutting concerns: `LoggerService`, `SettingsService`, configuration debouncing, output channel.                                                         |
 
 The `commands/` directory is a thin facade: each command resolves a service from `Composition.ts` and invokes a single method. `extension.ts` wires the composition root and disposes everything in `context.subscriptions`.
 
@@ -40,7 +40,7 @@ NativeHelperImeDetector (src/detector/NativeHelperImeDetector.ts)
         │ ImeSnapshot
         ▼
 SampleOrNativeDetector (src/detector/SampleOrNativeDetector.ts)
-        │ ImeSnapshot (or a synthetic one from SampleImeDetector)
+        │ ImeSnapshot (or an unknown fallback snapshot from SampleImeDetector)
         ▼
 HudController (src/controller/HudController.ts)
         │ applies 500ms grace period, computes reason, updates lifecycle
@@ -55,7 +55,7 @@ Key properties:
 
 - **One-way data flow.** `HudController` never queries the renderer or the status bar. It pushes; the surfaces subscribe via callbacks wired up in `Composition.ts`.
 - **Immutable snapshots.** Every `ImeSnapshot` is a fresh object. The controller, renderer, and presenters never mutate shared state.
-- **Bounded buffers.** The detector keeps a rolling 200-entry log buffer. The line parser caps each line at 64KB and the read buffer at 1MB (`src/detector/helperProtocol.ts` and the stream reader in `NativeHelperImeDetector.ts`).
+- **Bounded buffers.** The detector keeps a rolling log buffer. The stream reader caps each line at 64KB and the read buffer at 1MB; overflow tears down the offending helper process and schedules a fresh one.
 
 ## Helper IPC
 
@@ -67,7 +67,7 @@ The TypeScript side parses each line via the functions in `src/detector/helperPr
 - `parseSnapshotLine` converts a `state` line into an `ImeSnapshot`.
 - `parseLogLine` converts a `log` line into a `DetectorLogEntry`.
 
-`NativeHelperImeDetector` is responsible for spawning the helper, performing the handshake, sending `refresh` commands, and surfacing unexpected exits through the lifecycle (see `Lifecycle` below).
+`NativeHelperImeDetector` is responsible for spawning the helper, performing a fresh handshake for every helper process, sending `{ "command": "refresh" }` commands, enforcing the `.sha256` sidecar, and surfacing unexpected exits through the lifecycle (see `Lifecycle` below).
 
 ## Lifecycle
 
@@ -101,9 +101,9 @@ The TypeScript side parses each line via the functions in `src/detector/helperPr
 
 Rules:
 
-- Transitions are unidirectional. There is no `running → starting`; a crash moves to `stopping` first, and the controller can be re-started only via `Refresh IME State`.
-- `dispose()` is **idempotent**. Calling it from `running`, `stopping`, or `disposed` produces the same final state and never throws. All resource handles (child process, line reader, decoration types) are released in `HudController.dispose()`. The native helper's child process is shut down via the stdin-close / SIGTERM / wait sequence in `NativeHelperImeDetector.dispose()` (with `taskkill /F /T` fallback on Windows).
-- A failure during `starting` (handshake timeout, protocol mismatch, integrity check failure) is reported as a log entry of level `error` and transitions directly to `disposed`. The extension surfaces this in the status bar tooltip and in the **Cursor IME HUD** output channel.
+- `dispose()` is **idempotent**. Calling it from `running`, `stopping`, or `disposed` produces the same final state and never throws. All resource handles (child process, line reader, decoration types) are released in `HudController.dispose()`. The native helper's child process is shut down via stdin-close / kill / wait, with `taskkill /F /T` fallback on Windows.
+- A failure during `starting` (handshake timeout, protocol mismatch, integrity check failure) is reported as a log entry of level `error`; `SampleOrNativeDetector` falls back to an `unknown` sample snapshot so diagnostics remain available.
+- A failure after `running` (unexpected exit, oversized stdout/stderr, or stream parser failure) tears down the exact helper process that failed, synthesizes an `unknown` snapshot, and schedules a bounded restart. Each restarted helper must send a fresh protocol `hello`.
 
 ## Extension points
 
@@ -114,7 +114,7 @@ Rules:
 ## Testing strategy
 
 - **Unit tests** live under `src/test/` and target the `model/`, `detector/`, `controller/`, and `services/` layers. They run cross-platform on Node.js 24.
-- **Helper smoke tests** exercise the protocol against a real `WinImeWatcher.exe --once` invocation. They are gated behind a Windows-only `mocha` glob.
-- **Manual verification** is described in `README.md#debugging`.
+- **Helper smoke tests** exercise the protocol against a real `WinImeWatcher.exe --once` invocation. They are gated by `scripts/assert-helper-once.js` and skip on non-Windows platforms.
+- **Manual verification** is described in `README.md#从源码开发`.
 
 See `CONTRIBUTING.md#how-to-run-a-single-test` for running individual files or `describe` blocks.

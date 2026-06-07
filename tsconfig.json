@@ -2,14 +2,8 @@
   "compilerOptions": {
     "module": "commonjs",
     "target": "ES2022",
-    "lib": [
-      "ES2022"
-    ],
-    "types": [
-      "node",
-      "mocha",
-      "vscode"
-    ],
+    "lib": ["ES2022"],
+    "types": ["node", "mocha", "vscode"],
     "outDir": "out",
     "rootDir": "src",
     "sourceMap": true,
@@ -20,11 +14,6 @@
     "forceConsistentCasingInFileNames": true,
     "skipLibCheck": true
   },
-  "include": [
-    "src/**/*.ts"
-  ],
-  "exclude": [
-    "node_modules",
-    ".vscode-test"
-  ]
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", ".vscode-test"]
 }

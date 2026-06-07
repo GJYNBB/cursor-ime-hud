@@ -44,7 +44,9 @@ export function buildController(context: vscode.ExtensionContext): Composition {
 
   const logger = new LoggerService(outputChannel);
   const settingsService = new SettingsService();
-  const helperPath = context.asAbsolutePath(path.join("resources", "bin", "win-x64", "WinImeWatcher.exe"));
+  const helperPath = context.asAbsolutePath(
+    path.join("resources", "bin", "win-x64", "WinImeWatcher.exe")
+  );
   const detector = new SampleOrNativeDetector(helperPath);
   const overlayRenderer = new CursorOverlayRenderer(new PositionStrategy());
   const statusBarPresenter = new StatusBarPresenter(statusBarItem);

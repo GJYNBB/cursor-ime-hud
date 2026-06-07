@@ -71,7 +71,9 @@ export class VSCodeEditorHost implements EditorHost {
     // Adapt the raw vscode WindowState into our narrowed shape so listeners
     // do not have to depend on the global namespace themselves.
     return (listener) => {
-      const subscription = vscode.window.onDidChangeWindowState((state) => listener({ focused: state.focused }));
+      const subscription = vscode.window.onDidChangeWindowState((state) =>
+        listener({ focused: state.focused })
+      );
       return { dispose: () => subscription.dispose() };
     };
   }

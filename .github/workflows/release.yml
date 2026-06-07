@@ -6,15 +6,15 @@ on:
       - "v*"
   workflow_dispatch:
 
-# Allow only one concurrent release job. The publish step is still done
-# locally by the maintainer; this workflow produces the .vsix artifact
-# and uploads it so the maintainer can grab it from the run page.
+# Allow only one concurrent release job. The workflow builds and packages the
+# Windows helper on a Windows runner, keeps the Actions artifact for debugging,
+# and attaches the VSIX to the GitHub Release when it is triggered by a tag.
 concurrency:
   group: release-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: false
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   package:
@@ -47,13 +47,20 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Pre-flight (publisher check)
-        # Refuse to package when the publisher field is still the
-        # upstream placeholder, so the maintainer catches the issue
-        # locally and not in front of the Marketplace. The
-        # `vscode:prepublish` script also runs the TypeScript compile and
-        # helper build, so we get all three gates from a single step.
+      - name: Lint
+        run: npm run lint
+
+      - name: Format check
+        run: npm run format:check
+
+      - name: Pre-flight (publisher, compile, helper build)
+        # Refuse to package when the publisher field is still the upstream
+        # placeholder. `vscode:prepublish` also compiles TypeScript and builds
+        # the helper plus its .sha256 sidecar.
         run: npm run vscode:prepublish
+
+      - name: Verify helper smoke test
+        run: npm run test:helper
 
       - name: Package .vsix
         run: npm run package:vsix
@@ -65,3 +72,16 @@ jobs:
           path: "*.vsix"
           if-no-files-found: error
           retention-days: 30
+
+      - name: Attach .vsix to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME}"
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            gh release create "$tag" --title "$tag" --notes "Cursor IME HUD $tag"
+          fi
+          gh release upload "$tag" ./*.vsix --clobber

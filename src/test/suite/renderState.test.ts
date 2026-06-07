@@ -1,6 +1,10 @@
 import * as assert from "node:assert";
 import * as vscode from "vscode";
-import { createOverlayRenderState, getOverlayPlacementKey, overlayRenderStateEquals } from "../../renderer/OverlayRenderState";
+import {
+  createOverlayRenderState,
+  getOverlayPlacementKey,
+  overlayRenderStateEquals
+} from "../../renderer/OverlayRenderState";
 
 suite("OverlayRenderState", () => {
   test("treats identical render states as equal", () => {
@@ -53,6 +57,9 @@ suite("OverlayRenderState", () => {
     });
 
     assert.equal(overlayRenderStateEquals(left, right), false);
-    assert.notEqual(getOverlayPlacementKey(beforePlacement), getOverlayPlacementKey(afterPlacement));
+    assert.notEqual(
+      getOverlayPlacementKey(beforePlacement),
+      getOverlayPlacementKey(afterPlacement)
+    );
   });
 });

@@ -46,7 +46,7 @@ internal static class Program
 
         try
         {
-            var inputTask = Task.Run(() => ReadCommandsAsync(cancellationTokenSource.Token), cancellationTokenSource.Token);
+            var inputTask = Task.Run(() => ReadCommandsAsync(cancellationTokenSource), cancellationTokenSource.Token);
 
             EmitSnapshot(force: true);
 
@@ -114,8 +114,9 @@ internal static class Program
 
     private const int ProtocolVersion = 1;
 
-    private static async Task ReadCommandsAsync(CancellationToken cancellationToken)
+    private static async Task ReadCommandsAsync(CancellationTokenSource shutdownSource)
     {
+        var cancellationToken = shutdownSource.Token;
         try
         {
             while (!cancellationToken.IsCancellationRequested)
@@ -123,6 +124,8 @@ internal static class Program
                 var line = await Console.In.ReadLineAsync(cancellationToken);
                 if (line is null)
                 {
+                    WriteLog("info", "WinImeWatcher stdin closed. Shutting down.");
+                    shutdownSource.Cancel();
                     break;
                 }
 

@@ -48,7 +48,7 @@ suite("helperProtocol", () => {
     assert.equal(entry?.message, "test warning");
   });
 
-  test("coerces an unknown state value to \"unknown\"", () => {
+  test('coerces an unknown state value to "unknown"', () => {
     const snapshot = parseSnapshotLine(
       JSON.stringify({
         type: "state",
@@ -61,7 +61,7 @@ suite("helperProtocol", () => {
     assert.equal(snapshot?.state, "unknown", "non-{cn,en,unknown} states coerce to unknown");
   });
 
-  test("coerces an unknown log level to \"info\"", () => {
+  test('coerces an unknown log level to "info"', () => {
     const entry = parseLogLine(
       JSON.stringify({
         type: "log",

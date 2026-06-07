@@ -57,9 +57,10 @@ class FakeOverlayRenderer implements OverlayRenderer {
   public renderCalls = 0;
   public clearCalls = 0;
   public lastLabel?: string;
+  public styleKey = "style";
 
   public getStyleKey(): string {
-    return "style";
+    return this.styleKey;
   }
 
   public resolvePlacement(editor: vscode.TextEditor): OverlayPlacement {
@@ -92,7 +93,12 @@ class FakeStatusBarPresenter {
     detectedState: string;
   };
 
-  public render(input: { enabled?: boolean; label: string; displayReason: string; detectedState: string }): void {
+  public render(input: {
+    enabled?: boolean;
+    label: string;
+    displayReason: string;
+    detectedState: string;
+  }): void {
     this.renderCalls += 1;
     this.lastInput = input;
   }
@@ -341,8 +347,13 @@ suite("HudController", () => {
     // Fire a settings-change event; the controller should re-render
     // synchronously (requestRender(true)) so the user sees the new
     // style without waiting on the debounce timer.
+    overlayRenderer.styleKey = "style-after-settings-change";
     settingsService.onDidChangeEmitter.fire(undefined);
-    assert.equal(overlayRenderer.renderCalls, renderCallsAfterStart + 1, "settings change must trigger a render");
+    assert.equal(
+      overlayRenderer.renderCalls,
+      renderCallsAfterStart + 1,
+      "settings change must trigger a render"
+    );
 
     controller.dispose();
     detector.dispose();

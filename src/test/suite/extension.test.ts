@@ -3,7 +3,9 @@ import * as vscode from "vscode";
 
 suite("Cursor IME HUD Extension", () => {
   test("activates and registers commands", async () => {
-    const extension = vscode.extensions.all.find((candidate) => candidate.packageJSON.name === "cursor-ime-hud");
+    const extension = vscode.extensions.all.find(
+      (candidate) => candidate.packageJSON.name === "cursor-ime-hud"
+    );
     assert.ok(extension, "Extension should be discoverable in the extension host.");
 
     await extension?.activate();

@@ -2,16 +2,29 @@ import * as vscode from "vscode";
 import { resolveHudDisplayState, UNKNOWN_GRACE_PERIOD_MS } from "./HudState";
 import { EditorHost, VSCodeEditorHost } from "./EditorHost";
 import { ImeDetector } from "../detector/ImeDetector";
-import { HudDisplayReason, ImeSnapshot } from "../model/types";
+import { CursorImeHudSettings, HudDisplayReason, ImeSnapshot } from "../model/types";
 import { StatusBarPresenterContract } from "../presenters/StatusBarPresenter";
-import { createOverlayRenderState, overlayRenderStateEquals, OverlayRenderState } from "../renderer/OverlayRenderState";
+import {
+  createOverlayRenderState,
+  overlayRenderStateEquals,
+  OverlayRenderState
+} from "../renderer/OverlayRenderState";
 import { OverlayRenderer } from "../renderer/contracts";
+import { OverlayPlacement } from "../renderer/PositionStrategy";
 import { LoggerService } from "../services/LoggerService";
 import { SettingsService } from "../services/SettingsService";
 
 // ~one 60fps frame; debounce to coalesce burst events (selection changes,
 // visible-range changes) into a single render per frame.
 const HIGH_FREQUENCY_RENDER_DELAY_MS = 16;
+
+interface OverlayVisibilityDecision {
+  editor?: vscode.TextEditor;
+  windowFocused: boolean;
+  placement?: OverlayPlacement;
+  visible: boolean;
+  reason: string;
+}
 
 interface HudControllerDependencies {
   detector: ImeDetector;
@@ -81,8 +94,12 @@ export class HudController implements vscode.Disposable {
 
     this.started = true;
     this.subscriptions.push(
-      this.dependencies.detector.onDidChangeSnapshot((snapshot) => this.handleSnapshotChange(snapshot)),
-      this.dependencies.detector.onDidLog((entry) => this.dependencies.logger.recordDetectorLog(entry)),
+      this.dependencies.detector.onDidChangeSnapshot((snapshot) =>
+        this.handleSnapshotChange(snapshot)
+      ),
+      this.dependencies.detector.onDidLog((entry) =>
+        this.dependencies.logger.recordDetectorLog(entry)
+      ),
       this.dependencies.settingsService.onDidChange(() => this.requestRender(true)),
       this.editorHost.onDidChangeActiveTextEditor(() => this.requestRender(true)),
       this.editorHost.onDidChangeTextEditorSelection((event) => {
@@ -111,7 +128,10 @@ export class HudController implements vscode.Disposable {
       this.requestRender(true);
       return;
     }
-    this.dependencies.logger.info("Cursor IME HUD started.", this.dependencies.detector.getDebugInfo());
+    this.dependencies.logger.info(
+      "Cursor IME HUD started.",
+      this.dependencies.detector.getDebugInfo()
+    );
     this.requestRender(true);
   }
 
@@ -164,6 +184,7 @@ export class HudController implements vscode.Disposable {
       `Overlay enabled: ${settings.overlayEnabled ? "yes" : "no"}`,
       `Status bar enabled: ${settings.statusBarEnabled ? "yes" : "no"}`,
       `Overlay labels: cn=${settings.cnLabel}, en=${settings.enLabel}`,
+      ...this.buildOverlayDiagnostics(settings, displayState.displaySnapshot.state),
       "",
       "## Latest Snapshot",
       "```json",
@@ -250,7 +271,9 @@ export class HudController implements vscode.Disposable {
 
     this.scheduleGraceRender(displayState.displayReason, displayState.graceExpiresAt);
 
-    const displayLabel = this.dependencies.settingsService.getLabelForState(displayState.displaySnapshot.state);
+    const displayLabel = this.dependencies.settingsService.getLabelForState(
+      displayState.displaySnapshot.state
+    );
     const statusBarLabel = displayLabel ?? "?";
     const debugInfo = this.dependencies.detector.getDebugInfo();
 
@@ -266,22 +289,14 @@ export class HudController implements vscode.Disposable {
       confidence: this.latestSnapshot.confidence
     });
 
-    const editor = this.editorHost.getActiveEditor();
-    const windowFocused = this.editorHost.getWindowState().focused;
-    const shouldShowOverlay =
-      settings.overlayEnabled &&
-      !!editor &&
-      !!displayLabel &&
-      (!settings.hideWhenEditorUnfocused || windowFocused);
-
-    const placement = shouldShowOverlay && editor
-      ? this.dependencies.overlayRenderer.resolvePlacement(editor)
-      : undefined;
+    const overlayDecision = this.resolveOverlayVisibility(settings, displayLabel);
+    const editor = overlayDecision.editor;
+    const placement = overlayDecision.placement;
     const styleKey = this.dependencies.overlayRenderer.getStyleKey(settings);
     const nextRenderState = createOverlayRenderState({
       editorUri: editor?.document.uri.toString() ?? null,
       label: displayLabel ?? null,
-      visible: Boolean(shouldShowOverlay && placement),
+      visible: overlayDecision.visible,
       styleKey,
       placement
     });
@@ -306,6 +321,56 @@ export class HudController implements vscode.Disposable {
       placement
     });
     this.lastRenderState = nextRenderState;
+  }
+
+  private buildOverlayDiagnostics(
+    settings: CursorImeHudSettings,
+    state: ImeSnapshot["state"]
+  ): string[] {
+    const label = this.dependencies.settingsService.getLabelForState(state);
+    const decision = this.resolveOverlayVisibility(settings, label);
+    const editor = decision.editor;
+    const cursor = editor?.selection.active;
+    const lineText = cursor ? editor?.document.lineAt(cursor.line).text : undefined;
+
+    return [
+      `Overlay visible: ${decision.visible ? "yes" : "no"}`,
+      `Overlay hidden reason: ${decision.visible ? "(none)" : decision.reason}`,
+      `Overlay placement: ${decision.placement ? `${decision.placement.attachment} ${decision.placement.range.start.line}:${decision.placement.range.start.character}-${decision.placement.range.end.line}:${decision.placement.range.end.character}` : "(none)"}`,
+      `Cursor position: ${cursor ? `${cursor.line}:${cursor.character}` : "(none)"}`,
+      `Active line length: ${typeof lineText === "string" ? lineText.length : "(none)"}`
+    ];
+  }
+
+  private resolveOverlayVisibility(
+    settings: CursorImeHudSettings,
+    displayLabel: string | undefined
+  ): OverlayVisibilityDecision {
+    const editor = this.editorHost.getActiveEditor();
+    const windowFocused = this.editorHost.getWindowState().focused;
+
+    if (!settings.overlayEnabled) {
+      return { editor, windowFocused, visible: false, reason: "overlay-disabled" };
+    }
+
+    if (!editor) {
+      return { editor, windowFocused, visible: false, reason: "no-active-text-editor" };
+    }
+
+    if (!displayLabel) {
+      return { editor, windowFocused, visible: false, reason: "no-display-label" };
+    }
+
+    if (settings.hideWhenEditorUnfocused && !windowFocused) {
+      return { editor, windowFocused, visible: false, reason: "window-unfocused" };
+    }
+
+    const placement = this.dependencies.overlayRenderer.resolvePlacement(editor);
+    if (!placement) {
+      return { editor, windowFocused, visible: false, reason: "no-placement-empty-line" };
+    }
+
+    return { editor, windowFocused, placement, visible: true, reason: "visible" };
   }
 
   private scheduleGraceRender(displayReason: HudDisplayReason, graceExpiresAt?: number): void {

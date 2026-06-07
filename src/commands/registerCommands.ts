@@ -8,10 +8,19 @@ import { HudController } from "../controller/HudController";
  * to push the returned `Disposable` chain into `context.subscriptions`
  * (this is what the composition root does).
  */
-export function registerCommands(context: vscode.ExtensionContext, controller: HudController): void {
+export function registerCommands(
+  context: vscode.ExtensionContext,
+  controller: HudController
+): void {
   context.subscriptions.push(
-    vscode.commands.registerCommand("cursorImeHud.toggleOverlay", async () => controller.toggleOverlay()),
-    vscode.commands.registerCommand("cursorImeHud.refreshImeState", () => controller.refreshImeState()),
-    vscode.commands.registerCommand("cursorImeHud.showDiagnostics", () => controller.showDiagnostics())
+    vscode.commands.registerCommand("cursorImeHud.toggleOverlay", async () =>
+      controller.toggleOverlay()
+    ),
+    vscode.commands.registerCommand("cursorImeHud.refreshImeState", () =>
+      controller.refreshImeState()
+    ),
+    vscode.commands.registerCommand("cursorImeHud.showDiagnostics", () =>
+      controller.showDiagnostics()
+    )
   );
 }

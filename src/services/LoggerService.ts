@@ -74,7 +74,9 @@ export class LoggerService implements vscode.Disposable {
       this.entries.shift();
     }
 
-    this.outputChannel.appendLine(this.formatEntry(entry.level, entry.message, entry.details, entry.source, entry.timestamp));
+    this.outputChannel.appendLine(
+      this.formatEntry(entry.level, entry.message, entry.details, entry.source, entry.timestamp)
+    );
   }
 
   private formatEntry(

@@ -74,17 +74,17 @@ The repository already includes `.vscode/launch.json` and `.vscode/tasks.json` s
 
 ## Settings
 
-| Setting | Default | Notes |
-| --- | --- | --- |
-| `cursorImeHud.overlay.enabled` | `true` | Enables the caret-adjacent HUD. |
-| `cursorImeHud.overlay.cnLabel` | `中` | Label used for Chinese input mode. |
-| `cursorImeHud.overlay.enLabel` | `英` | Label used for English input mode. |
-| `cursorImeHud.overlay.opacity` | `0.78` | Background opacity for the overlay. |
-| `cursorImeHud.overlay.mode` | `text` | `text+icon` is reserved for future work and currently behaves the same as `text`. |
-| `cursorImeHud.statusBar.enabled` | `true` | Shows the current state in the status bar. |
-| `cursorImeHud.overlay.hideWhenEditorUnfocused` | `true` | Hides the overlay when the VS Code window loses focus. |
-| `cursorImeHud.overlay.offsetX` | `6` | Horizontal offset for the overlay. |
-| `cursorImeHud.overlay.offsetY` | `0` | Vertical offset for the overlay. |
+| Setting                                        | Default | Notes                                                                             |
+| ---------------------------------------------- | ------- | --------------------------------------------------------------------------------- |
+| `cursorImeHud.overlay.enabled`                 | `true`  | Enables the caret-adjacent HUD.                                                   |
+| `cursorImeHud.overlay.cnLabel`                 | `中`    | Label used for Chinese input mode.                                                |
+| `cursorImeHud.overlay.enLabel`                 | `英`    | Label used for English input mode.                                                |
+| `cursorImeHud.overlay.opacity`                 | `0.78`  | Background opacity for the overlay.                                               |
+| `cursorImeHud.overlay.mode`                    | `text`  | `text+icon` is reserved for future work and currently behaves the same as `text`. |
+| `cursorImeHud.statusBar.enabled`               | `true`  | Shows the current state in the status bar.                                        |
+| `cursorImeHud.overlay.hideWhenEditorUnfocused` | `true`  | Hides the overlay when the VS Code window loses focus.                            |
+| `cursorImeHud.overlay.offsetX`                 | `6`     | Horizontal offset for the overlay.                                                |
+| `cursorImeHud.overlay.offsetY`                 | `0`     | Vertical offset for the overlay.                                                  |
 
 ### Configuration deep-dive
 
@@ -142,7 +142,7 @@ The native helper uses Windows IMM32 APIs (`ImmGetOpenStatus`, `ImmGetDescriptio
   - Open the **Output** channel and select **Cursor IME HUD**. Look for `hello` handshake failures, JSON parse errors, or helper exit events.
   - Run the **Cursor IME HUD: Show Diagnostics** command. It prints the current detector source, lifecycle phase, last snapshot, and the rolling log buffer.
   - Verify `resources/bin/win-x64/WinImeWatcher.exe` exists and that the adjacent `resources/bin/win-x64/WinImeWatcher.exe.sha256` sidecar matches. `npm run build:helper` regenerates both files on Windows. A mismatch disables the helper and the extension falls back to the sample detector.
-  - On macOS and Linux, the native helper cannot run. The extension automatically falls back to `SampleImeDetector`, which only emits synthetic `cn`/`en` toggles for end-to-end testing. This is expected.
+  - On macOS and Linux, the native helper cannot run. The extension automatically falls back to `SampleImeDetector`, which reports `unknown` so diagnostics and fallback paths can still be tested. This is expected.
 - **Status bar shows `?` persistently.**
   - The foreground window is non-Chinese (e.g. Explorer, a browser, a non-IME-aware app) - the helper correctly reports `unknown` in that case.
   - The active IME is not Chinese (Japanese, Korean, etc.) - see [Language support](#language-support) above.

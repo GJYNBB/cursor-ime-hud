@@ -49,20 +49,18 @@ The repository ships with `.vscode/launch.json` and `.vscode/tasks.json`, so pre
 The test runner is Mocha. Use `--grep` to focus on a single `describe`/`it` pattern. The helper smoke tests only run on Windows.
 
 ```powershell
-# All TS unit tests
-npx mocha --grep "should clamp opacity"
+# Run the canonical Extension Host test entrypoint
+npm run test:extension
 
-# A specific describe block
-npx mocha --grep "ImeDetector"
-
-# A single file (override the default glob)
-npx mocha out/test/detector/ImeDetector.test.js
+# Focus the VS Code extension test suite by title
+npm run test:extension -- --grep "SettingsService"
 ```
 
-The helper `--once` smoke test ships as `scripts/helper-smoke.mjs` and can be invoked directly on Windows:
+The helper `--once` smoke test ships as `scripts/assert-helper-once.js` and can be invoked directly on Windows after building the helper:
 
 ```powershell
-node scripts/helper-smoke.mjs
+npm run build:helper
+node scripts/assert-helper-once.js
 ```
 
 ## Adding a new detector

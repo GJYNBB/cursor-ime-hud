@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+
 - GitHub Actions CI workflow running lint and tests on Ubuntu and Windows
 - GitHub Actions release workflow that packages the extension on tag push
 - Dependabot configuration for `npm` and `github-actions` updates
@@ -18,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `prepublishOnly` guard that fails when the publisher is still the placeholder
 
 ### Changed
+
 - `npm test` now splits into `test:unit` (cross-platform) and
   `test:integration` (Windows-only) so contributors on Linux/macOS can run
   the unit suite without a Windows toolchain
@@ -25,6 +27,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   future Marketplace imagery
 
 ### Fixed
+
+- VSIX packaging now includes the composition root and top-level compiled output required for command registration
+- Extension tests now run through `@vscode/test-electron`, include the service suite, and pass under Xvfb
+- Native helper restarts now tear down broken child processes and validate the `hello` handshake per process
+- Helper integrity checks now fail closed when the `.sha256` sidecar is missing or mismatched
+- Helper `--once` smoke test now skips the `hello` handshake and validates the first state record
+- `WinImeWatcher` now exits when stdin closes during graceful shutdown
+- Diagnostics now report whether the overlay is visible and the concrete hide reason
 - `scripts/assert-helper-once.js` no longer fails on non-Windows platforms
   (skips with a clear message)
 - Header comment on `src/test/runTest.ts` clarifies it is an alternative
@@ -33,6 +43,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [0.0.1] - 2026-04-22
 
 ### Added
+
 - Initial release scaffold for Cursor IME HUD
 - Caret-adjacent overlay rendering with `TextEditorDecorationType`
 - Windows native `WinImeWatcher` helper with JSONL protocol

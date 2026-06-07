@@ -41,10 +41,13 @@ module.exports = [
       // Surface undefined globals and dangerous patterns; keep stylistic
       // enforcement in Prettier so the two tools do not fight.
       "no-undef": "off", // TypeScript already enforces this with `noImplicitAny` etc.
-      "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }],
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_" }
+      ],
       "@typescript-eslint/no-explicit-any": "warn",
       "no-console": ["warn", { allow: ["warn", "error", "info"] }],
-      "eqeqeq": ["error", "smart"],
+      eqeqeq: ["error", "smart"],
       "prefer-const": "warn",
       "no-var": "error"
     }

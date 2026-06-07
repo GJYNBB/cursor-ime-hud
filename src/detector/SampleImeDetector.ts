@@ -1,5 +1,10 @@
 import * as vscode from "vscode";
-import { DetectorLogEntry, DetectorSource, ImeDetectorDebugInfo, ImeSnapshot } from "../model/types";
+import {
+  DetectorLogEntry,
+  DetectorSource,
+  ImeDetectorDebugInfo,
+  ImeSnapshot
+} from "../model/types";
 import { ImeDetector } from "./ImeDetector";
 
 export class SampleImeDetector implements ImeDetector {
@@ -12,7 +17,10 @@ export class SampleImeDetector implements ImeDetector {
   public readonly onDidChangeSnapshot = this.onDidChangeSnapshotEmitter.event;
   public readonly onDidLog = this.onDidLogEmitter.event;
 
-  public constructor(private readonly source: DetectorSource, private readonly reason?: string) {
+  public constructor(
+    private readonly source: DetectorSource,
+    private readonly reason?: string
+  ) {
     this.snapshot = this.createSnapshot();
   }
 

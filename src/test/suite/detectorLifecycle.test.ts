@@ -109,18 +109,22 @@ class SuccessfulNativeDetector implements ImeDetector {
 
 suite("SampleOrNativeDetector", () => {
   test("falls back once and keeps unknown semantics", async () => {
+    const platformStub = sinon.stub(process, "platform").value("win32");
     const failingDetector = new FailingNativeDetector();
     const detector = new SampleOrNativeDetector("helper.exe", () => failingDetector);
 
-    await detector.start();
-    await detector.start();
+    try {
+      await detector.start();
+      await detector.start();
 
-    assert.equal(failingDetector.startCalls, 1);
-    assert.equal(detector.getSnapshot().state, "unknown");
-    assert.equal(detector.getDebugInfo().usingFallback, true);
-    assert.match(detector.getDebugInfo().fallbackReason ?? "", /native-start-failed/);
-
-    detector.dispose();
+      assert.equal(failingDetector.startCalls, 1);
+      assert.equal(detector.getSnapshot().state, "unknown");
+      assert.equal(detector.getDebugInfo().usingFallback, true);
+      assert.match(detector.getDebugInfo().fallbackReason ?? "", /native-start-failed/);
+    } finally {
+      detector.dispose();
+      platformStub.restore();
+    }
   });
 
   test("non-win32 path always takes the fallback branch", async () => {
@@ -156,36 +160,50 @@ suite("SampleOrNativeDetector", () => {
   });
 
   test("dispose-during-start releases the native detector and never activates the fallback", async () => {
+    const platformStub = sinon.stub(process, "platform").value("win32");
     const failingDetector = new FailingNativeDetector();
     const detector = new SampleOrNativeDetector("helper.exe", () => {
       // Replace the factory so the second invocation (fallback) never
       // resolves and we can assert it was never called.
       return failingDetector;
     });
-    const startPromise = detector.start();
-    detector.dispose();
-    await startPromise;
 
-    // The contract is that disposal during start is safe: the failed
-    // native detector is disposed, the wrapper does not throw, and
-    // the lifecycle is reported as disposed.
-    assert.equal(detector.getDebugInfo().lifecycleState, "disposed");
+    try {
+      const startPromise = detector.start();
+      detector.dispose();
+      await startPromise;
+
+      // The contract is that disposal during start is safe: the failed
+      // native detector is disposed, the wrapper does not throw, and
+      // the lifecycle is reported as disposed.
+      assert.equal(detector.getDebugInfo().lifecycleState, "disposed");
+    } finally {
+      platformStub.restore();
+    }
   });
 
   test("successful native start transitions the wrapper to running with the native snapshot", async () => {
+    const platformStub = sinon.stub(process, "platform").value("win32");
     const nativeDetector = new SuccessfulNativeDetector();
     const detector = new SampleOrNativeDetector("helper.exe", () => nativeDetector);
 
-    assert.equal(detector.getDebugInfo().lifecycleState, "idle");
-    await detector.start();
+    try {
+      assert.equal(detector.getDebugInfo().lifecycleState, "idle");
+      await detector.start();
 
-    assert.equal(nativeDetector.startCalls, 1);
-    assert.equal(detector.getDebugInfo().lifecycleState, "running");
-    assert.equal(detector.getDebugInfo().usingFallback, false, "native detector means no fallback");
-    assert.equal(detector.getDebugInfo().backendName, "SuccessfulNativeDetector");
-    assert.equal(detector.getSnapshot().state, "cn");
-    assert.equal(detector.getSnapshot().source, "native-helper");
-
-    detector.dispose();
+      assert.equal(nativeDetector.startCalls, 1);
+      assert.equal(detector.getDebugInfo().lifecycleState, "running");
+      assert.equal(
+        detector.getDebugInfo().usingFallback,
+        false,
+        "native detector means no fallback"
+      );
+      assert.equal(detector.getDebugInfo().backendName, "SuccessfulNativeDetector");
+      assert.equal(detector.getSnapshot().state, "cn");
+      assert.equal(detector.getSnapshot().source, "native-helper");
+    } finally {
+      detector.dispose();
+      platformStub.restore();
+    }
   });
 });

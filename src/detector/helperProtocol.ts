@@ -39,9 +39,10 @@ export function parseSnapshotLine(line: string): ImeSnapshot | undefined {
     return undefined;
   }
 
-  const state = parsed.state === "cn" || parsed.state === "en" || parsed.state === "unknown"
-    ? parsed.state
-    : "unknown";
+  const state =
+    parsed.state === "cn" || parsed.state === "en" || parsed.state === "unknown"
+      ? parsed.state
+      : "unknown";
 
   return {
     type: "state",
@@ -55,7 +56,8 @@ export function parseSnapshotLine(line: string): ImeSnapshot | undefined {
     hwnd: typeof parsed.hwnd === "string" ? parsed.hwnd : undefined,
     reason: typeof parsed.reason === "string" ? parsed.reason : undefined,
     confidence: typeof parsed.confidence === "number" ? parsed.confidence : undefined,
-    rawStateAvailable: typeof parsed.rawStateAvailable === "boolean" ? parsed.rawStateAvailable : undefined
+    rawStateAvailable:
+      typeof parsed.rawStateAvailable === "boolean" ? parsed.rawStateAvailable : undefined
   };
 }
 

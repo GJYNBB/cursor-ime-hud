@@ -4,7 +4,12 @@ import { ChildProcessWithoutNullStreams, spawn } from "node:child_process";
 import * as vscode from "vscode";
 import { DetectorLogEntry, ImeDetectorDebugInfo, ImeSnapshot } from "../model/types";
 import { ImeDetector } from "./ImeDetector";
-import { parseHelloLine, parseLogLine, parseSnapshotLine, PROTOCOL_VERSION } from "./helperProtocol";
+import {
+  parseHelloLine,
+  parseLogLine,
+  parseSnapshotLine,
+  PROTOCOL_VERSION
+} from "./helperProtocol";
 
 const STARTUP_TIMEOUT_MS = 4000;
 const RESTART_DELAY_MS = 1500;
@@ -169,6 +174,7 @@ export class NativeHelperImeDetector implements ImeDetector {
       this.child = child;
       this.stdoutBuffer = "";
       this.stderrBuffer = "";
+      this.helloReceived = false;
 
       child.stdout.setEncoding("utf8");
       child.stderr.setEncoding("utf8");
@@ -207,7 +213,7 @@ export class NativeHelperImeDetector implements ImeDetector {
             this.teardownSpecificChild(child, true);
             reject(lineError);
           } else {
-            this.scheduleRestart(RESTART_DELAY_MS);
+            this.failActiveChildAndScheduleRestart(child, "stdout", message);
           }
         }
       };
@@ -229,7 +235,7 @@ export class NativeHelperImeDetector implements ImeDetector {
             this.teardownSpecificChild(child, true);
             reject(lineError);
           } else {
-            this.scheduleRestart(RESTART_DELAY_MS);
+            this.failActiveChildAndScheduleRestart(child, "stderr", message);
           }
         }
       };
@@ -239,7 +245,9 @@ export class NativeHelperImeDetector implements ImeDetector {
           return;
         }
 
-        this.emitLog("warn", "IME helper stdin stream reported an error.", { error: error.message });
+        this.emitLog("warn", "IME helper stdin stream reported an error.", {
+          error: error.message
+        });
       };
 
       const onExit = (code: number | null, signal: NodeJS.Signals | null): void => {
@@ -247,7 +255,11 @@ export class NativeHelperImeDetector implements ImeDetector {
         clearStartupTimer();
         this.teardownSpecificChild(child, false);
 
-        if (this.disposed || this.lifecycleState === "stopping" || this.lifecycleState === "disposed") {
+        if (
+          this.disposed ||
+          this.lifecycleState === "stopping" ||
+          this.lifecycleState === "disposed"
+        ) {
           return;
         }
 
@@ -262,9 +274,7 @@ export class NativeHelperImeDetector implements ImeDetector {
           return;
         }
 
-        const reason = code === 2
-          ? "helper-exited-health-check-failed"
-          : "helper-exited";
+        const reason = code === 2 ? "helper-exited-health-check-failed" : "helper-exited";
         this.synthesizeUnknownSnapshot(reason, details);
         this.emitLog("warn", "IME helper exited. Scheduling restart.", { reason, ...details });
         this.scheduleRestart(RESTART_DELAY_MS);
@@ -289,6 +299,22 @@ export class NativeHelperImeDetector implements ImeDetector {
     });
   }
 
+  private failActiveChildAndScheduleRestart(
+    child: ChildProcessWithoutNullStreams,
+    stream: "stdout" | "stderr",
+    error: string
+  ): void {
+    if (this.disposed || this.child !== child) {
+      return;
+    }
+
+    this.synthesizeUnknownSnapshot(`helper-${stream}-stream-failed`, { error });
+    this.lifecycleState = "idle";
+    this.teardownSpecificChild(child, true);
+    this.pendingExitCleanup = this.awaitChildExit(child);
+    this.scheduleRestart(RESTART_DELAY_MS);
+  }
+
   private scheduleRestart(delayMs: number): void {
     this.clearRestartTimer();
     if (this.disposed) {
@@ -297,7 +323,10 @@ export class NativeHelperImeDetector implements ImeDetector {
 
     const jitterFactor = 1 + (Math.random() * 2 - 1) * RESTART_JITTER_RATIO;
     const jitteredDelay = Math.max(0, Math.round(delayMs * jitterFactor));
-    this.emitLog("info", "IME helper restart scheduled.", { delayMs: jitteredDelay, baseDelayMs: delayMs });
+    this.emitLog("info", "IME helper restart scheduled.", {
+      delayMs: jitteredDelay,
+      baseDelayMs: delayMs
+    });
 
     this.restartTimer = setTimeout(() => {
       this.restartTimer = undefined;
@@ -322,7 +351,10 @@ export class NativeHelperImeDetector implements ImeDetector {
       this.emitLog("info", "IME helper restarted successfully.", { attempt: this.restartAttempts });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      this.emitLog("error", "IME helper restart failed.", { error: message, attempt: this.restartAttempts });
+      this.emitLog("error", "IME helper restart failed.", {
+        error: message,
+        attempt: this.restartAttempts
+      });
       this.scheduleRestart(RESTART_DELAY_MS * 2);
     }
   }
@@ -392,7 +424,9 @@ export class NativeHelperImeDetector implements ImeDetector {
         return false;
       }
 
-      this.emitLog("error", "IME helper did not send hello as the first line. Refusing to start.", { line });
+      this.emitLog("error", "IME helper did not send hello as the first line. Refusing to start.", {
+        line
+      });
       throw new Error("IME helper did not send hello as the first line. Refusing to start.");
     }
 
@@ -437,11 +471,7 @@ export class NativeHelperImeDetector implements ImeDetector {
   private verifyHelperIntegrity(helperPath: string): void {
     const hashPath = `${helperPath}.sha256`;
     if (!fs.existsSync(hashPath)) {
-      this.emitLog("warn", "IME helper hash sidecar is missing; skipping integrity check.", {
-        helperPath,
-        hashPath
-      });
-      return;
+      throw new Error(`IME helper hash sidecar is missing: ${hashPath}`);
     }
 
     const expected = fs.readFileSync(hashPath, "utf8").trim().toLowerCase();
@@ -477,7 +507,10 @@ export class NativeHelperImeDetector implements ImeDetector {
     if (!this.disposed) {
       this.onDidChangeSnapshotEmitter.fire(unknownSnapshot);
       if (details !== undefined) {
-        this.emitLog("info", "Synthesized unknown snapshot after helper exit.", { reason, details });
+        this.emitLog("info", "Synthesized unknown snapshot after helper exit.", {
+          reason,
+          details
+        });
       }
     }
   }
@@ -497,7 +530,10 @@ export class NativeHelperImeDetector implements ImeDetector {
     });
   }
 
-  private tryWriteCommand(command: Record<string, string>, child: ChildProcessWithoutNullStreams | undefined): boolean {
+  private tryWriteCommand(
+    command: Record<string, string>,
+    child: ChildProcessWithoutNullStreams | undefined
+  ): boolean {
     if (
       !child ||
       child.killed ||
@@ -518,7 +554,10 @@ export class NativeHelperImeDetector implements ImeDetector {
       return true;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      this.emitLog("warn", "Failed to write a command to the IME helper.", { error: message, command });
+      this.emitLog("warn", "Failed to write a command to the IME helper.", {
+        error: message,
+        command
+      });
       return false;
     }
   }
@@ -581,7 +620,7 @@ export class NativeHelperImeDetector implements ImeDetector {
     }
   }
 
-    private clearRestartTimer(): void {
+  private clearRestartTimer(): void {
     if (this.restartTimer) {
       clearTimeout(this.restartTimer);
       this.restartTimer = undefined;

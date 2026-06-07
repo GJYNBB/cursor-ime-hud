@@ -22,7 +22,8 @@ export class SampleOrNativeDetector implements ImeDetector {
 
   public constructor(
     private readonly helperPath: string,
-    private readonly nativeDetectorFactory: DetectorFactory = (path) => new NativeHelperImeDetector(path)
+    private readonly nativeDetectorFactory: DetectorFactory = (path) =>
+      new NativeHelperImeDetector(path)
   ) {
     this.activeDetector = new SampleImeDetector("sample", "Detector has not started yet.");
     this.debugInfo = this.withLifecycleState(this.activeDetector.getDebugInfo());
@@ -65,7 +66,7 @@ export class SampleOrNativeDetector implements ImeDetector {
   }
 
   public getDebugInfo(): ImeDetectorDebugInfo {
-    return this.debugInfo;
+    return this.withLifecycleState(this.debugInfo);
   }
 
   public dispose(): void {
@@ -86,17 +87,36 @@ export class SampleOrNativeDetector implements ImeDetector {
   }
 
   private async startInternal(): Promise<void> {
-    // Note: The platform check (process.platform !== "win32") is intentionally NOT performed
-    // here. The platform gate is enforced by the caller (extension.ts) before this wrapper
-    // is constructed. Keeping the chain logic in one place preserves the Open/Closed
-    // Principle — new detector implementations can be inserted without re-validating the OS.
+    if (process.platform !== "win32") {
+      await this.activateDetector(
+        this.createFallbackDetector("Native helper is only available on Windows.")
+      );
+      if (this.disposed) {
+        return;
+      }
+
+      this.lifecycleState = "running";
+      this.debugInfo = this.withLifecycleState(this.activeDetector.getDebugInfo());
+      this.onDidLogEmitter.fire({
+        type: "log",
+        level: "warn",
+        message: "Using sample detector because the native helper is only available on Windows.",
+        timestamp: new Date().toISOString(),
+        details: { platform: process.platform },
+        source: "fallback"
+      });
+      return;
+    }
+
     const nativeDetector = this.nativeDetectorFactory(this.helperPath);
     try {
       await this.activateDetector(nativeDetector);
     } catch (error) {
       nativeDetector.dispose();
       const message = error instanceof Error ? error.message : String(error);
-      await this.activateDetector(this.createFallbackDetector(`Native helper failed to start: ${message}`));
+      await this.activateDetector(
+        this.createFallbackDetector(`Native helper failed to start: ${message}`)
+      );
       this.onDidLogEmitter.fire({
         type: "log",
         level: "warn",
@@ -105,6 +125,10 @@ export class SampleOrNativeDetector implements ImeDetector {
         details: { error: message },
         source: "fallback"
       });
+    }
+
+    if (this.disposed) {
+      return;
     }
 
     this.lifecycleState = "running";

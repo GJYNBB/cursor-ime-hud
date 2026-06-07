@@ -33,7 +33,10 @@ export class PositionStrategy {
    *     and the chip is anchored to the character immediately preceding
    *     the cursor (mirrors the way the original HUD behaved).
    */
-  public resolve(document: vscode.TextDocument, cursor: vscode.Position): OverlayPlacement | undefined {
+  public resolve(
+    document: vscode.TextDocument,
+    cursor: vscode.Position
+  ): OverlayPlacement | undefined {
     const line = document.lineAt(cursor.line);
 
     if (line.text.length === 0) {

@@ -69,25 +69,25 @@ Cursor IME HUD: Show Diagnostics
 
 ## 命令
 
-| 命令 | 说明 |
-| --- | --- |
-| `Cursor IME HUD: Toggle Overlay` | 开启或关闭光标旁 HUD。 |
-| `Cursor IME HUD: Refresh IME State` | 主动刷新一次 IME 状态。 |
-| `Cursor IME HUD: Show Diagnostics` | 显示当前探测器、快照、生命周期和最近日志。 |
+| 命令                                | 说明                                       |
+| ----------------------------------- | ------------------------------------------ |
+| `Cursor IME HUD: Toggle Overlay`    | 开启或关闭光标旁 HUD。                     |
+| `Cursor IME HUD: Refresh IME State` | 主动刷新一次 IME 状态。                    |
+| `Cursor IME HUD: Show Diagnostics`  | 显示当前探测器、快照、生命周期和最近日志。 |
 
 ## 配置项
 
-| 设置 | 默认值 | 说明 |
-| --- | --- | --- |
-| `cursorImeHud.overlay.enabled` | `true` | 是否启用光标旁 HUD。 |
-| `cursorImeHud.overlay.cnLabel` | `中` | 中文输入状态显示标签。 |
-| `cursorImeHud.overlay.enLabel` | `英` | 英文输入状态显示标签。 |
-| `cursorImeHud.overlay.opacity` | `0.78` | HUD 背景透明度，范围 `0.15` 到 `1`。 |
-| `cursorImeHud.overlay.mode` | `text` | HUD 渲染模式；`text+icon` 当前为预留模式，表现与 `text` 相同。 |
-| `cursorImeHud.statusBar.enabled` | `true` | 是否在状态栏显示输入状态。 |
-| `cursorImeHud.overlay.hideWhenEditorUnfocused` | `true` | VS Code 窗口失焦时是否隐藏 HUD。 |
-| `cursorImeHud.overlay.offsetX` | `6` | HUD 横向偏移。 |
-| `cursorImeHud.overlay.offsetY` | `0` | HUD 纵向偏移。 |
+| 设置                                           | 默认值 | 说明                                                           |
+| ---------------------------------------------- | ------ | -------------------------------------------------------------- |
+| `cursorImeHud.overlay.enabled`                 | `true` | 是否启用光标旁 HUD。                                           |
+| `cursorImeHud.overlay.cnLabel`                 | `中`   | 中文输入状态显示标签。                                         |
+| `cursorImeHud.overlay.enLabel`                 | `英`   | 英文输入状态显示标签。                                         |
+| `cursorImeHud.overlay.opacity`                 | `0.78` | HUD 背景透明度，范围 `0.15` 到 `1`。                           |
+| `cursorImeHud.overlay.mode`                    | `text` | HUD 渲染模式；`text+icon` 当前为预留模式，表现与 `text` 相同。 |
+| `cursorImeHud.statusBar.enabled`               | `true` | 是否在状态栏显示输入状态。                                     |
+| `cursorImeHud.overlay.hideWhenEditorUnfocused` | `true` | VS Code 窗口失焦时是否隐藏 HUD。                               |
+| `cursorImeHud.overlay.offsetX`                 | `6`    | HUD 横向偏移。                                                 |
+| `cursorImeHud.overlay.offsetY`                 | `0`    | HUD 纵向偏移。                                                 |
 
 ## 工作原理与隐私
 

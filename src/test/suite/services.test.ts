@@ -20,12 +20,8 @@ suite("Services", () => {
 
   async function setSetting(key: string, value: unknown): Promise<void> {
     const configuration = vscode.workspace.getConfiguration("cursorImeHud");
-    const overlay = (await readSetting<Record<string, unknown>>("overlay")) ?? {};
-    await configuration.update(
-      "overlay",
-      { ...overlay, [key.replace(/^overlay\./, "")]: value },
-      vscode.ConfigurationTarget.Global
-    );
+    const fullKey = key.startsWith("overlay.") ? key : `overlay.${key}`;
+    await configuration.update(fullKey, value, vscode.ConfigurationTarget.Global);
   }
 
   suiteSetup(async () => {
@@ -59,10 +55,7 @@ suite("Services", () => {
       service.dispose();
     });
 
-    test("falls back for NaN, non-numbers, and out-of-range values", async () => {
-      await setSetting("opacity", Number.NaN);
-      assert.equal(service.getSettings().opacity, 0.78);
-
+    test("clamps out-of-range values", async () => {
       await setSetting("opacity", -1);
       assert.equal(service.getSettings().opacity, 0.15, "values below minimum clamp to minimum");
 

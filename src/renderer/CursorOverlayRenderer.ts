@@ -76,7 +76,8 @@ export class CursorOverlayRenderer implements OverlayRenderer {
 
     if (
       this.currentRender &&
-      (this.currentRender.editorUri !== editorUri || this.currentRender.attachment !== input.placement.attachment)
+      (this.currentRender.editorUri !== editorUri ||
+        this.currentRender.attachment !== input.placement.attachment)
     ) {
       this.clearCurrentRender();
     }
@@ -138,7 +139,11 @@ export class CursorOverlayRenderer implements OverlayRenderer {
   private ensureDecorationTypes(settings: CursorImeHudSettings): void {
     const nextCacheKey = this.getStyleKey(settings);
 
-    if (nextCacheKey === this.styleCacheKey && this.beforeDecorationType && this.afterDecorationType) {
+    if (
+      nextCacheKey === this.styleCacheKey &&
+      this.beforeDecorationType &&
+      this.afterDecorationType
+    ) {
       return;
     }
 
@@ -176,7 +181,10 @@ export class CursorOverlayRenderer implements OverlayRenderer {
     this.styleCacheKey = nextCacheKey;
   }
 
-  private createDecorationOption(placement: OverlayPlacement, content: OverlayContent): vscode.DecorationOptions {
+  private createDecorationOption(
+    placement: OverlayPlacement,
+    content: OverlayContent
+  ): vscode.DecorationOptions {
     if (placement.attachment === "before") {
       return {
         range: placement.range,

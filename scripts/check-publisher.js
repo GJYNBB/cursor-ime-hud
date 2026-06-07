@@ -37,7 +37,7 @@ if (packageJson.publisher === PLACEHOLDER) {
   console.error(
     [
       "[check-publisher] Refusing to publish: package.json#publisher is still",
-      "  \"publisher-placeholder\".",
+      '  "publisher-placeholder".',
       "",
       "  Replace it with your VS Code Marketplace publisher id before the",
       "  first release. Register one at https://aka.ms/vscode-publishers",

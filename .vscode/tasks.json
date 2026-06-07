@@ -17,10 +17,7 @@
     {
       "label": "prepare-debug",
       "dependsOrder": "sequence",
-      "dependsOn": [
-        "npm: build:helper",
-        "npm: watch"
-      ]
+      "dependsOn": ["npm: build:helper", "npm: watch"]
     }
   ]
 }
