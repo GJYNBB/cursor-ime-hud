@@ -20,7 +20,7 @@
     "url": "https://github.com/GJYNBB/cursor-ime-hud/issues"
   },
   "files": [
-    "out/extension.js",
+    "out/*.js",
     "out/commands/**/*.js",
     "out/controller/**/*.js",
     "out/detector/**/*.js",
