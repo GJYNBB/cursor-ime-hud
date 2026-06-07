@@ -56,8 +56,11 @@ export interface DetectorLogEntry {
  * `SettingsService` is the only producer of this object; consumers
  * should treat it as a plain value object.
  */
+export type LabelPreset = "custom" | "zh-en" | "en-zh";
+
 export interface CursorImeHudSettings {
   overlayEnabled: boolean;
+  labelPreset: LabelPreset;
   cnLabel: string;
   enLabel: string;
   opacity: number;

@@ -31,6 +31,7 @@ suite("Services", () => {
       "overlay.opacity",
       "overlay.offsetX",
       "overlay.offsetY",
+      "overlay.labelPreset",
       "overlay.cnLabel",
       "overlay.enLabel"
     ]) {
@@ -96,6 +97,7 @@ suite("Services", () => {
     });
 
     test("falls back for empty / whitespace strings", async () => {
+      await setSetting("labelPreset", "custom");
       await setSetting("cnLabel", "");
       assert.equal(service.getSettings().cnLabel, "中");
 
@@ -107,6 +109,7 @@ suite("Services", () => {
     });
 
     test("preserves non-empty labels (including padded ones)", async () => {
+      await setSetting("labelPreset", "custom");
       await setSetting("cnLabel", "中文");
       assert.equal(service.getSettings().cnLabel, "中文");
 
@@ -114,6 +117,36 @@ suite("Services", () => {
       // The implementation trims-then-checks; padded-but-non-empty labels
       // are accepted verbatim. This documents the current behavior.
       assert.equal(service.getSettings().cnLabel, "  中  ");
+    });
+
+    test("resolves built-in label presets", async () => {
+      await setSetting("cnLabel", "自定义中");
+      await setSetting("enLabel", "Custom EN");
+
+      await setSetting("labelPreset", "custom");
+      assert.equal(service.getSettings().labelPreset, "custom");
+      assert.equal(service.getSettings().cnLabel, "自定义中");
+      assert.equal(service.getSettings().enLabel, "Custom EN");
+
+      await setSetting("labelPreset", "zh-en");
+      assert.equal(service.getSettings().labelPreset, "zh-en");
+      assert.equal(service.getSettings().cnLabel, "中");
+      assert.equal(service.getSettings().enLabel, "英");
+
+      await setSetting("labelPreset", "en-zh");
+      assert.equal(service.getSettings().labelPreset, "en-zh");
+      assert.equal(service.getSettings().cnLabel, "ZH");
+      assert.equal(service.getSettings().enLabel, "EN");
+    });
+
+    test("falls back to custom label mode for invalid presets", async () => {
+      await setSetting("labelPreset", "invalid-preset");
+      await setSetting("cnLabel", "中文");
+      await setSetting("enLabel", "English");
+
+      assert.equal(service.getSettings().labelPreset, "custom");
+      assert.equal(service.getSettings().cnLabel, "中文");
+      assert.equal(service.getSettings().enLabel, "English");
     });
   });
 

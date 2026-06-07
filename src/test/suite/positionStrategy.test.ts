@@ -35,10 +35,27 @@ suite("PositionStrategy", () => {
     assert.equal(placement?.range.end.character, 4);
   });
 
-  test("returns undefined on empty lines", async () => {
+  test("uses a zero-width after attachment on empty lines", async () => {
     const document = await vscode.workspace.openTextDocument({ content: "\n" });
     const placement = strategy.resolve(document, new vscode.Position(0, 0));
 
-    assert.equal(placement, undefined);
+    assert.ok(placement);
+    assert.equal(placement?.attachment, "after");
+    assert.equal(placement?.range.start.line, 0);
+    assert.equal(placement?.range.start.character, 0);
+    assert.equal(placement?.range.end.line, 0);
+    assert.equal(placement?.range.end.character, 0);
+  });
+
+  test("uses a zero-width after attachment on interior empty lines", async () => {
+    const document = await vscode.workspace.openTextDocument({ content: "abc\n\nxyz" });
+    const placement = strategy.resolve(document, new vscode.Position(1, 0));
+
+    assert.ok(placement);
+    assert.equal(placement?.attachment, "after");
+    assert.equal(placement?.range.start.line, 1);
+    assert.equal(placement?.range.start.character, 0);
+    assert.equal(placement?.range.end.line, 1);
+    assert.equal(placement?.range.end.character, 0);
   });
 });

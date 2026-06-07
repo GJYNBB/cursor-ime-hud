@@ -14,7 +14,7 @@ The extension is intentionally narrow in scope:
 ## Features
 
 - Caret-adjacent HUD rendered with `TextEditorDecorationType`
-- Two stable labels by default: `中` and `英`
+- Built-in label styles for `中` / `英` and `ZH` / `EN`
 - Conservative `unknown` handling:
   - overlay hides when the state is unknown
   - status bar shows `?`
@@ -74,21 +74,23 @@ The repository already includes `.vscode/launch.json` and `.vscode/tasks.json` s
 
 ## Settings
 
-| Setting                                        | Default | Notes                                                                             |
-| ---------------------------------------------- | ------- | --------------------------------------------------------------------------------- |
-| `cursorImeHud.overlay.enabled`                 | `true`  | Enables the caret-adjacent HUD.                                                   |
-| `cursorImeHud.overlay.cnLabel`                 | `中`    | Label used for Chinese input mode.                                                |
-| `cursorImeHud.overlay.enLabel`                 | `英`    | Label used for English input mode.                                                |
-| `cursorImeHud.overlay.opacity`                 | `0.78`  | Background opacity for the overlay.                                               |
-| `cursorImeHud.overlay.mode`                    | `text`  | `text+icon` is reserved for future work and currently behaves the same as `text`. |
-| `cursorImeHud.statusBar.enabled`               | `true`  | Shows the current state in the status bar.                                        |
-| `cursorImeHud.overlay.hideWhenEditorUnfocused` | `true`  | Hides the overlay when the VS Code window loses focus.                            |
-| `cursorImeHud.overlay.offsetX`                 | `6`     | Horizontal offset for the overlay.                                                |
-| `cursorImeHud.overlay.offsetY`                 | `0`     | Vertical offset for the overlay.                                                  |
+| Setting                                        | Default  | Notes                                                                                                |
+| ---------------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------- |
+| `cursorImeHud.overlay.enabled`                 | `true`   | Enables the caret-adjacent HUD.                                                                      |
+| `cursorImeHud.overlay.labelPreset`             | `custom` | Label preset: `custom` uses custom labels, `zh-en` shows `中` / `英`, and `en-zh` shows `ZH` / `EN`. |
+| `cursorImeHud.overlay.cnLabel`                 | `中`     | Custom label used for Chinese input mode when `labelPreset` is `custom`.                             |
+| `cursorImeHud.overlay.enLabel`                 | `英`     | Custom label used for English input mode when `labelPreset` is `custom`.                             |
+| `cursorImeHud.overlay.opacity`                 | `0.78`   | Background opacity for the overlay.                                                                  |
+| `cursorImeHud.overlay.mode`                    | `text`   | `text+icon` is reserved for future work and currently behaves the same as `text`.                    |
+| `cursorImeHud.statusBar.enabled`               | `true`   | Shows the current state in the status bar.                                                           |
+| `cursorImeHud.overlay.hideWhenEditorUnfocused` | `true`   | Hides the overlay when the VS Code window loses focus.                                               |
+| `cursorImeHud.overlay.offsetX`                 | `6`      | Horizontal offset for the overlay.                                                                   |
+| `cursorImeHud.overlay.offsetY`                 | `0`      | Vertical offset for the overlay.                                                                     |
 
 ### Configuration deep-dive
 
 - **500ms grace period.** When a snapshot reports `unknown`, the controller keeps the last stable `cn` or `en` state for up to 500ms before falling back to `unknown`. This avoids flicker when Windows briefly drops IME signals (e.g. when a context menu opens). The grace window resets on every fresh `cn`/`en` snapshot.
+- **`overlay.labelPreset`.** Use `custom` to keep the editable `cnLabel` / `enLabel` strings, `zh-en` for `中` / `英`, or `en-zh` for `ZH` / `EN`.
 - **`overlay.opacity` (0.15 - 1.0).** The value is a multiplier on the background alpha used by `TextEditorDecorationType`. Values below `0.15` may become hard to see; values above `1.0` are clamped. The default `0.78` is tuned for typical light and dark themes.
 - **`overlay.mode = "text+icon"`.** Reserved for a future dual-render mode (label plus a tiny icon glyph). In v1 it behaves identically to `"text"`. The setting is exposed so user `settings.json` does not need to change when the icon path lands.
 - **`overlay.hideWhenEditorUnfocused`.** When `true` (default), the overlay is cleared whenever the active editor loses focus, the workbench is hidden, or the window is minimized. The status bar continues to reflect the latest state. Set to `false` if you want the HUD to remain visible across window blur (rarely useful).
@@ -123,7 +125,6 @@ This runs:
 
 - Windows only, currently `win-x64` only
 - Only the primary caret is rendered in v1
-- Empty lines do not render the caret HUD; the status bar remains available
 - The native helper is conservative and can return `unknown` when Windows does not expose enough reliable IME signals
 - `text+icon` is not a distinct rendering mode yet
 - The bundled helper is a self-contained single-file executable, so package size is still relatively large
@@ -162,7 +163,7 @@ The native helper uses Windows IMM32 APIs (`ImmGetOpenStatus`, `ImmGetDescriptio
 - **Why is only the primary caret rendered?**
   Multi-caret decoration composition requires careful handling of `revealRange`, selection, and overlap. It is tracked as future work to avoid surprising layout regressions in v1.
 - **What happens on empty lines?**
-  The HUD does not render on empty lines because there is no visible character position to anchor a `TextEditorDecorationType` against. The status bar still updates with the latest state, so the signal is never lost.
+  The HUD renders on empty lines by anchoring a zero-width `TextEditorDecorationType` range at the caret. The status bar still updates with the latest state if a theme or layout makes the overlay hard to see.
 
 ## Packaging
 

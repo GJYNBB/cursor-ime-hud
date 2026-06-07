@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { CursorImeHudSettings, ImeState } from "../model/types";
+import { CursorImeHudSettings, ImeState, LabelPreset } from "../model/types";
 
 /**
  * Wraps `vscode.workspace.getConfiguration` for the
@@ -32,10 +32,14 @@ export class SettingsService implements vscode.Disposable {
     const overlay = configuration.get<Record<string, unknown>>("overlay", {});
     const statusBar = configuration.get<Record<string, unknown>>("statusBar", {});
 
+    const labelPreset = this.asLabelPreset(overlay.labelPreset);
+    const labels = this.resolveLabels(overlay, labelPreset);
+
     return {
       overlayEnabled: this.asBoolean(overlay.enabled, true),
-      cnLabel: this.asNonEmptyString(overlay.cnLabel, "中"),
-      enLabel: this.asNonEmptyString(overlay.enLabel, "英"),
+      labelPreset,
+      cnLabel: labels.cnLabel,
+      enLabel: labels.enLabel,
       opacity: this.clampNumber(overlay.opacity, 0.78, 0.15, 1),
       overlayMode: overlay.mode === "text+icon" ? "text+icon" : "text",
       statusBarEnabled: this.asBoolean(statusBar.enabled, true),
@@ -74,6 +78,28 @@ export class SettingsService implements vscode.Disposable {
 
   private asBoolean(value: unknown, fallback: boolean): boolean {
     return typeof value === "boolean" ? value : fallback;
+  }
+
+  private asLabelPreset(value: unknown): LabelPreset {
+    return value === "zh-en" || value === "en-zh" ? value : "custom";
+  }
+
+  private resolveLabels(
+    overlay: Record<string, unknown>,
+    labelPreset: LabelPreset
+  ): Pick<CursorImeHudSettings, "cnLabel" | "enLabel"> {
+    if (labelPreset === "zh-en") {
+      return { cnLabel: "中", enLabel: "英" };
+    }
+
+    if (labelPreset === "en-zh") {
+      return { cnLabel: "ZH", enLabel: "EN" };
+    }
+
+    return {
+      cnLabel: this.asNonEmptyString(overlay.cnLabel, "中"),
+      enLabel: this.asNonEmptyString(overlay.enLabel, "英")
+    };
   }
 
   /**

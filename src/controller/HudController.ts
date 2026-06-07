@@ -183,6 +183,7 @@ export class HudController implements vscode.Disposable {
       `Active language: ${activeEditor?.document.languageId ?? "(none)"}`,
       `Overlay enabled: ${settings.overlayEnabled ? "yes" : "no"}`,
       `Status bar enabled: ${settings.statusBarEnabled ? "yes" : "no"}`,
+      `Overlay label preset: ${settings.labelPreset}`,
       `Overlay labels: cn=${settings.cnLabel}, en=${settings.enLabel}`,
       ...this.buildOverlayDiagnostics(settings, displayState.displaySnapshot.state),
       "",
@@ -367,7 +368,7 @@ export class HudController implements vscode.Disposable {
 
     const placement = this.dependencies.overlayRenderer.resolvePlacement(editor);
     if (!placement) {
-      return { editor, windowFocused, visible: false, reason: "no-placement-empty-line" };
+      return { editor, windowFocused, visible: false, reason: "no-overlay-placement" };
     }
 
     return { editor, windowFocused, placement, visible: true, reason: "visible" };

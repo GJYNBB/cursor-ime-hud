@@ -128,6 +128,7 @@ class FakeSettingsService {
   public getSettings() {
     return {
       overlayEnabled: this.options.overlayEnabled ?? true,
+      labelPreset: "custom" as const,
       cnLabel: "中",
       enLabel: "英",
       opacity: 0.78,

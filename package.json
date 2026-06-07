@@ -87,15 +87,30 @@
           "default": true,
           "description": "Enable the caret-adjacent overlay in active text editors."
         },
+        "cursorImeHud.overlay.labelPreset": {
+          "type": "string",
+          "enum": [
+            "custom",
+            "zh-en",
+            "en-zh"
+          ],
+          "enumDescriptions": [
+            "Use the custom Chinese and English labels below.",
+            "Show Chinese-character labels: 中 for Chinese mode and 英 for English mode.",
+            "Show Latin-letter labels: ZH for Chinese mode and EN for English mode."
+          ],
+          "default": "custom",
+          "description": "Choose a built-in IME label style or use custom labels."
+        },
         "cursorImeHud.overlay.cnLabel": {
           "type": "string",
           "default": "中",
-          "description": "Label shown when the detector reports Chinese input mode."
+          "description": "Custom label shown when the detector reports Chinese input mode and labelPreset is custom."
         },
         "cursorImeHud.overlay.enLabel": {
           "type": "string",
           "default": "英",
-          "description": "Label shown when the detector reports English input mode."
+          "description": "Custom label shown when the detector reports English input mode and labelPreset is custom."
         },
         "cursorImeHud.overlay.opacity": {
           "type": "number",

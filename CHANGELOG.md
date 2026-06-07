@@ -17,6 +17,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `galleryBanner` metadata in `package.json` for the VS Code Marketplace
 - `engines.node` requirement and explicit `engines.vscode` range
 - `prepublishOnly` guard that fails when the publisher is still the placeholder
+- `cursorImeHud.overlay.labelPreset` setting for built-in `中` / `英` and `ZH` / `EN` label styles
 
 ### Changed
 
@@ -36,6 +37,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Helper `--once` smoke test now skips the `hello` handshake and validates the first state record
 - `WinImeWatcher` now exits when stdin closes during graceful shutdown
 - Diagnostics now report whether the overlay is visible and the concrete hide reason
+- Overlay placement now supports empty lines by anchoring the HUD to a zero-width caret range
 - `scripts/assert-helper-once.js` no longer fails on non-Windows platforms
   (skips with a clear message)
 - Header comment on `src/test/runTest.ts` clarifies it is an alternative
