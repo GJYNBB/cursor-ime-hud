@@ -52,26 +52,10 @@ internal static class Program
 
             if (_lastSnapshot is { State: "unknown" })
             {
-                WriteLog("warn", "First probe returned unknown. Re-probing after 2s for health check.");
-                try
-                {
-                    await Task.Delay(TimeSpan.FromSeconds(2), cancellationTokenSource.Token);
-                }
-                catch (OperationCanceledException)
-                {
-                    WriteLog("info", "WinImeWatcher cancellation requested.");
-                    await inputTask;
-                    return 0;
-                }
-
-                EmitSnapshot(force: true);
-                if (_lastSnapshot is { State: "unknown" })
-                {
-                    WriteLog(
-                        "error",
-                        "Health check failed: probe is still unknown after re-probe. Exiting with code 2.");
-                    return 2;
-                }
+                WriteLog(
+                    "warn",
+                    "Initial probe returned unknown. Continuing to watch because unknown can be a valid Electron/IME state.",
+                    new { _lastSnapshot.Reason });
             }
 
             try
@@ -245,17 +229,17 @@ internal static class Program
         };
 
         var hasGuiThreadInfo = NativeMethods.GetGUIThreadInfo(threadId, ref guiThreadInfo);
-        if (!hasGuiThreadInfo || guiThreadInfo.hwndFocus == IntPtr.Zero)
+        var focusHandle = hasGuiThreadInfo && guiThreadInfo.hwndFocus != IntPtr.Zero
+            ? guiThreadInfo.hwndFocus
+            : hasGuiThreadInfo && guiThreadInfo.hwndActive != IntPtr.Zero
+                ? guiThreadInfo.hwndActive
+                : foregroundWindow;
+        var focusThreadId = NativeMethods.GetWindowThreadProcessId(focusHandle, out _);
+        if (focusThreadId != 0)
         {
-            return CreateUnknownSnapshot(
-                reason: "focus-hwnd-missing",
-                confidence: 0,
-                rawStateAvailable: false,
-                threadId: threadId,
-                hwnd: FormatHandle(foregroundWindow));
+            threadId = focusThreadId;
         }
 
-        var focusHandle = guiThreadInfo.hwndFocus;
         var keyboardLayout = NativeMethods.GetKeyboardLayout(threadId);
         if (keyboardLayout == IntPtr.Zero)
         {
@@ -292,12 +276,25 @@ internal static class Program
                 _imeContextFailureLogged = true;
                 WriteLog(
                     "warn",
-                    "ImmGetContext threw on probe thread. Falling back to GetKeyboardLayout data.",
+                    "ImmGetContext threw on probe thread. Trying default IME window fallback.",
                     new { error = imeException.Message });
             }
 
+            if (TryGetOpenStatusFromDefaultImeWindow(focusHandle, foregroundWindow, out var fallbackIsOpen, out var fallbackImeWindow))
+            {
+                return BuildSnapshotFromOpenStatus(
+                    isChineseLayout,
+                    fallbackIsOpen,
+                    imeName,
+                    layoutHex,
+                    threadId,
+                    focusHandle,
+                    $"default-ime-window-{fallbackImeWindow}-after-context-error",
+                    0.85);
+            }
+
             return CreateUnknownSnapshot(
-                reason: "probe-failed",
+                reason: "ime-context-error",
                 confidence: 0,
                 rawStateAvailable: false,
                 imeName: imeName,
@@ -313,12 +310,25 @@ internal static class Program
                 _imeContextFailureLogged = true;
                 WriteLog(
                     "warn",
-                    "ImmGetContext returned a null handle. Falling back to GetKeyboardLayout data.",
+                    "ImmGetContext returned a null handle. Trying default IME window fallback.",
                     new { threadId });
             }
 
+            if (TryGetOpenStatusFromDefaultImeWindow(focusHandle, foregroundWindow, out var fallbackIsOpen, out var fallbackImeWindow))
+            {
+                return BuildSnapshotFromOpenStatus(
+                    isChineseLayout,
+                    fallbackIsOpen,
+                    imeName,
+                    layoutHex,
+                    threadId,
+                    focusHandle,
+                    $"default-ime-window-{fallbackImeWindow}-after-null-context",
+                    0.85);
+            }
+
             return CreateUnknownSnapshot(
-                reason: "probe-failed",
+                reason: "ime-context-missing",
                 confidence: 0,
                 rawStateAvailable: false,
                 imeName: imeName,
@@ -378,6 +388,103 @@ internal static class Program
             layoutHex: layoutHex,
             threadId: threadId,
             hwnd: FormatHandle(focusHandle));
+    }
+
+    private static ProbeSnapshot BuildSnapshotFromOpenStatus(
+        bool isChineseLayout,
+        bool isOpen,
+        string? imeName,
+        string layoutHex,
+        uint threadId,
+        IntPtr focusHandle,
+        string reasonPrefix,
+        double confidence)
+    {
+        if (isChineseLayout)
+        {
+            return new ProbeSnapshot(
+                State: isOpen ? "cn" : "en",
+                ImeName: imeName,
+                IsOpen: isOpen,
+                LayoutHex: layoutHex,
+                ThreadId: threadId,
+                Hwnd: FormatHandle(focusHandle),
+                Timestamp: DateTimeOffset.UtcNow,
+                Reason: isOpen ? $"{reasonPrefix}-open-chinese-layout" : $"{reasonPrefix}-closed-chinese-layout",
+                Confidence: confidence,
+                RawStateAvailable: true
+            );
+        }
+
+        if (!isOpen)
+        {
+            return new ProbeSnapshot(
+                State: "en",
+                ImeName: imeName,
+                IsOpen: isOpen,
+                LayoutHex: layoutHex,
+                ThreadId: threadId,
+                Hwnd: FormatHandle(focusHandle),
+                Timestamp: DateTimeOffset.UtcNow,
+                Reason: $"{reasonPrefix}-closed-non-chinese-layout",
+                Confidence: confidence,
+                RawStateAvailable: true
+            );
+        }
+
+        return CreateUnknownSnapshot(
+            reason: $"{reasonPrefix}-open-non-chinese-layout-conflict",
+            confidence: 0.25,
+            rawStateAvailable: true,
+            imeName: imeName,
+            isOpen: isOpen,
+            layoutHex: layoutHex,
+            threadId: threadId,
+            hwnd: FormatHandle(focusHandle));
+    }
+
+    private static bool TryGetOpenStatusFromDefaultImeWindow(
+        IntPtr focusHandle,
+        IntPtr foregroundWindow,
+        out bool isOpen,
+        out string? imeWindow)
+    {
+        isOpen = false;
+        imeWindow = null;
+
+        foreach (var ownerHandle in new[] { focusHandle, foregroundWindow })
+        {
+            if (ownerHandle == IntPtr.Zero)
+            {
+                continue;
+            }
+
+            var defaultImeWindow = NativeMethods.ImmGetDefaultIMEWnd(ownerHandle);
+            if (defaultImeWindow == IntPtr.Zero)
+            {
+                continue;
+            }
+
+            var sendResult = NativeMethods.SendMessageTimeoutW(
+                defaultImeWindow,
+                NativeMethods.WM_IME_CONTROL,
+                new UIntPtr(NativeMethods.IMC_GETOPENSTATUS),
+                IntPtr.Zero,
+                NativeMethods.SMTO_ABORTIFHUNG | NativeMethods.SMTO_BLOCK,
+                100,
+                out var openStatusResult);
+
+            if (sendResult == IntPtr.Zero)
+            {
+                continue;
+            }
+
+            isOpen = openStatusResult != IntPtr.Zero;
+            imeWindow = FormatHandle(defaultImeWindow);
+            return true;
+        }
+
+        return false;
     }
 
     private static string? GetImeDescription(IntPtr keyboardLayout)
@@ -558,8 +665,26 @@ internal static class Program
         [DllImport("user32.dll")]
         internal static extern IntPtr GetKeyboardLayout(uint idThread);
 
+        internal const uint WM_IME_CONTROL = 0x0283;
+        internal const uint IMC_GETOPENSTATUS = 0x0005;
+        internal const uint SMTO_ABORTIFHUNG = 0x0002;
+        internal const uint SMTO_BLOCK = 0x0001;
+
         [DllImport("imm32.dll")]
         internal static extern IntPtr ImmGetContext(IntPtr hWnd);
+
+        [DllImport("imm32.dll")]
+        internal static extern IntPtr ImmGetDefaultIMEWnd(IntPtr hWnd);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        internal static extern IntPtr SendMessageTimeoutW(
+            IntPtr hWnd,
+            uint msg,
+            UIntPtr wParam,
+            IntPtr lParam,
+            uint fuFlags,
+            uint uTimeout,
+            out IntPtr lpdwResult);
 
         [DllImport("imm32.dll")]
         [return: MarshalAs(UnmanagedType.Bool)]

@@ -31,6 +31,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - VSIX packaging now includes the composition root and top-level compiled output required for command registration
 - Extension tests now run through `@vscode/test-electron`, include the service suite, and pass under Xvfb
 - Native helper restarts now tear down broken child processes and validate the `hello` handshake per process
+- Native helper no longer treats persistent `unknown` snapshots as a startup failure and now probes the default IME window when `ImmGetContext` is unavailable in Electron-based editors
 - Helper integrity checks now fail closed when the `.sha256` sidecar is missing or mismatched
 - Helper `--once` smoke test now skips the `hello` handshake and validates the first state record
 - `WinImeWatcher` now exits when stdin closes during graceful shutdown
