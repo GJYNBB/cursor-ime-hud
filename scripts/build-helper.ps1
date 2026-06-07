@@ -30,7 +30,21 @@ if (-not (Test-Path $exePath)) {
   throw "Expected helper executable at $exePath after publish."
 }
 
-$hash = (Get-FileHash -Algorithm SHA256 -Path $exePath).Hash.ToLowerInvariant()
+$stream = [System.IO.File]::OpenRead($exePath)
+try {
+  $sha256 = [System.Security.Cryptography.SHA256]::Create()
+  try {
+    $hashBytes = $sha256.ComputeHash($stream)
+  }
+  finally {
+    $sha256.Dispose()
+  }
+}
+finally {
+  $stream.Dispose()
+}
+
+$hash = [System.BitConverter]::ToString($hashBytes).Replace("-", "").ToLowerInvariant()
 $hashPath = "$exePath.sha256"
 Set-Content -LiteralPath $hashPath -Value $hash -NoNewline -Encoding ascii
 
