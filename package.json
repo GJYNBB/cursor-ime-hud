@@ -3,7 +3,6 @@
   "displayName": "%extension.displayName%",
   "description": "%extension.description%",
   "version": "0.0.1",
-  "// publisher": "TODO: replace with your Marketplace publisher id from https://aka.ms/vscode-publishers before first release",
   "publisher": "chestnut-ch",
   "license": "MIT",
   "icon": "resources/icon.png",
@@ -37,7 +36,13 @@
     "README.en.md",
     "README.zh-CN.md",
     "CHANGELOG.md",
-    "LICENSE"
+    "LICENSE",
+    "ARCHITECTURE.md",
+    "CONTRIBUTING.md",
+    "docs/helper-protocol.md",
+    "SECURITY.md",
+    "SUPPORT.md",
+    "CODE_OF_CONDUCT.md"
   ],
   "engines": {
     "node": ">=24.0.0",
@@ -45,7 +50,7 @@
   },
   "categories": [
     "Other",
-    "Productivity"
+    "Visualization"
   ],
   "keywords": [
     "ime",
@@ -58,6 +63,14 @@
   "extensionKind": [
     "ui"
   ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": true
+    },
+    "virtualWorkspaces": {
+      "supported": true
+    }
+  },
   "activationEvents": [
     "onStartupFinished"
   ],

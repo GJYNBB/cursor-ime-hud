@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Support and troubleshooting
+    url: https://github.com/GJYNBB/cursor-ime-hud/blob/main/SUPPORT.md
+    about: Read supported platforms, diagnostics requirements, and troubleshooting guidance.
+  - name: Security policy
+    url: https://github.com/GJYNBB/cursor-ime-hud/blob/main/SECURITY.md
+    about: Report vulnerabilities privately instead of posting exploit details in public issues.

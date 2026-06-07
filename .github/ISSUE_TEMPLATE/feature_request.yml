@@ -1,0 +1,63 @@
+name: Feature request
+description: Suggest an improvement for Cursor IME HUD
+title: "[Feature]: "
+labels: [enhancement]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea. Cursor IME HUD intentionally shows IME state only: it does not read typed text, inspect file contents, read the clipboard, or automatically switch IMEs.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+      description: What workflow problem would this solve?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe the user-visible behavior you would like.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Have you tried settings, status bar fallback, diagnostics, or another extension?
+    validations:
+      required: false
+  - type: dropdown
+    id: platform
+    attributes:
+      label: Affected platform
+      options:
+        - Windows
+        - macOS
+        - Linux
+        - Remote/WSL/SSH
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: ime
+    attributes:
+      label: IME/language involved
+      placeholder: "Example: Microsoft Pinyin / Chinese"
+    validations:
+      required: false
+  - type: checkboxes
+    id: scope
+    attributes:
+      label: Scope check
+      description: Confirm the request stays within the project's privacy and behavior boundaries.
+      options:
+        - label: This request does not require reading typed text.
+          required: true
+        - label: This request does not require reading clipboard contents.
+          required: true
+        - label: This request does not require reading editor file contents.
+          required: true
+        - label: This request does not require automatically switching the user's IME.
+          required: true

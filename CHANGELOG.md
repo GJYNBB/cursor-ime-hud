@@ -19,6 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `prepublishOnly` guard that fails when the publisher is still the placeholder
 - `cursorImeHud.overlay.labelPreset` setting for built-in `中` / `英` and `ZH` / `EN` label styles
 - English and Simplified Chinese manifest localization for VS Code Settings UI and command titles
+- Security, support, and code of conduct documents for public project governance
+- GitHub issue templates and a pull request template for structured reports and reviews
+- Workspace Trust and virtual workspace capability metadata in the extension manifest
 
 ### Changed
 
@@ -27,6 +30,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   the unit suite without a Windows toolchain
 - `package.json` declares a `resources/screenshots/**/*` slot ready for
   future Marketplace imagery
+- Packaged VSIX contents now include README-linked architecture, protocol,
+  contribution, support, security, and conduct documents
+- Cleaned stale publisher placeholder metadata and replaced the screenshot TODO
+  with guidance to add only real Marketplace screenshots
 
 ### Fixed
 

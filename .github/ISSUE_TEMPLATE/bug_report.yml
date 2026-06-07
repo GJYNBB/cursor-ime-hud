@@ -1,0 +1,116 @@
+name: Bug report
+description: Report a reproducible Cursor IME HUD problem
+title: "[Bug]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Please run **Cursor IME HUD: Show Diagnostics** and include the requested environment details.
+
+        For security-sensitive reports, do not post exploit details publicly. Follow SECURITY.md instead.
+  - type: dropdown
+    id: app
+    attributes:
+      label: Editor
+      options:
+        - VS Code
+        - Cursor
+        - Other VS Code-compatible editor
+    validations:
+      required: true
+  - type: input
+    id: editor-version
+    attributes:
+      label: Editor version
+      description: Use Help/About or About Visual Studio Code / Cursor.
+      placeholder: "Example: VS Code 1.107.0 or Cursor 1.x"
+    validations:
+      required: true
+  - type: input
+    id: extension-version
+    attributes:
+      label: Cursor IME HUD version
+      placeholder: "Example: 0.0.1"
+    validations:
+      required: true
+  - type: dropdown
+    id: install-source
+    attributes:
+      label: Install source
+      options:
+        - VS Code Marketplace
+        - GitHub Release VSIX
+        - Local source build
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: windows-version
+    attributes:
+      label: Windows version and architecture
+      placeholder: "Example: Windows 11 24H2 x64"
+    validations:
+      required: true
+  - type: input
+    id: ime
+    attributes:
+      label: IME name and language
+      placeholder: "Example: Microsoft Pinyin / Chinese"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Reproduction steps
+      description: Describe the smallest reliable way to trigger the problem.
+      placeholder: |
+        1. Open ...
+        2. Switch IME to ...
+        3. Move caret to ...
+        4. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics output
+      description: "Paste the output from **Cursor IME HUD: Show Diagnostics**. Redact private paths or window titles if needed."
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: output-channel
+    attributes:
+      label: Output channel logs
+      description: Paste relevant lines from the **Cursor IME HUD** Output channel. Redact sensitive details.
+      render: text
+    validations:
+      required: false
+  - type: checkboxes
+    id: helper-files
+    attributes:
+      label: Native helper files
+      description: "If testing from source, confirm these files exist after `npm run build:helper` on Windows."
+      options:
+        - label: "`resources/bin/win-x64/WinImeWatcher.exe` exists"
+        - label: "`resources/bin/win-x64/WinImeWatcher.exe.sha256` exists"
+  - type: textarea
+    id: media
+    attributes:
+      label: Screenshot or GIF
+      description: Optional. Helpful for HUD placement/visibility issues. Do not include sensitive content.
+    validations:
+      required: false

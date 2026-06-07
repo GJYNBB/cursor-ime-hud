@@ -25,7 +25,7 @@ The extension is intentionally narrow in scope:
 
 ### Assets
 
-<!-- TODO: Add a screenshot of the HUD in cn and en modes. A real animated GIF is preferred but static PNGs are acceptable. Drop the file under resources/screenshots/ and reference it here; the marketplace metadata will pick it up automatically. -->
+Marketplace screenshots should use real captures from VS Code or Cursor on Windows. When available, place them under `resources/screenshots/` and reference them here. Do not use mock screenshots for release metadata.
 
 ## Requirements
 
@@ -166,6 +166,12 @@ The native helper uses Windows IMM32 APIs (`ImmGetOpenStatus`, `ImmGetDescriptio
   Multi-caret decoration composition requires careful handling of `revealRange`, selection, and overlap. It is tracked as future work to avoid surprising layout regressions in v1.
 - **What happens on empty lines?**
   The HUD renders on empty lines by anchoring a zero-width `TextEditorDecorationType` range at the caret. The status bar still updates with the latest state if a theme or layout makes the overlay hard to see.
+
+## Support and Security
+
+- Read [SUPPORT.md](SUPPORT.md) before filing usage or troubleshooting issues. Include `Cursor IME HUD: Show Diagnostics` output and relevant **Cursor IME HUD** Output channel logs.
+- Report security-sensitive issues through [SECURITY.md](SECURITY.md); do not paste exploit details or sensitive logs into public issues.
+- See [CONTRIBUTING.md](CONTRIBUTING.md) for contribution workflow and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for community expectations.
 
 ## Packaging
 

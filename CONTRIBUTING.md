@@ -33,7 +33,8 @@ The repository ships with `.vscode/launch.json` and `.vscode/tasks.json`, so pre
 
 - Target the `main` branch.
 - CI must pass. The pipeline (`.github/workflows/ci.yml`) runs `npm run lint`, `npm test`, and a helper smoke test on `windows-latest`.
-- Update `CHANGELOG.md` under the `## Unreleased` heading when behavior changes.
+- Update `CHANGELOG.md` under the `## [Unreleased]` heading when behavior changes.
+- When package metadata, README links, or the VSIX allowlist changes, run `npx @vscode/vsce ls --no-dependencies` and confirm the package contents are intentional.
 - One reviewer approval is required.
 - Commits are squash-merged. Use focused commits locally; the PR body should describe the change and reference any tracking issues.
 
@@ -75,7 +76,7 @@ See `ARCHITECTURE.md#data-flow` and `ARCHITECTURE.md#helper-ipc` for the full pi
 
 ## Reporting issues
 
-Use the issue templates under `.github/ISSUE_TEMPLATE/` (if present) and include:
+Use the issue templates under `.github/ISSUE_TEMPLATE/` and include:
 
 - VS Code version (`Code > About Visual Studio Code`)
 - Extension version (`Cursor IME HUD: Show Diagnostics`)
@@ -84,4 +85,4 @@ Use the issue templates under `.github/ISSUE_TEMPLATE/` (if present) and include
 
 ## Code of conduct
 
-Be respectful and assume good faith. We follow the [Contributor Covenant](https://www.contributor-covenant.org/) in spirit; the formal adoption is tracked in the issue tracker.
+Be respectful and assume good faith. See [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for the project conduct policy.

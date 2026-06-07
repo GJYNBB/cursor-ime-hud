@@ -22,6 +22,8 @@
 - [故障排查](#故障排查)
 - [从源码开发](#从源码开发)
 - [打包与发布](#打包与发布)
+- [相关文档](#相关文档)
+- [支持与安全](#支持与安全)
 - [贡献](#贡献)
 
 ## 功能特性
@@ -300,6 +302,13 @@ npx @vscode/vsce publish
 - [架构说明](ARCHITECTURE.md)
 - [Helper 协议](docs/helper-protocol.md)
 - [更新日志](CHANGELOG.md)
+- [贡献指南](CONTRIBUTING.md)
+
+## 支持与安全
+
+- 使用和排障请先阅读 [SUPPORT.md](SUPPORT.md)，并在反馈问题时附上 `Cursor IME HUD: Show Diagnostics` 输出和 **Cursor IME HUD** Output 日志。
+- 安全问题请按 [SECURITY.md](SECURITY.md) 报告，不要在公开 issue 中粘贴可利用细节或敏感日志。
+- 参与讨论和贡献时请遵守 [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md)。
 
 ## 贡献
 
