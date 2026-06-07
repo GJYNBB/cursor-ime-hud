@@ -1,61 +1,199 @@
 # Cursor IME HUD
 
-[简体中文](README.zh-CN.md) | English
+[English](README.en.md) | 简体中文
 
-> 中文说明：[README.zh-CN.md](README.zh-CN.md)。Cursor IME HUD 是一个 Windows 上的 VS Code 扩展，会在光标附近显示当前中文/英文输入状态，并同步到状态栏。
+[![Release](https://img.shields.io/github/v/release/GJYNBB/cursor-ime-hud?include_prereleases&label=release)](https://github.com/GJYNBB/cursor-ime-hud/releases)
+[![VS Code](https://img.shields.io/badge/VS%20Code-%5E1.107.0-007ACC)](https://code.visualstudio.com/)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-Cursor IME HUD is a VS Code extension for Windows that shows a lightweight semi-transparent IME label near the primary caret and mirrors the current state in the status bar.
+**Cursor IME HUD** 是一个面向 Windows 的 VS Code / Cursor 扩展：它会在主光标附近显示当前中文/英文输入状态，并同步到状态栏，帮助你在写代码、写文档、聊天和搜索时减少“明明想输入英文却打出中文”的误输入。
 
-The extension is intentionally narrow in scope:
+它的目标很克制：**只提示输入法状态，不自动切换输入法，不读取文件内容、剪贴板或实际输入文本。**
 
-- show the current input state near the caret
-- keep the signal low-noise and readable
-- fall back to the status bar and diagnostics when the state is unknown
-- avoid any automatic IME switching or semantic heuristics
+## 目录
 
-## Features
+- [功能特性](#功能特性)
+- [安装与试用](#安装与试用)
+- [快速开始](#快速开始)
+- [命令](#命令)
+- [配置项](#配置项)
+- [工作原理与隐私](#工作原理与隐私)
+- [已知限制](#已知限制)
+- [故障排查](#故障排查)
+- [从源码开发](#从源码开发)
+- [打包与发布](#打包与发布)
+- [贡献](#贡献)
 
-- Caret-adjacent HUD rendered with `TextEditorDecorationType`
-- Two stable labels by default: `中` and `英`
-- Conservative `unknown` handling:
-  - overlay hides when the state is unknown
-  - status bar shows `?`
-  - a short 500ms grace window can briefly keep the last stable state to reduce flicker
-- Windows native helper process for IME state detection
-- Status bar fallback with tooltip details
-- Diagnostics command with raw detector information and recent logs
+## 功能特性
 
-### Assets
+- **光标旁 HUD**：在当前主光标附近显示轻量、半透明的输入状态标签。
+- **默认 `中` / `英` 两种稳定标签**：直观区分中文输入模式和英文输入模式。
+- **状态栏同步显示**：即使 HUD 因未知状态或编辑器失焦而隐藏，状态栏仍会保留提示。
+- **低噪声 unknown 处理**：探测不到可靠状态时隐藏 HUD，并在状态栏显示 `?`。
+- **500ms 稳态宽限窗口**：降低 Windows IME 状态瞬时抖动造成的闪烁。
+- **Windows native helper 探测**：通过独立 helper 读取前台窗口 IME 状态，扩展侧通过 JSONL 协议消费状态。
+- **诊断命令**：内置 `Show Diagnostics`，便于定位 helper、协议、状态解析和生命周期问题。
+- **不自动切换输入法**：只做显示，不改变用户的输入法和键盘布局。
 
-<!-- TODO: Add a screenshot of the HUD in cn and en modes. A real animated GIF is preferred but static PNGs are acceptable. Drop the file under resources/screenshots/ and reference it here; the marketplace metadata will pick it up automatically. -->
+## 安装与试用
 
-## Requirements
+当前建议先通过 GitHub Release 下载 VSIX 测试包：
 
-### To use the extension
+- [下载 cursor-ime-hud-0.0.1.vsix](https://github.com/GJYNBB/cursor-ime-hud/releases/download/v0.0.1/cursor-ime-hud-0.0.1.vsix)
 
-- Windows 10 or Windows 11
+在 Windows 上安装：
+
+```powershell
+code --install-extension .\cursor-ime-hud-0.0.1.vsix
+```
+
+如果你使用 Cursor，也可以在扩展页面选择 **Install from VSIX...**，然后选择下载的 `.vsix` 文件。
+
+> VS Code Marketplace 发布流程会在测试稳定后继续推进。当前 GitHub Release 包更适合先行试用和反馈。
+
+## 快速开始
+
+1. 安装 VSIX。
+2. 在 VS Code / Cursor 中打开任意文本文件。
+3. 将光标放到可编辑文本区域。
+4. 在 Windows 中文输入法中切换中文 / 英文输入状态。
+5. 观察光标附近的 `中` / `英` HUD，以及状态栏中的同步提示。
+
+如果没有看到 HUD，请先运行命令：
+
+```text
+Cursor IME HUD: Show Diagnostics
+```
+
+并查看 VS Code Output 面板里的 **Cursor IME HUD** 输出通道。
+
+## 命令
+
+| 命令 | 说明 |
+| --- | --- |
+| `Cursor IME HUD: Toggle Overlay` | 开启或关闭光标旁 HUD。 |
+| `Cursor IME HUD: Refresh IME State` | 主动刷新一次 IME 状态。 |
+| `Cursor IME HUD: Show Diagnostics` | 显示当前探测器、快照、生命周期和最近日志。 |
+
+## 配置项
+
+| 设置 | 默认值 | 说明 |
+| --- | --- | --- |
+| `cursorImeHud.overlay.enabled` | `true` | 是否启用光标旁 HUD。 |
+| `cursorImeHud.overlay.cnLabel` | `中` | 中文输入状态显示标签。 |
+| `cursorImeHud.overlay.enLabel` | `英` | 英文输入状态显示标签。 |
+| `cursorImeHud.overlay.opacity` | `0.78` | HUD 背景透明度，范围 `0.15` 到 `1`。 |
+| `cursorImeHud.overlay.mode` | `text` | HUD 渲染模式；`text+icon` 当前为预留模式，表现与 `text` 相同。 |
+| `cursorImeHud.statusBar.enabled` | `true` | 是否在状态栏显示输入状态。 |
+| `cursorImeHud.overlay.hideWhenEditorUnfocused` | `true` | VS Code 窗口失焦时是否隐藏 HUD。 |
+| `cursorImeHud.overlay.offsetX` | `6` | HUD 横向偏移。 |
+| `cursorImeHud.overlay.offsetY` | `0` | HUD 纵向偏移。 |
+
+## 工作原理与隐私
+
+扩展由两部分组成：
+
+1. **VS Code 扩展侧**：负责命令、配置、状态栏、HUD 渲染、诊断输出和 helper 生命周期管理。
+2. **Windows native helper**：负责读取前台窗口 IME 状态，并通过 stdio 发送 line-delimited JSON 消息。
+
+helper 主要使用 Windows IMM32 API（例如 `ImmGetOpenStatus`、`ImmGetDescription`）和 `GetKeyboardLayout`，识别中文 IME 的 Win32 primary language id `0x0004`。协议细节见 [docs/helper-protocol.md](docs/helper-protocol.md)，整体架构见 [ARCHITECTURE.md](ARCHITECTURE.md)。
+
+隐私边界：
+
+- 不读取文件内容；
+- 不读取剪贴板；
+- 不读取实际输入文本；
+- 不记录你输入了什么；
+- helper 只检查前台窗口的 IME 状态。
+
+打包产物中包含：
+
+```text
+resources/bin/win-x64/WinImeWatcher.exe
+resources/bin/win-x64/WinImeWatcher.exe.sha256
+```
+
+`.sha256` sidecar 用于运行时完整性校验。如果二进制与 sidecar 不匹配，扩展会禁用 native helper 并回退到 sample detector。
+
+## 已知限制
+
+- 目前仅支持 Windows。
+- 当前只打包 `win-x64` native helper。
+- 当前 native helper 只检测中文 IME；日语、韩语和其他 CJK 输入法可能被报告为 `en` 或 `unknown`。
+- v1 只渲染主光标，不支持多光标分别显示。
+- 空行上不会显示光标旁 HUD，但状态栏仍会显示状态。
+- `text+icon` 目前只是预留模式，还没有真正的图标渲染。
+- helper 是 self-contained 单文件可执行程序，因此 VSIX 体积会比纯 TypeScript 扩展更大。
+
+## 故障排查
+
+### HUD 不显示
+
+1. 确认系统是 Windows 10 / Windows 11。
+2. 确认 VS Code 版本满足 `^1.107.0`。
+3. 打开 **Output** 面板，选择 **Cursor IME HUD** 输出通道。
+4. 运行 `Cursor IME HUD: Show Diagnostics`。
+5. 检查 VSIX 或源码目录中是否存在：
+   - `resources/bin/win-x64/WinImeWatcher.exe`
+   - `resources/bin/win-x64/WinImeWatcher.exe.sha256`
+
+### 状态栏一直显示 `?`
+
+可能原因：
+
+- 当前窗口不是可靠的中文 IME 上下文；
+- 正在使用非中文 IME；
+- helper 暂时无法读取前台窗口状态；
+- helper 启动失败、退出或完整性校验失败。
+
+可以先运行：
+
+```text
+Cursor IME HUD: Refresh IME State
+```
+
+如果仍然无法恢复，请把 Diagnostics 输出和 Output 日志带到 [Issues](https://github.com/GJYNBB/cursor-ime-hud/issues) 反馈。
+
+### 扩展激活失败
+
+- 检查 VS Code 版本是否满足 `^1.107.0`。
+- 打开扩展页查看激活错误。
+- 打开 Output 面板查看完整堆栈。
+- 如果能稳定复现，请提交 issue，并附上环境信息、日志和复现步骤。
+
+## 从源码开发
+
+### 环境要求
+
+- Windows 10 / Windows 11
 - VS Code `^1.107.0`
-
-### To build or debug from source
-
 - Node.js 24+
 - npm 11+
 - .NET 8 SDK
+- PowerShell 7+ 或 Windows PowerShell
 
-`.NET 8 SDK` is only required when you build the bundled Windows helper from source. It is not required to install the packaged VSIX.
+`.NET 8 SDK` 只在从源码构建 native helper 时需要。安装已经打包好的 VSIX 不需要额外安装 .NET。
 
-## Development
+### 本地开发
 
 ```powershell
 npm install
 npm run compile
 npm run build:helper
+npm run lint
 ```
 
-## Debugging
+`npm run build:helper` 会生成：
 
-1. Open this repository in VS Code.
-2. Run:
+```text
+resources/bin/win-x64/WinImeWatcher.exe
+resources/bin/win-x64/WinImeWatcher.exe.sha256
+```
+
+### 调试扩展
+
+1. 用 VS Code 打开仓库。
+2. 运行：
 
    ```powershell
    npm install
@@ -63,177 +201,121 @@ npm run build:helper
    npm run build:helper
    ```
 
-3. Press `F5` and choose `Run Cursor IME HUD`.
-4. In the Extension Development Host, open a text file and switch the Windows IME between Chinese and English input.
+3. 按 `F5`，选择 `Run Cursor IME HUD`。
+4. 在 Extension Development Host 中打开文本文件并切换中文 / 英文输入状态。
 
-The repository already includes `.vscode/launch.json` and `.vscode/tasks.json` so the helper build and TypeScript watch flow are ready for local debugging.
+仓库已经包含 `.vscode/launch.json` 和 `.vscode/tasks.json`，方便本地调试 helper 构建和 TypeScript watch 流程。
 
-## Commands
-
-- `Cursor IME HUD: Toggle Overlay`
-- `Cursor IME HUD: Refresh IME State`
-- `Cursor IME HUD: Show Diagnostics`
-
-## Settings
-
-| Setting | Default | Notes |
-| --- | --- | --- |
-| `cursorImeHud.overlay.enabled` | `true` | Enables the caret-adjacent HUD. |
-| `cursorImeHud.overlay.cnLabel` | `中` | Label used for Chinese input mode. |
-| `cursorImeHud.overlay.enLabel` | `英` | Label used for English input mode. |
-| `cursorImeHud.overlay.opacity` | `0.78` | Background opacity for the overlay. |
-| `cursorImeHud.overlay.mode` | `text` | `text+icon` is reserved for future work and currently behaves the same as `text`. |
-| `cursorImeHud.statusBar.enabled` | `true` | Shows the current state in the status bar. |
-| `cursorImeHud.overlay.hideWhenEditorUnfocused` | `true` | Hides the overlay when the VS Code window loses focus. |
-| `cursorImeHud.overlay.offsetX` | `6` | Horizontal offset for the overlay. |
-| `cursorImeHud.overlay.offsetY` | `0` | Vertical offset for the overlay. |
-
-### Configuration deep-dive
-
-- **500ms grace period.** When a snapshot reports `unknown`, the controller keeps the last stable `cn` or `en` state for up to 500ms before falling back to `unknown`. This avoids flicker when Windows briefly drops IME signals (e.g. when a context menu opens). The grace window resets on every fresh `cn`/`en` snapshot.
-- **`overlay.opacity` (0.15 - 1.0).** The value is a multiplier on the background alpha used by `TextEditorDecorationType`. Values below `0.15` may become hard to see; values above `1.0` are clamped. The default `0.78` is tuned for typical light and dark themes.
-- **`overlay.mode = "text+icon"`.** Reserved for a future dual-render mode (label plus a tiny icon glyph). In v1 it behaves identically to `"text"`. The setting is exposed so user `settings.json` does not need to change when the icon path lands.
-- **`overlay.hideWhenEditorUnfocused`.** When `true` (default), the overlay is cleared whenever the active editor loses focus, the workbench is hidden, or the window is minimized. The status bar continues to reflect the latest state. Set to `false` if you want the HUD to remain visible across window blur (rarely useful).
-
-## Validation
-
-### Automated
+### 测试
 
 ```powershell
 npm test
 ```
 
-This runs:
+测试流程包括：
 
-- TypeScript compilation
-- helper build
-- extension smoke tests
-- focused behavior tests for unknown/fallback, render caching, helper parsing, and detector fallback
-- helper `--once` protocol smoke test
+- TypeScript 编译；
+- native helper 构建；
+- helper `--once` 协议 smoke test；
+- 扩展行为测试；
+- unknown / fallback / render cache / helper parsing / detector fallback 等重点路径测试。
 
-### Manual
+在没有 Windows helper 构建环境的机器上，可以先运行：
 
-1. Press `F5` to launch the Extension Development Host.
-2. Open a text editor and move the primary caret.
-3. Switch the Windows IME state.
-4. Verify:
-   - the overlay follows the caret without obvious clear/repaint flicker
-   - `unknown` hides the overlay and shows `?` in the status bar
-   - `Show Diagnostics` reports the detected state, displayed state, reason, and recent logs
+```powershell
+npm run compile
+npm run lint
+npm run test:unit
+```
 
-## Known Limitations
+## 打包与发布
 
-- Windows only, currently `win-x64` only
-- Only the primary caret is rendered in v1
-- Empty lines do not render the caret HUD; the status bar remains available
-- The native helper is conservative and can return `unknown` when Windows does not expose enough reliable IME signals
-- `text+icon` is not a distinct rendering mode yet
-- The bundled helper is a self-contained single-file executable, so package size is still relatively large
-
-### Language support
-
-The native helper currently detects Chinese IME only (Win32 primary language id `0x0004`). Japanese (`0x0011`), Korean (`0x0012`), and other CJK IMEs will be reported as `en` or `unknown`. Generalizing the detector to additional primary language ids and to non-Chinese input methods is tracked as future work; see `docs/helper-protocol.md` for the wire format and `ARCHITECTURE.md` for the detector extension points.
-
-## How it works
-
-The native helper uses Windows IMM32 APIs (`ImmGetOpenStatus`, `ImmGetDescription`) and `GetKeyboardLayout` to detect the Chinese primary language id `0x0004` for the foreground window. It streams state, log, and snapshot messages to the extension over a line-delimited JSON protocol on stdio (UTF-8, max 64KB per line, 1MB rolling buffer) - see `docs/helper-protocol.md` for the full wire format. The extension parses each line via `src/detector/helperProtocol.ts` and forwards the result to a `ImeDetector` chain (`SampleOrNativeDetector`) that prefers the native helper and falls back to the in-process `SampleImeDetector` on macOS/Linux or if the helper is unavailable. The helper integrity check reads the generated `resources/bin/win-x64/WinImeWatcher.exe.sha256` sidecar. The extension never reads file contents, the clipboard, or typed text; the helper only inspects IME state for the foreground window.
-
-## Troubleshooting
-
-- **HUD never appears.**
-  - Open the **Output** channel and select **Cursor IME HUD**. Look for `hello` handshake failures, JSON parse errors, or helper exit events.
-  - Run the **Cursor IME HUD: Show Diagnostics** command. It prints the current detector source, lifecycle phase, last snapshot, and the rolling log buffer.
-  - Verify `resources/bin/win-x64/WinImeWatcher.exe` exists and that the adjacent `resources/bin/win-x64/WinImeWatcher.exe.sha256` sidecar matches. `npm run build:helper` regenerates both files on Windows. A mismatch disables the helper and the extension falls back to the sample detector.
-  - On macOS and Linux, the native helper cannot run. The extension automatically falls back to `SampleImeDetector`, which only emits synthetic `cn`/`en` toggles for end-to-end testing. This is expected.
-- **Status bar shows `?` persistently.**
-  - The foreground window is non-Chinese (e.g. Explorer, a browser, a non-IME-aware app) - the helper correctly reports `unknown` in that case.
-  - The active IME is not Chinese (Japanese, Korean, etc.) - see [Language support](#language-support) above.
-  - The helper process has crashed or stalled. Run **Cursor IME HUD: Refresh IME State** to force a re-probe; if the status bar recovers, the helper was alive but the foreground window was unresponsive.
-- **Extension fails to activate.**
-  - Check the **Output** channel for the host extension log. Activation requires `package.json` `engines.vscode` `^1.107.0`.
-  - If activation throws synchronously, VS Code surfaces the error in the Extensions view. Open an issue with the full stack trace from the Output channel.
-
-## Frequently Asked Questions
-
-- **Does the helper require administrator privileges?**
-  No. The helper only uses user-mode IMM32 APIs (`ImmGetOpenStatus`, `ImmGetDescription`) and `GetKeyboardLayout`. It does not require elevation, UAC consent, or a driver.
-- **What does the Diagnostics command show?**
-  It shows the current `ImeSnapshot` (state, timestamp, IME name, layout hex, hwnd, reason, confidence), the active detector source (native-helper or sample), the controller lifecycle phase, and the last ~50 log entries.
-- **Can I replace `WinImeWatcher.exe` with my own build?**
-  Yes, but the integrity check compares the file against the adjacent `WinImeWatcher.exe.sha256` sidecar. A mismatch disables the helper and you will see `helper integrity check failed` in the Output channel. Rebuild with `npm run build:helper` so the sidecar is regenerated, or update the sidecar after you intentionally replace the binary.
-- **Why is only the primary caret rendered?**
-  Multi-caret decoration composition requires careful handling of `revealRange`, selection, and overlap. It is tracked as future work to avoid surprising layout regressions in v1.
-- **What happens on empty lines?**
-  The HUD does not render on empty lines because there is no visible character position to anchor a `TextEditorDecorationType` against. The status bar still updates with the latest state, so the signal is never lost.
-
-## Packaging
+### 本地打包 VSIX
 
 ```powershell
 npm run package:vsix
 ```
 
-This produces a local VSIX such as:
+这会生成类似下面的文件：
 
 ```text
 cursor-ime-hud-0.0.1.vsix
 ```
 
-To install the packaged extension locally:
+本地安装：
 
 ```powershell
 code --install-extension .\cursor-ime-hud-0.0.1.vsix
 ```
 
-## Marketplace Publishing
+### GitHub Release 打包
 
-Before publishing, make sure `package.json` contains your Marketplace publisher id:
+Release workflow 会在 `windows-latest` runner 上执行完整构建流程：
 
-- `publisher`: `chestnut-ch`
+1. 安装依赖；
+2. 运行 publisher pre-flight 检查；
+3. 编译 TypeScript；
+4. 构建 native helper 和 `.sha256` sidecar；
+5. 打包 VSIX；
+6. 上传 VSIX artifact / release asset。
 
-The repository metadata already points to the real GitHub repository:
+### VS Code Marketplace 发布
 
-- Repository: `https://github.com/GJYNBB/cursor-ime-hud`
-- Issues: `https://github.com/GJYNBB/cursor-ime-hud/issues`
+当前 Marketplace publisher id：
 
-Login and publish with `vsce`:
+```text
+chestnut-ch
+```
+
+手动发布：
 
 ```powershell
 npx @vscode/vsce login chestnut-ch
 npx @vscode/vsce publish
 ```
 
-Version bump shortcuts:
+建议先通过 GitHub Release 下载 VSIX 并完成手动测试，确认无误后再发布到 VS Code Marketplace。
 
-```powershell
-npx @vscode/vsce publish patch
-npx @vscode/vsce publish minor
-npx @vscode/vsce publish major
-```
-
-Use:
-
-- `patch` for fixes and compatibility work
-- `minor` for backward-compatible feature additions
-- `major` for breaking changes
-
-## Project Structure
+## 项目结构
 
 ```text
 .
-├─ native/WinImeWatcher/
-├─ resources/
-│  ├─ bin/win-x64/
-│  └─ icon.png
-├─ scripts/
-├─ src/
-│  ├─ commands/
-│  ├─ controller/
-│  ├─ detector/
-│  ├─ model/
-│  ├─ presenters/
-│  ├─ renderer/
-│  ├─ services/
-│  └─ test/
-├─ package.json
-└─ README.md
+├─ native/WinImeWatcher/      # Windows native helper
+├─ resources/                 # 图标、helper 二进制和截图资源
+├─ scripts/                   # 构建、打包、校验脚本
+├─ src/                       # VS Code 扩展源码
+├─ docs/helper-protocol.md    # helper JSONL 协议说明
+├─ ARCHITECTURE.md            # 架构说明
+├─ CHANGELOG.md               # 更新日志
+├─ README.md                  # 中文主页
+└─ README.en.md               # English README
 ```
+
+## 相关文档
+
+- [English README](README.en.md)
+- [架构说明](ARCHITECTURE.md)
+- [Helper 协议](docs/helper-protocol.md)
+- [更新日志](CHANGELOG.md)
+
+## 贡献
+
+欢迎提交 issue 和 pull request。建议在提交前先运行：
+
+```powershell
+npm run compile
+npm run lint
+```
+
+如果改动涉及 native helper，请在 Windows 环境运行：
+
+```powershell
+npm run build:helper
+npm test
+```
+
+更多本地开发和发布说明见 [CONTRIBUTING.md](CONTRIBUTING.md)。
+
+## License
+
+本项目使用 [MIT License](LICENSE)。

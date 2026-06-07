@@ -33,6 +33,7 @@
     "resources/bin/win-x64/WinImeWatcher.exe.sha256",
     "resources/screenshots/**/*",
     "README.md",
+    "README.en.md",
     "README.zh-CN.md",
     "CHANGELOG.md",
     "LICENSE"
