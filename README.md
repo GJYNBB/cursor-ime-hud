@@ -1,5 +1,9 @@
 # Cursor IME HUD
 
+[简体中文](README.zh-CN.md) | English
+
+> 中文说明：[README.zh-CN.md](README.zh-CN.md)。Cursor IME HUD 是一个 Windows 上的 VS Code 扩展，会在光标附近显示当前中文/英文输入状态，并同步到状态栏。
+
 Cursor IME HUD is a VS Code extension for Windows that shows a lightweight semi-transparent IME label near the primary caret and mirrors the current state in the status bar.
 
 The extension is intentionally narrow in scope:
