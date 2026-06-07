@@ -1,5 +1,4 @@
 #!/usr/bin/env node
-/* eslint-disable no-console */
 /**
  * Guard script run by `prepublishOnly` and the release workflow.
  *

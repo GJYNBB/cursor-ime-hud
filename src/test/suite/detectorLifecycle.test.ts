@@ -157,12 +157,7 @@ suite("SampleOrNativeDetector", () => {
 
   test("dispose-during-start releases the native detector and never activates the fallback", async () => {
     const failingDetector = new FailingNativeDetector();
-    let detector: SampleOrNativeDetector | undefined;
-
-    // Start a wrapper, dispose it immediately, then await the start
-    // promise. The wrapper must not throw, must not call `start` on
-    // the failed native detector, and must not activate the fallback.
-    detector = new SampleOrNativeDetector("helper.exe", () => {
+    const detector = new SampleOrNativeDetector("helper.exe", () => {
       // Replace the factory so the second invocation (fallback) never
       // resolves and we can assert it was never called.
       return failingDetector;

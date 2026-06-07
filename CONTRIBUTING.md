@@ -19,13 +19,13 @@ A C++ toolchain is **not** required: the helper is a single-file .NET 8 self-con
 ## Development setup
 
 ```powershell
-git clone https://github.com/GJYNBB/cursor-ime-hud
-cd cursor-ime-hud
 npm install
 npm run compile
 npm run build:helper
 npm test
 ```
+
+`npm run build:helper` publishes `resources/bin/win-x64/WinImeWatcher.exe` and its adjacent `WinImeWatcher.exe.sha256` sidecar, so you do not need to hand-copy any hash into source files.
 
 The repository ships with `.vscode/launch.json` and `.vscode/tasks.json`, so pressing `F5` in VS Code launches the Extension Development Host with the helper build wired in.
 

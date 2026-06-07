@@ -30,6 +30,7 @@
     "out/services/**/*.js",
     "resources/icon.png",
     "resources/bin/win-x64/WinImeWatcher.exe",
+    "resources/bin/win-x64/WinImeWatcher.exe.sha256",
     "resources/screenshots/**/*",
     "README.md",
     "CHANGELOG.md",

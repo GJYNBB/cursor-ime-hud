@@ -1,17 +1,15 @@
 #!/usr/bin/env node
-/* eslint-disable no-console */
 /**
- * Print the SHA-256 of the bundled WinImeWatcher.exe so the maintainer
- * can paste it into `src/detector/NativeHelperImeDetector.ts`
- * (EXPECTED_HELPER_SHA256).
+ * Print the SHA-256 for the bundled WinImeWatcher.exe.
+ *
+ * Prefer the generated `.sha256` sidecar when it exists; otherwise fall back
+ * to computing the hash from the executable itself.
  *
  * Usage:
  *   1. Build the helper: `npm run build:helper`  (Windows-only, needs .NET 8)
  *   2. From the repo root: `node scripts/hash-helper.js`
- *   3. Copy the printed hash into NativeHelperImeDetector.ts.
- *
- * Cross-platform: works on macOS/Linux too, so you can verify a hash on
- * a Windows-built binary without rebuilding.
+ *   3. Compare the printed hash with the generated sidecar or use it for
+ *      verification in a release pipeline.
  */
 
 "use strict";
@@ -25,6 +23,24 @@ const candidates = [
   path.resolve(__dirname, "..", "native", "WinImeWatcher", "bin", "Release", "net8.0", "win-x64", "publish", "WinImeWatcher.exe"),
   path.resolve(__dirname, "..", "native", "WinImeWatcher", "bin", "Release", "net8.0", "win-x64", "WinImeWatcher.exe")
 ];
+
+const sidecarPath = candidates.map((exePath) => `${exePath}.sha256`).find((p) => fs.existsSync(p));
+if (sidecarPath) {
+  const hash = fs.readFileSync(sidecarPath, "utf8").trim().toLowerCase();
+  if (!/^[a-f0-9]{64}$/.test(hash)) {
+    console.error(`[hash-helper] Invalid SHA-256 sidecar: ${sidecarPath}`);
+    process.exit(1);
+  }
+
+  const exePath = sidecarPath.slice(0, -7);
+  if (!fs.existsSync(exePath)) {
+    console.error(`[hash-helper] Found sidecar but not executable: ${exePath}`);
+    process.exit(1);
+  }
+
+  console.log(hash + "  " + exePath);
+  process.exit(0);
+}
 
 const existing = candidates.filter((p) => fs.existsSync(p));
 if (existing.length === 0) {

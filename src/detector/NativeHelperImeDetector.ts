@@ -12,7 +12,7 @@ const MAX_LINE_BYTES = 64 * 1024;
 const MAX_BUFFER_BYTES = 1024 * 1024;
 const MAX_RESTART_ATTEMPTS = 10;
 const RESTART_JITTER_RATIO = 0.2;
-const EXPECTED_HELPER_SHA256 = "<TODO: set after first build>";
+// Helper integrity is enforced via the generated .sha256 sidecar.
 const SHUTDOWN_TIMEOUT_MS = 2000;
 
 type HelperLifecycleState = "idle" | "starting" | "running" | "stopping" | "disposed";
@@ -435,14 +435,22 @@ export class NativeHelperImeDetector implements ImeDetector {
   }
 
   private verifyHelperIntegrity(helperPath: string): void {
-    if (EXPECTED_HELPER_SHA256.startsWith("<")) {
-      this.emitLog("warn", "IME helper SHA-256 is not pinned; skipping integrity check.", { helperPath });
+    const hashPath = `${helperPath}.sha256`;
+    if (!fs.existsSync(hashPath)) {
+      this.emitLog("warn", "IME helper hash sidecar is missing; skipping integrity check.", {
+        helperPath,
+        hashPath
+      });
       return;
+    }
+
+    const expected = fs.readFileSync(hashPath, "utf8").trim().toLowerCase();
+    if (!/^[a-f0-9]{64}$/.test(expected)) {
+      throw new Error(`IME helper hash sidecar is invalid: ${hashPath}`);
     }
 
     const fileBuffer = fs.readFileSync(helperPath);
     const actual = crypto.createHash("sha256").update(fileBuffer).digest("hex").toLowerCase();
-    const expected = EXPECTED_HELPER_SHA256.toLowerCase();
     if (actual !== expected) {
       throw new Error(
         `IME helper SHA-256 mismatch. expected=${expected} actual=${actual} path=${helperPath}`

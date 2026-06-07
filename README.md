@@ -132,14 +132,14 @@ The native helper currently detects Chinese IME only (Win32 primary language id 
 
 ## How it works
 
-The native helper uses Windows IMM32 APIs (`ImmGetOpenStatus`, `ImmGetDescription`) and `GetKeyboardLayout` to detect the Chinese primary language id `0x0004` for the foreground window. It streams state, log, and snapshot messages to the extension over a line-delimited JSON protocol on stdio (UTF-8, max 64KB per line, 1MB rolling buffer) - see `docs/helper-protocol.md` for the full wire format. The extension parses each line via `src/detector/helperProtocol.ts` and forwards the result to a `ImeDetector` chain (`SampleOrNativeDetector`) that prefers the native helper and falls back to the in-process `SampleImeDetector` on macOS/Linux or if the helper is unavailable. The extension never reads file contents, the clipboard, or typed text; the helper only inspects IME state for the foreground window.
+The native helper uses Windows IMM32 APIs (`ImmGetOpenStatus`, `ImmGetDescription`) and `GetKeyboardLayout` to detect the Chinese primary language id `0x0004` for the foreground window. It streams state, log, and snapshot messages to the extension over a line-delimited JSON protocol on stdio (UTF-8, max 64KB per line, 1MB rolling buffer) - see `docs/helper-protocol.md` for the full wire format. The extension parses each line via `src/detector/helperProtocol.ts` and forwards the result to a `ImeDetector` chain (`SampleOrNativeDetector`) that prefers the native helper and falls back to the in-process `SampleImeDetector` on macOS/Linux or if the helper is unavailable. The helper integrity check reads the generated `resources/bin/win-x64/WinImeWatcher.exe.sha256` sidecar. The extension never reads file contents, the clipboard, or typed text; the helper only inspects IME state for the foreground window.
 
 ## Troubleshooting
 
 - **HUD never appears.**
   - Open the **Output** channel and select **Cursor IME HUD**. Look for `hello` handshake failures, JSON parse errors, or helper exit events.
   - Run the **Cursor IME HUD: Show Diagnostics** command. It prints the current detector source, lifecycle phase, last snapshot, and the rolling log buffer.
-  - Verify `resources/bin/win-x64/WinImeWatcher.exe` exists and matches the SHA-256 recorded in `native/WinImeWatcher/WinImeWatcher.csproj` / `package.json` `cursorImeHud.helper.sha256`. A mismatch disables the helper and the extension falls back to the sample detector.
+  - Verify `resources/bin/win-x64/WinImeWatcher.exe` exists and that the adjacent `resources/bin/win-x64/WinImeWatcher.exe.sha256` sidecar matches. `npm run build:helper` regenerates both files on Windows. A mismatch disables the helper and the extension falls back to the sample detector.
   - On macOS and Linux, the native helper cannot run. The extension automatically falls back to `SampleImeDetector`, which only emits synthetic `cn`/`en` toggles for end-to-end testing. This is expected.
 - **Status bar shows `?` persistently.**
   - The foreground window is non-Chinese (e.g. Explorer, a browser, a non-IME-aware app) - the helper correctly reports `unknown` in that case.
@@ -156,7 +156,7 @@ The native helper uses Windows IMM32 APIs (`ImmGetOpenStatus`, `ImmGetDescriptio
 - **What does the Diagnostics command show?**
   It shows the current `ImeSnapshot` (state, timestamp, IME name, layout hex, hwnd, reason, confidence), the active detector source (native-helper or sample), the controller lifecycle phase, and the last ~50 log entries.
 - **Can I replace `WinImeWatcher.exe` with my own build?**
-  Yes, but the integrity check compares the file SHA-256 against the value embedded in `package.json`. A mismatch disables the helper and you will see `helper integrity check failed` in the Output channel. Rebuild with `npm run build:helper` so the SHA is regenerated, or update the expected hash in `package.json`.
+  Yes, but the integrity check compares the file against the adjacent `WinImeWatcher.exe.sha256` sidecar. A mismatch disables the helper and you will see `helper integrity check failed` in the Output channel. Rebuild with `npm run build:helper` so the sidecar is regenerated, or update the sidecar after you intentionally replace the binary.
 - **Why is only the primary caret rendered?**
   Multi-caret decoration composition requires careful handling of `revealRange`, selection, and overlap. It is tracked as future work to avoid surprising layout regressions in v1.
 - **What happens on empty lines?**

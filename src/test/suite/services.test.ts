@@ -11,7 +11,7 @@ import { SettingsService } from "../../services/SettingsService";
  * rest of the test suite is unaffected.
  */
 suite("Services", () => {
-  let originalValues: Record<string, unknown> = {};
+  const originalValues: Record<string, unknown> = {};
 
   async function readSetting<T>(key: string): Promise<T | undefined> {
     const configuration = vscode.workspace.getConfiguration("cursorImeHud");
