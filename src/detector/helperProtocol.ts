@@ -39,14 +39,13 @@ export function parseSnapshotLine(line: string): ImeSnapshot | undefined {
     return undefined;
   }
 
-  const state =
-    parsed.state === "cn" || parsed.state === "en" || parsed.state === "unknown"
-      ? parsed.state
-      : "unknown";
+  if (parsed.state !== "cn" && parsed.state !== "en" && parsed.state !== "unknown") {
+    return undefined;
+  }
 
   return {
     type: "state",
-    state,
+    state: parsed.state,
     timestamp: typeof parsed.timestamp === "string" ? parsed.timestamp : new Date().toISOString(),
     source: "native-helper",
     imeName: typeof parsed.imeName === "string" ? parsed.imeName : undefined,

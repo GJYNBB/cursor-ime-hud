@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0] - 2026-06-08
+
+### Added
+
+- Added a Chinese-searchable Marketplace display name and Chinese keywords for input method, IME state, and caret HUD discovery.
+
+### Changed
+
+- Promoted the Rust-based implementation to the first stable `1.0.0` release.
+- Tightened helper protocol parsing, lifecycle shutdown behavior, and cross-platform integration-test handling for the stable release.
+
 ## [0.0.3] - 2026-06-08
 
 ### Changed
@@ -72,7 +83,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Extension smoke tests, position strategy tests, and helper smoke test
 - Marketplace packaging scripts and documentation
 
-[Unreleased]: https://github.com/GJYNBB/cursor-ime-hud/compare/v0.0.3...HEAD
+[Unreleased]: https://github.com/GJYNBB/cursor-ime-hud/compare/v1.0.0...HEAD
+[1.0.0]: https://github.com/GJYNBB/cursor-ime-hud/compare/v0.0.3...v1.0.0
 [0.0.3]: https://github.com/GJYNBB/cursor-ime-hud/compare/v0.0.2...v0.0.3
 [0.0.2]: https://github.com/GJYNBB/cursor-ime-hud/releases/tag/v0.0.2
 [0.0.1]: https://github.com/GJYNBB/cursor-ime-hud/releases/tag/v0.0.1

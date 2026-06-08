@@ -1,6 +1,6 @@
 {
-  "extension.displayName": "Cursor IME HUD",
-  "extension.description": "面向 Windows 的 VS Code/Cursor 光标旁半透明中英文输入法状态提示。",
+  "extension.displayName": "Cursor IME HUD（输入法状态提示）",
+  "extension.description": "面向 Windows 的 VS Code/Cursor 光标旁半透明中英文输入法状态提示，帮助识别中文/英文输入状态。",
   "commands.category": "Cursor IME HUD",
   "commands.toggleOverlay.title": "开关光标旁 HUD",
   "commands.refreshImeState.title": "刷新输入法状态",

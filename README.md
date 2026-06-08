@@ -43,12 +43,12 @@
 
 也可以从 GitHub Release 手动下载 VSIX：
 
-- [下载 cursor-ime-hud-0.0.3.vsix](https://github.com/GJYNBB/cursor-ime-hud/releases/download/v0.0.3/cursor-ime-hud-0.0.3.vsix)
+- [下载 cursor-ime-hud-1.0.0.vsix](https://github.com/GJYNBB/cursor-ime-hud/releases/download/v1.0.0/cursor-ime-hud-1.0.0.vsix)
 
 在 Windows 上安装：
 
 ```powershell
-code --install-extension .\cursor-ime-hud-0.0.3.vsix
+code --install-extension .\cursor-ime-hud-1.0.0.vsix
 ```
 
 如果你使用 Cursor，也可以在扩展页面选择 **Install from VSIX...**，然后选择下载的 `.vsix` 文件。
@@ -249,13 +249,13 @@ npm run package:vsix
 这会生成类似下面的文件：
 
 ```text
-cursor-ime-hud-0.0.3.vsix
+cursor-ime-hud-1.0.0.vsix
 ```
 
 本地安装：
 
 ```powershell
-code --install-extension .\cursor-ime-hud-0.0.3.vsix
+code --install-extension .\cursor-ime-hud-1.0.0.vsix
 ```
 
 ### GitHub Release 打包

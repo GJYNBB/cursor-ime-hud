@@ -10,7 +10,7 @@ suite("helperProtocol", () => {
         timestamp: "2026-04-23T00:00:00.000Z",
         imeName: "Test IME",
         isOpen: true,
-        layoutHex: "0x409",
+        layoutHex: "0409",
         threadId: 1,
         hwnd: "0x123",
         reason: "open-non-chinese-layout-conflict",
@@ -48,7 +48,7 @@ suite("helperProtocol", () => {
     assert.equal(entry?.message, "test warning");
   });
 
-  test('coerces an unknown state value to "unknown"', () => {
+  test("rejects invalid helper state values", () => {
     const snapshot = parseSnapshotLine(
       JSON.stringify({
         type: "state",
@@ -57,8 +57,7 @@ suite("helperProtocol", () => {
       })
     );
 
-    assert.ok(snapshot);
-    assert.equal(snapshot?.state, "unknown", "non-{cn,en,unknown} states coerce to unknown");
+    assert.equal(snapshot, undefined, "non-{cn,en,unknown} states are rejected");
   });
 
   test('coerces an unknown log level to "info"', () => {
@@ -88,6 +87,13 @@ suite("helperProtocol", () => {
     // An empty object has no `type` -> reject.
     const empty = parseSnapshotLine(JSON.stringify({}));
     assert.equal(empty, undefined, "missing type is rejected");
+
+    const noState = parseSnapshotLine(
+      JSON.stringify({
+        type: "state"
+      })
+    );
+    assert.equal(noState, undefined, "missing state is rejected");
   });
 
   test("returns undefined for log lines missing the required message field", () => {

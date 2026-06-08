@@ -1,6 +1,6 @@
 {
-  "extension.displayName": "Cursor IME HUD",
-  "extension.description": "Semi-transparent Chinese/English IME state HUD near the caret for VS Code on Windows.",
+  "extension.displayName": "Cursor IME HUD（输入法状态提示）",
+  "extension.description": "Semi-transparent Chinese/English IME state HUD near the caret for VS Code/Cursor on Windows. Helps identify Chinese/English input mode (输入法状态提示).",
   "commands.category": "Cursor IME HUD",
   "commands.toggleOverlay.title": "Toggle Overlay",
   "commands.refreshImeState.title": "Refresh IME State",

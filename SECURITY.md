@@ -45,7 +45,7 @@ resources/bin/win-x64/WinImeWatcher.exe
 resources/bin/win-x64/WinImeWatcher.exe.sha256
 ```
 
-Current releases bundle the official Rust-built `WinImeWatcher.exe`. At runtime, the extension verifies the helper against the adjacent `.sha256` sidecar. If the hash is missing or mismatched, the native helper is disabled and the extension falls back to the sample detector.
+Current releases bundle the official Rust-built `WinImeWatcher.exe`. At runtime, the extension verifies the helper against the adjacent `.sha256` sidecar. This is an operational integrity check for packaging or local replacement mistakes, not a substitute for OS code signing or endpoint protection. If the hash is missing or mismatched, the native helper is disabled and the extension falls back to the sample detector.
 
 Security-sensitive examples include, but are not limited to:
 

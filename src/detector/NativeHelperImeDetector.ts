@@ -118,11 +118,9 @@ export class NativeHelperImeDetector implements ImeDetector {
     //  1. Detach listeners so a late exit does not feed the restart loop.
     //  2. End stdin so the Rust helper's stdin reader observes EOF and
     //     its main loop can fall through cleanly.
-    //  3. Send SIGTERM (Node's default `kill()`; on Windows it maps to
-    //     `TerminateProcess`).
-    //  4. Kick off an async wait for the child to exit. If it has not
+    //  3. Kick off an async wait for the child to exit. If it has not
     //     exited within `SHUTDOWN_TIMEOUT_MS`, escalate to `taskkill /F /T`
-    //     on Windows so any descendants also die.
+    //     on Windows so any descendants also die, or `kill()` elsewhere.
     //
     // `vscode.Disposable.dispose()` is synchronous, so the await runs as
     // a fire-and-forget promise. We keep the reference on
@@ -568,15 +566,7 @@ export class NativeHelperImeDetector implements ImeDetector {
       try {
         stdin.end();
       } catch {
-        // Ignore stdin close races; the kill below is the authoritative shutdown signal.
-      }
-    }
-
-    if (!child.killed && child.exitCode === null && child.signalCode === null) {
-      try {
-        child.kill();
-      } catch {
-        // Ignore kill races; the OS will reap the process when its handles close.
+        // Ignore stdin close races; timeout escalation handles unresponsive processes.
       }
     }
   }
@@ -604,19 +594,27 @@ export class NativeHelperImeDetector implements ImeDetector {
 
     await Promise.race([exitPromise, timeoutPromise]);
 
-    if (!exited() && process.platform === "win32" && child.pid) {
-      await new Promise<void>((resolve) => {
+    if (!exited()) {
+      if (process.platform === "win32" && child.pid) {
+        await new Promise<void>((resolve) => {
+          try {
+            const killer = spawn("taskkill", ["/F", "/T", "/PID", String(child.pid)], {
+              windowsHide: true,
+              stdio: "ignore"
+            });
+            killer.once("exit", () => resolve());
+            killer.once("error", () => resolve());
+          } catch {
+            resolve();
+          }
+        });
+      } else {
         try {
-          const killer = spawn("taskkill", ["/F", "/T", "/PID", String(child.pid)], {
-            windowsHide: true,
-            stdio: "ignore"
-          });
-          killer.once("exit", () => resolve());
-          killer.once("error", () => resolve());
+          child.kill();
         } catch {
-          resolve();
+          // Ignore kill races; the OS will reap the process when its handles close.
         }
-      });
+      }
     }
   }
 

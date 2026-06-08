@@ -59,7 +59,7 @@ Fields:
 | Field               | Type    | Required | Notes                                                                                                                         |
 | ------------------- | ------- | -------- | ----------------------------------------------------------------------------------------------------------------------------- |
 | `type`              | string  | yes      | Must be `"state"`.                                                                                                            |
-| `state`             | string  | yes      | One of `"cn"`, `"en"`, `"unknown"`. Other values are coerced to `"unknown"` by the extension parser.                          |
+| `state`             | string  | yes      | One of `"cn"`, `"en"`, `"unknown"`. Records with missing or invalid states are rejected by the extension parser.              |
 | `timestamp`         | string  | yes      | ISO-8601. The extension accepts the helper's value verbatim; if missing or unparseable, it stamps `new Date().toISOString()`. |
 | `imeName`           | string  | no       | `ImmGetDescriptionW` of the active IME. Omitted when the helper cannot read it.                                               |
 | `isOpen`            | boolean | no       | `ImmGetOpenStatus` result. Omitted when the helper cannot read it.                                                            |

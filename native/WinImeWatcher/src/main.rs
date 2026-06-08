@@ -741,7 +741,7 @@ mod windows_probe {
                 );
             }
 
-            let layout_hex = format!("0x{:X}", keyboard_layout as usize);
+            let layout_hex = format!("{:04X}", keyboard_layout as usize & 0xFFFF);
             let Some(is_chinese_layout) = resolve_is_chinese_layout(keyboard_layout) else {
                 return create_unknown_snapshot(
                     "keyboard-layout-unrecognized",

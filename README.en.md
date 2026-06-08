@@ -51,7 +51,7 @@ After Marketplace publication, install **Cursor IME HUD** from the VS Code / Cur
 You can also install the packaged VSIX manually from GitHub Releases:
 
 ```powershell
-code --install-extension .\cursor-ime-hud-0.0.3.vsix
+code --install-extension .\cursor-ime-hud-1.0.0.vsix
 ```
 
 Current releases bundle the Rust-built `WinImeWatcher.exe`. Users installing the Marketplace or VSIX package do not need Rust, .NET, C# tooling, MSVC Build Tools, or PowerShell. Earlier classic/.NET-helper packages remain available only as historical GitHub Releases and are not the current supported implementation.
@@ -196,13 +196,13 @@ npm run package:vsix
 This produces a local VSIX such as:
 
 ```text
-cursor-ime-hud-0.0.3.vsix
+cursor-ime-hud-1.0.0.vsix
 ```
 
 To install the packaged extension locally:
 
 ```powershell
-code --install-extension .\cursor-ime-hud-0.0.3.vsix
+code --install-extension .\cursor-ime-hud-1.0.0.vsix
 ```
 
 ## Marketplace Publishing

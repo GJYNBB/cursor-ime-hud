@@ -2,7 +2,7 @@
   "name": "cursor-ime-hud",
   "displayName": "%extension.displayName%",
   "description": "%extension.description%",
-  "version": "0.0.3",
+  "version": "1.0.0",
   "publisher": "chestnut-ch",
   "license": "MIT",
   "icon": "resources/icon.png",
@@ -58,7 +58,12 @@
     "cursor",
     "hud",
     "windows",
-    "wechat input"
+    "wechat input",
+    "输入法",
+    "中文输入法",
+    "输入法状态",
+    "光标提示",
+    "中英文切换"
   ],
   "extensionKind": [
     "ui"
@@ -177,7 +182,7 @@
     "test:extension": "node ./scripts/run-extension-tests.js",
     "test:helper": "node ./scripts/assert-helper-once.js",
     "test:unit": "npm run compile && npm run test:extension",
-    "test:integration": "npm run build:helper && npm run test:helper",
+    "test:integration": "node ./scripts/run-integration-tests.js",
     "test": "npm run test:unit && npm run test:integration",
     "hash:helper": "node ./scripts/hash-helper.js",
     "lint": "eslint .",
