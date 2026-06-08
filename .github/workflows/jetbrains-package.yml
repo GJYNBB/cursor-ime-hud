@@ -1,0 +1,98 @@
+name: JetBrains Plugin Package
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: jetbrains-package-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    name: Package JetBrains plugin (windows)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Setup Rust toolchain
+        shell: pwsh
+        run: |
+          rustup default stable
+          rustup target add x86_64-pc-windows-msvc
+          rustc --version
+          cargo --version
+
+      - name: Cache Rust target directory
+        uses: actions/cache@v4
+        with:
+          path: native/WinImeWatcher/target
+          key: ${{ runner.os }}-cargo-target-${{ hashFiles('native/WinImeWatcher/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-cargo-target-
+
+      - name: Test JetBrains plugin
+        working-directory: jetbrains
+        shell: pwsh
+        run: .\gradlew.bat --no-daemon test
+
+      - name: Build JetBrains plugin
+        working-directory: jetbrains
+        shell: pwsh
+        run: .\gradlew.bat --no-daemon buildPlugin
+
+      - name: Verify JetBrains plugin package
+        working-directory: jetbrains
+        shell: pwsh
+        run: |
+          $zip = Get-ChildItem -Path build/distributions -Filter "*.zip" | Select-Object -First 1
+          if (-not $zip) {
+            throw "JetBrains plugin ZIP was not produced."
+          }
+
+          $inspectDir = Join-Path $env:RUNNER_TEMP "cursor-ime-hud-jetbrains"
+          if (Test-Path $inspectDir) {
+            Remove-Item -Recurse -Force $inspectDir
+          }
+          New-Item -ItemType Directory -Force -Path $inspectDir | Out-Null
+          Expand-Archive -LiteralPath $zip.FullName -DestinationPath $inspectDir -Force
+
+          $jar = Get-ChildItem -Path $inspectDir -Recurse -Filter "*.jar" | Select-Object -First 1
+          if (-not $jar) {
+            throw "JetBrains plugin ZIP does not contain a plugin JAR."
+          }
+
+          $jarEntries = & jar tf $jar.FullName
+          $required = @(
+            "META-INF/plugin.xml",
+            "bin/win-x64/WinImeWatcher.exe",
+            "bin/win-x64/WinImeWatcher.exe.sha256"
+          )
+
+          foreach ($entry in $required) {
+            if (-not ($jarEntries -contains $entry)) {
+              throw "Plugin JAR is missing required entry '$entry'."
+            }
+          }
+
+          Write-Host "Verified JetBrains plugin artifact: $($zip.FullName)"
+
+      - name: Upload JetBrains plugin artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: cursor-ime-hud-jetbrains-${{ github.ref_name }}
+          path: jetbrains/build/distributions/*.zip
+          if-no-files-found: error
+          retention-days: 30
