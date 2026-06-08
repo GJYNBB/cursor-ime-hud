@@ -1,0 +1,17 @@
+[package]
+name = "win-ime-watcher"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.82"
+publish = false
+
+[[bin]]
+name = "WinImeWatcher"
+path = "src/main.rs"
+
+[profile.release]
+codegen-units = 1
+lto = "fat"
+opt-level = "z"
+panic = "abort"
+strip = "symbols"

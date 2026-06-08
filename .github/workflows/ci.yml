@@ -107,18 +107,19 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
-      - name: Setup .NET SDK
-        uses: actions/setup-dotnet@v4
-        with:
-          dotnet-version: "8.0.x"
+      - name: Setup Rust toolchain
+        run: |
+          rustup default stable
+          rustc --version
+          cargo --version
 
-      - name: Install NuGet caching
+      - name: Cache Rust target directory
         uses: actions/cache@v4
         with:
-          path: ~/.nuget/packages
-          key: ${{ runner.os }}-nuget-${{ hashFiles('**/*.csproj') }}
+          path: native/WinImeWatcher/target
+          key: ${{ runner.os }}-cargo-target-${{ hashFiles('native/WinImeWatcher/Cargo.lock') }}
           restore-keys: |
-            ${{ runner.os }}-nuget-
+            ${{ runner.os }}-cargo-target-
 
       - name: Install dependencies
         run: npm ci

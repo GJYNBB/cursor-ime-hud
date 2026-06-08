@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Replaced the Windows native helper implementation with a Rust `WinImeWatcher.exe` while keeping the existing JSONL protocol, `.sha256` integrity sidecar, and user-facing IME detection behavior unchanged.
+- Updated helper build and release automation to use the Rust stable toolchain instead of the .NET SDK.
+
 ## [0.0.2] - 2026-06-07
 
 ### Added

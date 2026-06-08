@@ -59,7 +59,7 @@ Key properties:
 
 ## Helper IPC
 
-The extension communicates with `WinImeWatcher.exe` over stdio using a line-delimited JSON protocol. The full specification - including the `hello` handshake, state, log, and command messages, line and buffer limits, and exit codes - is documented in [`docs/helper-protocol.md`](docs/helper-protocol.md).
+The extension communicates with the Rust-built `WinImeWatcher.exe` over stdio using a line-delimited JSON protocol. The full specification - including the `hello` handshake, state, log, and command messages, line and buffer limits, and exit codes - is documented in [`docs/helper-protocol.md`](docs/helper-protocol.md).
 
 The TypeScript side parses each line via the functions in `src/detector/helperProtocol.ts`:
 

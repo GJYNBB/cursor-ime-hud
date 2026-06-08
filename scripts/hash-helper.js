@@ -7,7 +7,7 @@
  * computes the hash from the executable so release tooling can create one.
  *
  * Usage:
- *   1. Build the helper: `npm run build:helper`  (Windows-only, needs .NET 8)
+ *   1. Build the helper: `npm run build:helper`  (Windows-only, needs Rust stable)
  *   2. From the repo root: `node scripts/hash-helper.js`
  *   3. Use the printed hash for release verification or sidecar generation.
  */
@@ -25,24 +25,12 @@ const candidates = [
     "..",
     "native",
     "WinImeWatcher",
-    "bin",
-    "Release",
-    "net8.0",
-    "win-x64",
-    "publish",
+    "target",
+    "x86_64-pc-windows-msvc",
+    "release",
     "WinImeWatcher.exe"
   ),
-  path.resolve(
-    __dirname,
-    "..",
-    "native",
-    "WinImeWatcher",
-    "bin",
-    "Release",
-    "net8.0",
-    "win-x64",
-    "WinImeWatcher.exe"
-  )
+  path.resolve(__dirname, "..", "native", "WinImeWatcher", "target", "release", "WinImeWatcher.exe")
 ];
 
 function computeSha256(exePath) {
@@ -57,7 +45,7 @@ if (existing.length === 0) {
     console.error("  - " + c);
   }
   console.error("");
-  console.error("Build it first with `npm run build:helper` (Windows + .NET 8 SDK).");
+  console.error("Build it first with `npm run build:helper` (Windows + Rust stable toolchain).");
   process.exit(1);
 }
 

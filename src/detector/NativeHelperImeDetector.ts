@@ -116,8 +116,8 @@ export class NativeHelperImeDetector implements ImeDetector {
 
     // Graceful shutdown:
     //  1. Detach listeners so a late exit does not feed the restart loop.
-    //  2. End stdin so the C# helper's `Console.In.ReadLineAsync` returns
-    //     null and its main loop can fall through cleanly.
+    //  2. End stdin so the Rust helper's stdin reader observes EOF and
+    //     its main loop can fall through cleanly.
     //  3. Send SIGTERM (Node's default `kill()`; on Windows it maps to
     //     `TerminateProcess`).
     //  4. Kick off an async wait for the child to exit. If it has not

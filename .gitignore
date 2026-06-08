@@ -4,5 +4,4 @@ out/
 *.vsix
 coverage/
 resources/bin/
-native/WinImeWatcher/bin/
-native/WinImeWatcher/obj/
+native/WinImeWatcher/target/

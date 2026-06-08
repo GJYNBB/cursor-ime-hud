@@ -128,7 +128,7 @@ resources/bin/win-x64/WinImeWatcher.exe.sha256
 - 当前 native helper 只检测中文 IME；日语、韩语和其他 CJK 输入法可能被报告为 `en` 或 `unknown`。
 - v1 只渲染主光标，不支持多光标分别显示。
 - `text+icon` 目前只是预留模式，还没有真正的图标渲染。
-- helper 是 self-contained 单文件可执行程序，因此 VSIX 体积会比纯 TypeScript 扩展更大。
+- helper 是 Rust 编译的单文件可执行程序，因此 VSIX 体积会比纯 TypeScript 扩展更大。
 
 ## 故障排查
 
@@ -174,10 +174,11 @@ Cursor IME HUD: Refresh IME State
 - VS Code `^1.107.0`
 - Node.js 24+
 - npm 11+
-- .NET 8 SDK
+- Rust stable toolchain（`cargo`）
+- Windows MSVC Build Tools / Visual Studio C++ 工具链
 - PowerShell 7+ 或 Windows PowerShell
 
-`.NET 8 SDK` 只在从源码构建 native helper 时需要。安装已经打包好的 VSIX 不需要额外安装 .NET。
+Rust 和 MSVC 工具链只在从源码构建 native helper 时需要。安装已经打包好的 VSIX 不需要额外安装 Rust。
 
 ### 本地开发
 

@@ -2,7 +2,7 @@ const fs = require("node:fs");
 const path = require("node:path");
 const { spawn } = require("node:child_process");
 
-// The Windows native helper only ships as a .exe, so a meaningful
+// The Windows native helper is built as a Rust .exe, so a meaningful
 // "spawn the helper once and parse a JSONL line" smoke test can only
 // run on win32. On other platforms we skip with a clear message so the
 // cross-platform `npm run test:integration` script does not fail.

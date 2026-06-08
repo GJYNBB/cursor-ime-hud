@@ -1,6 +1,6 @@
 # Helper Wire Protocol
 
-This document specifies the line-delimited JSON protocol spoken between the VS Code extension and the bundled `WinImeWatcher.exe` helper. The TypeScript parser lives in `src/detector/helperProtocol.ts`; the C# helper lives under `native/WinImeWatcher/`.
+This document specifies the line-delimited JSON protocol spoken between the VS Code extension and the bundled `WinImeWatcher.exe` helper. The TypeScript parser lives in `src/detector/helperProtocol.ts`; the Rust helper lives under `native/WinImeWatcher/`.
 
 ## Transport
 
@@ -120,12 +120,12 @@ Protocol v1 does not define a JSON `shutdown` command. The extension requests gr
 
 ## Lifecycle and exit codes
 
-| Exit code         | Meaning                                                      | Extension action                                                                           |
-| ----------------- | ------------------------------------------------------------ | ------------------------------------------------------------------------------------------ |
-| `0`               | Normal shutdown or completed `--once` probe.                 | No restart during disposal; otherwise a clean unexpected exit can still schedule restart.  |
-| `1`               | Generic helper error.                                        | Log details and schedule restart when appropriate.                                         |
-| `2`               | Startup health check failed after repeated `unknown` probes. | Synthesize `unknown`, log the health-check failure, and schedule restart.                  |
-| killed / signaled | Process was terminated by the extension or OS.               | During disposal this is ignored; during normal running it triggers fallback/restart logic. |
+| Exit code         | Meaning                                                                                        | Extension action                                                                           |
+| ----------------- | ---------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------ |
+| `0`               | Normal shutdown or completed `--once` probe.                                                   | No restart during disposal; otherwise a clean unexpected exit can still schedule restart.  |
+| `1`               | Generic helper error.                                                                          | Log details and schedule restart when appropriate.                                         |
+| `2`               | Reserved for legacy startup health-check failures; current helpers keep watching on `unknown`. | Synthesize `unknown`, log the health-check failure, and schedule restart.                  |
+| killed / signaled | Process was terminated by the extension or OS.                                                 | During disposal this is ignored; during normal running it triggers fallback/restart logic. |
 
 The extension never reuses a failed helper process. A crash or stream parser failure tears down the process and starts a fresh helper subject to the restart limit.
 

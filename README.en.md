@@ -38,9 +38,11 @@ Marketplace screenshots should use real captures from VS Code or Cursor on Windo
 
 - Node.js 24+
 - npm 11+
-- .NET 8 SDK
+- Rust stable toolchain (`cargo`)
+- Windows MSVC Build Tools / Visual Studio C++ toolchain
+- PowerShell 7+ or Windows PowerShell
 
-`.NET 8 SDK` is only required when you build the bundled Windows helper from source. It is not required to install the packaged VSIX.
+Rust and the MSVC toolchain are only required when you build the bundled Windows helper from source. They are not required to install the packaged VSIX.
 
 ## Development
 
@@ -129,7 +131,7 @@ This runs:
 - Only the primary caret is rendered in v1
 - The native helper is conservative and can return `unknown` when Windows does not expose enough reliable IME signals
 - `text+icon` is not a distinct rendering mode yet
-- The bundled helper is a self-contained single-file executable, so package size is still relatively large
+- The bundled helper is a Rust single-file executable, so package size is still larger than a pure TypeScript extension
 
 ### Language support
 

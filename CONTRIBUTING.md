@@ -10,11 +10,12 @@ The project is intentionally narrow: show a small IME state label near the prima
 
 - **Node.js 24+** (matches `package.json` `engines.node`)
 - **npm 11+** (ships with Node.js 24)
-- **.NET 8 SDK** - required to build the bundled `WinImeWatcher.exe` from source
+- **Rust stable toolchain** (`cargo`) - required to build the bundled `WinImeWatcher.exe` from source
+- **Windows MSVC Build Tools / Visual Studio C++ toolchain** - required by the Rust `x86_64-pc-windows-msvc` target linker
 - **PowerShell 7+** - used by `npm run build:helper` and the helper smoke tests
 - **Windows 10 or Windows 11** - required to exercise the native helper end-to-end. macOS and Linux fall back to `SampleImeDetector`, which is sufficient for unit tests but not for manual verification.
 
-A C++ toolchain is **not** required: the helper is a single-file .NET 8 self-contained executable.
+The helper is a Rust single-file executable and does not require users of the packaged VSIX to install Rust.
 
 ## Development setup
 
