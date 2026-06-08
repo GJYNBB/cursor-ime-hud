@@ -5,6 +5,11 @@ on:
     tags:
       - "v*"
   workflow_dispatch:
+    inputs:
+      version:
+        description: "Package version to build; must match package.json."
+        required: true
+        type: string
 
 # Allow only one concurrent release job. The workflow builds and packages the
 # Windows helper on a Windows runner, keeps the Actions artifact for debugging,
@@ -49,21 +54,33 @@ jobs:
         run: npm ci
 
       - name: Verify release version
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
         shell: bash
+        env:
+          REQUESTED_VERSION: ${{ inputs.version || '' }}
         run: |
           node <<'NODE'
           const fs = require('node:fs');
           const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
           const lock = JSON.parse(fs.readFileSync('package-lock.json', 'utf8'));
-          const expectedTag = `v${pkg.version}`;
-
-          if (process.env.GITHUB_REF_NAME !== expectedTag) {
-            throw new Error(`Tag '${process.env.GITHUB_REF_NAME}' does not match package.json version '${expectedTag}'.`);
-          }
 
           if (lock.version !== pkg.version || lock.packages?.['']?.version !== pkg.version) {
             throw new Error(`package-lock.json version does not match package.json version '${pkg.version}'.`);
+          }
+
+          if (process.env.GITHUB_REF?.startsWith('refs/tags/')) {
+            const expectedTag = `v${pkg.version}`;
+            if (process.env.GITHUB_REF_NAME !== expectedTag) {
+              throw new Error(`Tag '${process.env.GITHUB_REF_NAME}' does not match package.json version '${expectedTag}'.`);
+            }
+          } else {
+            if (!process.env.REQUESTED_VERSION) {
+              throw new Error('workflow_dispatch requires the version input.');
+            }
+
+            if (process.env.REQUESTED_VERSION !== pkg.version) {
+              throw new Error(`workflow_dispatch version '${process.env.REQUESTED_VERSION}' does not match package.json version '${pkg.version}'.`);
+            }
           }
           NODE
 
@@ -85,7 +102,7 @@ jobs:
       - name: Package .vsix
         run: npm run package:vsix
 
-      - name: Verify VSIX filename
+      - name: Verify VSIX filename and contents
         shell: pwsh
         run: |
           $pkg = Get-Content package.json | ConvertFrom-Json
@@ -93,6 +110,41 @@ jobs:
           if (-not (Test-Path $expected)) {
             Get-ChildItem *.vsix | Format-Table -AutoSize
             throw "Expected VSIX '$expected' was not produced."
+          }
+
+          $inspectDir = Join-Path $env:RUNNER_TEMP "cursor-ime-hud-vsix"
+          if (Test-Path $inspectDir) {
+            Remove-Item -Recurse -Force $inspectDir
+          }
+          New-Item -ItemType Directory -Force -Path $inspectDir | Out-Null
+          Expand-Archive -LiteralPath $expected -DestinationPath $inspectDir -Force
+
+          $required = @(
+            "extension/package.json",
+            "extension/out/extension.js",
+            "extension/out/Composition.js",
+            "extension/resources/bin/win-x64/WinImeWatcher.exe",
+            "extension/resources/bin/win-x64/WinImeWatcher.exe.sha256",
+            "extension/package.nls.json",
+            "extension/package.nls.zh-cn.json",
+            "extension/readme.md",
+            "extension/README.en.md",
+            "extension/changelog.md",
+            "extension/LICENSE.txt"
+          )
+
+          foreach ($entry in $required) {
+            $path = Join-Path $inspectDir $entry
+            if (-not (Test-Path $path)) {
+              throw "VSIX is missing required entry '$entry'."
+            }
+          }
+
+          $forbidden = Get-ChildItem -Recurse -File $inspectDir |
+            Where-Object { $_.FullName -match "[\\/]extension[\\/]resources[\\/]bin[\\/](darwin|linux)-" }
+          if ($forbidden) {
+            $forbidden | ForEach-Object { Write-Host "Unexpected helper entry: $($_.FullName)" }
+            throw "VSIX unexpectedly contains experimental macOS/Linux helper binaries."
           }
 
       - name: Upload .vsix artifact

@@ -14,7 +14,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
 
   if (process.platform !== "win32") {
     composition.logger.warn(
-      "Cursor IME HUD is optimized for Windows and will run in fallback mode on this platform."
+      "Cursor IME HUD stable native detection is optimized for Windows. macOS/Linux native helpers are experimental and may fall back to unknown state unless an experimental helper is enabled and present."
     );
   }
 

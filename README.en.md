@@ -155,7 +155,7 @@ This runs:
 
 ## Known Limitations
 
-- Windows only, currently `win-x64` only
+- Stable native helper packaging is currently Windows `win-x64` only; macOS/Linux helper paths are experimental and do not ship helper binaries yet
 - Only the primary caret is rendered in v1
 - The native helper is conservative and can return `unknown` when Windows does not expose enough reliable IME signals
 - `text+icon` is not a distinct rendering mode yet
@@ -167,7 +167,7 @@ The native helper currently detects Chinese IME only (Win32 primary language id 
 
 ## How it works
 
-The native helper uses Windows IMM32 APIs (`ImmGetOpenStatus`, `ImmGetDescription`) and `GetKeyboardLayout` to detect the Chinese primary language id `0x0004` for the foreground window. It streams state, log, and snapshot messages to the extension over a line-delimited JSON protocol on stdio (UTF-8, max 64KB per line, 1MB rolling buffer) - see `docs/helper-protocol.md` for the full wire format. The extension parses each line via `src/detector/helperProtocol.ts` and forwards the result to a `ImeDetector` chain (`SampleOrNativeDetector`) that prefers the native helper and falls back to the in-process `SampleImeDetector` on macOS/Linux or if the helper is unavailable. The helper integrity check reads the generated `resources/bin/win-x64/WinImeWatcher.exe.sha256` sidecar. The extension never reads file contents, the clipboard, or typed text; the helper only inspects IME state for the foreground window.
+The stable Windows native helper uses IMM32 APIs (`ImmGetOpenStatus`, `ImmGetDescription`) and `GetKeyboardLayout` to detect the Chinese primary language id `0x0004` for the foreground window. It streams state, log, and snapshot messages to the extension over a line-delimited JSON protocol on stdio (UTF-8, max 64KB per line, 1MB rolling buffer) - see `docs/helper-protocol.md` for the full wire format. The extension parses each line via `src/detector/helperProtocol.ts` and forwards the result to a `ImeDetector` chain (`SampleOrNativeDetector`) that prefers a resolved native helper and falls back to the in-process `SampleImeDetector` if the helper is unavailable. Current packaged releases only bundle the Windows helper; macOS/Linux helper paths are experimental and require locally provided helper binaries plus sidecars. The Windows helper integrity check reads the generated `resources/bin/win-x64/WinImeWatcher.exe.sha256` sidecar. The extension never reads file contents, the clipboard, or typed text; helpers only inspect IME/input-source state.
 
 ## Troubleshooting
 
@@ -175,7 +175,7 @@ The native helper uses Windows IMM32 APIs (`ImmGetOpenStatus`, `ImmGetDescriptio
   - Open the **Output** channel and select **Cursor IME HUD**. Look for `hello` handshake failures, JSON parse errors, or helper exit events.
   - Run the **Cursor IME HUD: Show Diagnostics** command. It prints the current detector source, lifecycle phase, last snapshot, and the rolling log buffer.
   - Verify `resources/bin/win-x64/WinImeWatcher.exe` exists and that the adjacent `resources/bin/win-x64/WinImeWatcher.exe.sha256` sidecar matches. `npm run build:helper` regenerates both files on Windows. A mismatch disables the helper and the extension falls back to the sample detector.
-  - On macOS and Linux, the native helper cannot run. The extension automatically falls back to `SampleImeDetector`, which reports `unknown` so diagnostics and fallback paths can still be tested. This is expected.
+  - Current packaged releases do not bundle macOS/Linux native helpers. Without locally provided experimental helper binaries and matching sidecars, macOS/Linux automatically fall back to `SampleImeDetector`, which reports `unknown` so diagnostics and fallback paths can still be tested.
 - **Status bar shows `?` persistently.**
   - The foreground window is non-Chinese (e.g. Explorer, a browser, a non-IME-aware app) - the helper correctly reports `unknown` in that case.
   - The active IME is not Chinese (Japanese, Korean, etc.) - see [Language support](#language-support) above.

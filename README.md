@@ -125,7 +125,7 @@ Cursor IME HUD: Show Diagnostics
 1. **VS Code 扩展侧**：负责命令、配置、状态栏、HUD 渲染、诊断输出和 helper 生命周期管理。
 2. **Windows native helper**：负责读取前台窗口 IME 状态，并通过 stdio 发送 line-delimited JSON 消息。
 
-当前仓库和新发布版本只包含 Rust 构建的 `WinImeWatcher.exe` helper。早期 classic/.NET helper 只保留在历史 GitHub Release（例如 `v0.0.1` / `v0.0.2`）中，不再作为当前实现维护。
+当前实现和发布产物只包含 Rust 构建的 Windows `WinImeWatcher.exe` helper；源码检出后需要通过构建脚本生成二进制和 sidecar。早期 classic/.NET helper 只保留在历史 GitHub Release（例如 `v0.0.1` / `v0.0.2`）中，不再作为当前实现维护。
 
 helper 主要使用 Windows IMM32 API（例如 `ImmGetOpenStatus`、`ImmGetDescription`）和 `GetKeyboardLayout`，识别中文 IME 的 Win32 primary language id `0x0004`。协议细节见 [docs/helper-protocol.md](docs/helper-protocol.md)，整体架构见 [ARCHITECTURE.md](ARCHITECTURE.md)。
 
@@ -148,8 +148,8 @@ resources/bin/win-x64/WinImeWatcher.exe.sha256
 
 ## 已知限制
 
-- 目前仅支持 Windows。
-- 当前只打包 `win-x64` native helper。
+- 稳定 native helper 打包目前仅支持 Windows `win-x64`。
+- macOS / Linux helper 路径处于实验性开发阶段，当前正式包还不包含对应 helper 二进制。
 - 当前 native helper 只检测中文 IME；日语、韩语和其他 CJK 输入法可能被报告为 `en` 或 `unknown`。
 - v1 只渲染主光标，不支持多光标分别显示。
 - `text+icon` 目前只是预留模式，还没有真正的图标渲染。

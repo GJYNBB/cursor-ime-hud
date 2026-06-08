@@ -197,7 +197,7 @@
     "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "coverage": "c8 --reporter=text --reporter=lcov npm run test:extension",
+    "coverage": "npm run compile && c8 --reporter=text --reporter=lcov npm run test:extension",
     "vscode:prepublish": "node ./scripts/check-publisher.js && npm run compile && npm run build:helper",
     "package:vsix": "npx @vscode/vsce package",
     "prepublishOnly": "node ./scripts/check-publisher.js"
