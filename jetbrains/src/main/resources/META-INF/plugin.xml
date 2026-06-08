@@ -1,10 +1,10 @@
 <idea-plugin>
   <id>com.chestnutch.cursor-ime-hud</id>
-  <name>Cursor IME HUD（输入法状态提示）</name>
+  <name>Cursor IME HUD</name>
   <version>0.1.0</version>
   <vendor email="support@chestnut-ch.dev" url="https://github.com/GJYNBB/cursor-ime-hud">chestnut-ch</vendor>
-  <description><![CDATA[
-    <p><b>Cursor IME HUD（输入法状态提示）</b> displays the current Chinese/English IME state in JetBrains IDEs.</p>
+  <description><![CDATA[Cursor IME HUD displays the current Chinese/English IME state in JetBrains IDEs.
+    <p><b>输入法状态提示</b>: shows the current input mode in the status bar so Chinese developers can avoid typing in the wrong mode.</p>
     <p>This first JetBrains MVP is Windows-only and reuses the lightweight Rust <code>WinImeWatcher.exe</code> helper from the VS Code/Cursor extension. It reads only IME/layout state and does not capture typed text, clipboard data, or file contents.</p>
     <p>macOS and Linux support are not included in this JetBrains MVP.</p>
   ]]></description>

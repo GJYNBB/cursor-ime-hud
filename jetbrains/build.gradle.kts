@@ -3,7 +3,7 @@ import org.gradle.internal.os.OperatingSystem
 
 plugins {
   kotlin("jvm") version "2.3.20"
-  id("org.jetbrains.intellij.platform") version "2.16.0"
+  id("org.jetbrains.intellij.platform")
 }
 
 group = "com.chestnutch"
@@ -16,7 +16,7 @@ kotlin {
 intellijPlatform {
   pluginConfiguration {
     id = "com.chestnutch.cursor-ime-hud"
-    name = "Cursor IME HUD（输入法状态提示）"
+    name = "Cursor IME HUD"
     version = project.version.toString()
     ideaVersion {
       sinceBuild = "261"
@@ -42,7 +42,7 @@ intellijPlatform {
 
 dependencies {
   intellijPlatform {
-    intellijIdea("2026.1.2")
+    intellijIdea("2026.1.3")
   }
 
   testImplementation(kotlin("test"))
@@ -83,12 +83,22 @@ val verifyWindowsHelperResources by tasks.registering {
 }
 
 tasks.processResources {
-  dependsOn(verifyWindowsHelperResources)
+  if (isWindowsHost) {
+    dependsOn(buildWindowsHelper)
+  }
 
   from(helperOutputDir) {
     into("bin/win-x64")
     include("WinImeWatcher.exe", "WinImeWatcher.exe.sha256")
   }
+}
+
+tasks.named("buildPlugin") {
+  dependsOn(verifyWindowsHelperResources)
+}
+
+tasks.named("publishPlugin") {
+  dependsOn(verifyWindowsHelperResources)
 }
 
 tasks.test {

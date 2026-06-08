@@ -15,18 +15,12 @@ This module is intentionally isolated under `jetbrains/` so the existing VS Code
 
 ## Build
 
-From this directory, use Gradle 9.x or a Gradle wrapper generated for this module:
+From this directory, use the committed Gradle 9.0.0 wrapper:
 
 ```bash
-gradle test
-gradle buildPlugin
-gradle verifyPlugin
-```
-
-This scaffold does not commit a wrapper yet because this environment does not have Gradle installed to generate one. Before Marketplace release automation, generate and commit a wrapper from a machine with Gradle available:
-
-```bash
-gradle wrapper --gradle-version 9.0.0 --distribution-type bin
+./gradlew test
+./gradlew buildPlugin
+./gradlew verifyPlugin
 ```
 
 On Windows, `processResources` runs the repository `scripts/build-helper.ps1` and packages the generated `resources/bin/win-x64/WinImeWatcher.exe` plus its `.sha256` sidecar. On non-Windows hosts, packaging fails fast unless those two helper files already exist, preventing helperless Marketplace ZIPs.
