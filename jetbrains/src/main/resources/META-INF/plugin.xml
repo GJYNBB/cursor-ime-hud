@@ -1,0 +1,33 @@
+<idea-plugin>
+  <id>com.chestnutch.cursor-ime-hud</id>
+  <name>Cursor IME HUD（输入法状态提示）</name>
+  <version>0.1.0</version>
+  <vendor email="support@chestnut-ch.dev" url="https://github.com/GJYNBB/cursor-ime-hud">chestnut-ch</vendor>
+  <description><![CDATA[
+    <p><b>Cursor IME HUD（输入法状态提示）</b> displays the current Chinese/English IME state in JetBrains IDEs.</p>
+    <p>This first JetBrains MVP is Windows-only and reuses the lightweight Rust <code>WinImeWatcher.exe</code> helper from the VS Code/Cursor extension. It reads only IME/layout state and does not capture typed text, clipboard data, or file contents.</p>
+    <p>macOS and Linux support are not included in this JetBrains MVP.</p>
+  ]]></description>
+  <change-notes><![CDATA[
+    <ul>
+      <li>Initial Windows-only JetBrains MVP scaffold.</li>
+      <li>Status bar IME indicator, refresh/toggle/diagnostics actions, settings, and Rust helper protocol parser.</li>
+    </ul>
+  ]]></change-notes>
+  <idea-version since-build="261"/>
+
+  <depends>com.intellij.modules.platform</depends>
+
+  <extensions defaultExtensionNs="com.intellij">
+    <applicationService serviceImplementation="com.chestnutch.cursorimehud.settings.CursorImeHudSettings"/>
+    <projectService serviceImplementation="com.chestnutch.cursorimehud.service.ImeHudService"/>
+    <statusBarWidgetFactory id="CursorImeHudStatusBar" implementation="com.chestnutch.cursorimehud.ui.ImeStatusBarWidgetFactory"/>
+    <applicationConfigurable instance="com.chestnutch.cursorimehud.settings.CursorImeHudConfigurable" id="cursorImeHud" displayName="Cursor IME HUD"/>
+  </extensions>
+
+  <actions>
+    <action id="CursorImeHud.RefreshImeState" class="com.chestnutch.cursorimehud.action.RefreshImeStateAction" text="Cursor IME HUD: Refresh IME State" description="Refresh the current IME state"/>
+    <action id="CursorImeHud.ToggleCaretHud" class="com.chestnutch.cursorimehud.action.ToggleCaretHudAction" text="Cursor IME HUD: Toggle Caret HUD" description="Toggle the caret-adjacent IME HUD setting"/>
+    <action id="CursorImeHud.ShowDiagnostics" class="com.chestnutch.cursorimehud.action.ShowDiagnosticsAction" text="Cursor IME HUD: Show Diagnostics" description="Show Cursor IME HUD diagnostics"/>
+  </actions>
+</idea-plugin>
