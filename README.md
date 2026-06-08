@@ -13,6 +13,7 @@
 ## 目录
 
 - [功能特性](#功能特性)
+- [效果预览](#效果预览)
 - [安装](#安装)
 - [快速开始](#快速开始)
 - [命令](#命令)
@@ -37,18 +38,24 @@
 - **诊断命令**：内置 `Show Diagnostics`，便于定位 helper、协议、状态解析和生命周期问题。
 - **不自动切换输入法**：只做显示，不改变用户的输入法和键盘布局。
 
+## 效果预览
+
+![光标旁显示输入法状态：ZH 标签样式](resources/screenshots/caret-hud-zh.png)
+
+光标旁 HUD 会在编辑器主光标附近直接显示当前输入法状态，适合在代码、文档、搜索框和聊天输入场景中快速确认中英文模式。
+
 ## 安装
 
 发布到 Marketplace 后，可以在 VS Code / Cursor 扩展市场搜索 **Cursor IME HUD** 并安装。
 
 也可以从 GitHub Release 手动下载 VSIX：
 
-- [下载 cursor-ime-hud-1.0.0.vsix](https://github.com/GJYNBB/cursor-ime-hud/releases/download/v1.0.0/cursor-ime-hud-1.0.0.vsix)
+- [下载 cursor-ime-hud-1.0.1.vsix](https://github.com/GJYNBB/cursor-ime-hud/releases/download/v1.0.1/cursor-ime-hud-1.0.1.vsix)
 
 在 Windows 上安装：
 
 ```powershell
-code --install-extension .\cursor-ime-hud-1.0.0.vsix
+code --install-extension .\cursor-ime-hud-1.0.1.vsix
 ```
 
 如果你使用 Cursor，也可以在扩展页面选择 **Install from VSIX...**，然后选择下载的 `.vsix` 文件。
@@ -249,13 +256,13 @@ npm run package:vsix
 这会生成类似下面的文件：
 
 ```text
-cursor-ime-hud-1.0.0.vsix
+cursor-ime-hud-1.0.1.vsix
 ```
 
 本地安装：
 
 ```powershell
-code --install-extension .\cursor-ime-hud-1.0.0.vsix
+code --install-extension .\cursor-ime-hud-1.0.1.vsix
 ```
 
 ### GitHub Release 打包

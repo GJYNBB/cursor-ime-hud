@@ -23,9 +23,11 @@ The extension is intentionally narrow in scope:
 - Status bar fallback with tooltip details
 - Diagnostics command with raw detector information and recent logs
 
-### Assets
+## Screenshot
 
-Marketplace screenshots should use real captures from VS Code or Cursor on Windows. When available, place them under `resources/screenshots/` and reference them here. Do not use mock screenshots for release metadata.
+![Caret-adjacent IME HUD showing the ZH label style](resources/screenshots/caret-hud-zh.png)
+
+The caret-adjacent HUD shows the current IME state directly in the editor, making it easier to confirm Chinese/English input mode while coding, writing, searching, or chatting.
 
 ## Requirements
 
@@ -51,7 +53,7 @@ After Marketplace publication, install **Cursor IME HUD** from the VS Code / Cur
 You can also install the packaged VSIX manually from GitHub Releases:
 
 ```powershell
-code --install-extension .\cursor-ime-hud-1.0.0.vsix
+code --install-extension .\cursor-ime-hud-1.0.1.vsix
 ```
 
 Current releases bundle the Rust-built `WinImeWatcher.exe`. Users installing the Marketplace or VSIX package do not need Rust, .NET, C# tooling, MSVC Build Tools, or PowerShell. Earlier classic/.NET-helper packages remain available only as historical GitHub Releases and are not the current supported implementation.
@@ -196,13 +198,13 @@ npm run package:vsix
 This produces a local VSIX such as:
 
 ```text
-cursor-ime-hud-1.0.0.vsix
+cursor-ime-hud-1.0.1.vsix
 ```
 
 To install the packaged extension locally:
 
 ```powershell
-code --install-extension .\cursor-ime-hud-1.0.0.vsix
+code --install-extension .\cursor-ime-hud-1.0.1.vsix
 ```
 
 ## Marketplace Publishing

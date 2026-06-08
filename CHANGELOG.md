@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.1] - 2026-06-08
+
+### Added
+
+- Added the Marketplace/README screenshot showing the caret-adjacent `ZH` HUD in a real editor.
+- Updated Marketplace-facing overview copy to highlight the screenshot and caret-adjacent IME state display.
+
 ## [1.0.0] - 2026-06-08
 
 ### Added
@@ -83,7 +90,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Extension smoke tests, position strategy tests, and helper smoke test
 - Marketplace packaging scripts and documentation
 
-[Unreleased]: https://github.com/GJYNBB/cursor-ime-hud/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/GJYNBB/cursor-ime-hud/compare/v1.0.1...HEAD
+[1.0.1]: https://github.com/GJYNBB/cursor-ime-hud/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/GJYNBB/cursor-ime-hud/compare/v0.0.3...v1.0.0
 [0.0.3]: https://github.com/GJYNBB/cursor-ime-hud/compare/v0.0.2...v0.0.3
 [0.0.2]: https://github.com/GJYNBB/cursor-ime-hud/releases/tag/v0.0.2
