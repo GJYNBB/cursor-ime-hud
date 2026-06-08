@@ -1,9 +1,9 @@
-import * as path from "node:path";
 import * as vscode from "vscode";
 import { registerCommands } from "./commands/registerCommands";
 import { HudController } from "./controller/HudController";
 import { VSCodeEditorHost } from "./controller/EditorHost";
 import { SampleOrNativeDetector } from "./detector/SampleOrNativeDetector";
+import { resolveNativeHelper } from "./detector/nativeHelperPath";
 import { StatusBarPresenter } from "./presenters/StatusBarPresenter";
 import { CursorOverlayRenderer } from "./renderer/CursorOverlayRenderer";
 import { PositionStrategy } from "./renderer/PositionStrategy";
@@ -35,6 +35,15 @@ export interface Composition {
  *   - the entry point stays a one-liner, and
  *   - adding a new collaborator does not require editing `extension.ts`.
  */
+function isExperimentalNativeHelperEnabled(): boolean {
+  if (process.env.CURSOR_IME_HUD_EXPERIMENTAL_NATIVE_HELPER === "1") {
+    return true;
+  }
+
+  const configuration = vscode.workspace.getConfiguration("cursorImeHud");
+  return configuration.get<boolean>("experimental.nativeHelper.enabled", false);
+}
+
 export function buildController(context: vscode.ExtensionContext): Composition {
   // Allocate vscode singletons once, at the root, and inject them. This
   // stops the individual services from reaching into the `vscode`
@@ -44,10 +53,13 @@ export function buildController(context: vscode.ExtensionContext): Composition {
 
   const logger = new LoggerService(outputChannel);
   const settingsService = new SettingsService();
-  const helperPath = context.asAbsolutePath(
-    path.join("resources", "bin", "win-x64", "WinImeWatcher.exe")
-  );
-  const detector = new SampleOrNativeDetector(helperPath);
+  const helperResolution = resolveNativeHelper({
+    platform: process.platform,
+    arch: process.arch,
+    experimentalEnabled: isExperimentalNativeHelperEnabled(),
+    asAbsolutePath: (relativePath) => context.asAbsolutePath(relativePath)
+  });
+  const detector = new SampleOrNativeDetector(helperResolution);
   const overlayRenderer = new CursorOverlayRenderer(new PositionStrategy());
   const statusBarPresenter = new StatusBarPresenter(statusBarItem);
   const editorHost = new VSCodeEditorHost();

@@ -2,9 +2,10 @@ import * as vscode from "vscode";
 import { DetectorLogEntry, ImeDetectorDebugInfo, ImeSnapshot } from "../model/types";
 import { ImeDetector } from "./ImeDetector";
 import { NativeHelperImeDetector } from "./NativeHelperImeDetector";
+import { NativeHelperDescriptor, NativeHelperResolution } from "./nativeHelperPath";
 import { SampleImeDetector } from "./SampleImeDetector";
 
-type DetectorFactory = (helperPath: string) => ImeDetector;
+type DetectorFactory = (helper: NativeHelperDescriptor) => ImeDetector;
 type WrapperLifecycleState = "idle" | "starting" | "running" | "disposed";
 
 export class SampleOrNativeDetector implements ImeDetector {
@@ -21,9 +22,9 @@ export class SampleOrNativeDetector implements ImeDetector {
   public readonly onDidLog = this.onDidLogEmitter.event;
 
   public constructor(
-    private readonly helperPath: string,
-    private readonly nativeDetectorFactory: DetectorFactory = (path) =>
-      new NativeHelperImeDetector(path)
+    private readonly helperResolution: NativeHelperResolution,
+    private readonly nativeDetectorFactory: DetectorFactory = (helper) =>
+      new NativeHelperImeDetector(helper.helperPath, helper.backendName)
   ) {
     this.activeDetector = new SampleImeDetector("sample", "Detector has not started yet.");
     this.debugInfo = this.withLifecycleState(this.activeDetector.getDebugInfo());
@@ -87,10 +88,8 @@ export class SampleOrNativeDetector implements ImeDetector {
   }
 
   private async startInternal(): Promise<void> {
-    if (process.platform !== "win32") {
-      await this.activateDetector(
-        this.createFallbackDetector("Native helper is only available on Windows.")
-      );
+    if ("reason" in this.helperResolution) {
+      await this.activateDetector(this.createFallbackDetector(this.helperResolution.reason));
       if (this.disposed) {
         return;
       }
@@ -100,15 +99,15 @@ export class SampleOrNativeDetector implements ImeDetector {
       this.onDidLogEmitter.fire({
         type: "log",
         level: "warn",
-        message: "Using sample detector because the native helper is only available on Windows.",
+        message: "Using sample detector because no native helper is available for this platform.",
         timestamp: new Date().toISOString(),
-        details: { platform: process.platform },
+        details: { reason: this.helperResolution.reason },
         source: "fallback"
       });
       return;
     }
 
-    const nativeDetector = this.nativeDetectorFactory(this.helperPath);
+    const nativeDetector = this.nativeDetectorFactory(this.helperResolution);
     try {
       await this.activateDetector(nativeDetector);
     } catch (error) {
@@ -122,7 +121,11 @@ export class SampleOrNativeDetector implements ImeDetector {
         level: "warn",
         message: "Falling back to sample detector because the native helper could not start.",
         timestamp: new Date().toISOString(),
-        details: { error: message },
+        details: {
+          error: message,
+          helperPath: this.helperResolution.helperPath,
+          platformKey: this.helperResolution.platformKey
+        },
         source: "fallback"
       });
     }

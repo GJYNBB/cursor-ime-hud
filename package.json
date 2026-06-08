@@ -63,7 +63,10 @@
     "中文输入法",
     "输入法状态",
     "光标提示",
-    "中英文切换"
+    "中英文切换",
+    "macos",
+    "linux",
+    "experimental"
   ],
   "extensionKind": [
     "ui"
@@ -170,6 +173,11 @@
           "minimum": -16,
           "maximum": 16,
           "description": "%configuration.overlay.offsetY.description%"
+        },
+        "cursorImeHud.experimental.nativeHelper.enabled": {
+          "type": "boolean",
+          "default": false,
+          "description": "%configuration.experimental.nativeHelper.enabled.description%"
         }
       }
     }

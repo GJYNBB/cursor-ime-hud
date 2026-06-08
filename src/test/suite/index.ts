@@ -20,6 +20,7 @@ export function run(): Promise<void> {
   mocha.addFile(path.resolve(testsRoot, "./renderState.test.js"));
   mocha.addFile(path.resolve(testsRoot, "./detectorLifecycle.test.js"));
   mocha.addFile(path.resolve(testsRoot, "./helperProtocol.test.js"));
+  mocha.addFile(path.resolve(testsRoot, "./nativeHelperPath.test.js"));
   mocha.addFile(path.resolve(testsRoot, "./positionStrategy.test.js"));
   mocha.addFile(path.resolve(testsRoot, "./services.test.js"));
 

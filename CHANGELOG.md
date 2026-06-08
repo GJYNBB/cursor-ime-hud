@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Added platform native-helper path resolution groundwork for experimental macOS and Linux development while preserving Windows stable behavior.
+- Added the `cursorImeHud.experimental.nativeHelper.enabled` setting and `CURSOR_IME_HUD_EXPERIMENTAL_NATIVE_HELPER=1` development override for future macOS/Linux helper validation.
+
+### Changed
+
+- Documented Windows as the stable support path and macOS/Linux as experimental development targets.
+
 ## [1.0.1] - 2026-06-08
 
 ### Added

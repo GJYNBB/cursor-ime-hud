@@ -1,6 +1,6 @@
 {
   "extension.displayName": "Cursor IME HUD（输入法状态提示）",
-  "extension.description": "Semi-transparent Chinese/English IME state HUD near the caret for VS Code/Cursor on Windows. Helps identify Chinese/English input mode (输入法状态提示).",
+  "extension.description": "Caret-adjacent IME state HUD for VS Code/Cursor. Stable Windows Chinese/English detection; experimental macOS/Linux native-helper groundwork.",
   "commands.category": "Cursor IME HUD",
   "commands.toggleOverlay.title": "Toggle Overlay",
   "commands.refreshImeState.title": "Refresh IME State",
@@ -18,5 +18,6 @@
   "configuration.statusBar.enabled.description": "Show the current IME state in the status bar.",
   "configuration.overlay.hideWhenEditorUnfocused.description": "Hide the editor overlay when the VS Code window loses focus.",
   "configuration.overlay.offsetX.description": "Horizontal margin offset applied to the overlay.",
-  "configuration.overlay.offsetY.description": "Vertical margin offset applied to the overlay."
+  "configuration.overlay.offsetY.description": "Vertical margin offset applied to the overlay.",
+  "configuration.experimental.nativeHelper.enabled.description": "Enable experimental native helper resolution on macOS and Linux. Windows stable behavior is unchanged."
 }

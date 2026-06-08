@@ -1,9 +1,16 @@
 import * as assert from "node:assert";
-import * as sinon from "sinon";
 import { ImeDetector } from "../../detector/ImeDetector";
+import { NativeHelperDescriptor, NativeHelperUnavailable } from "../../detector/nativeHelperPath";
 import { SampleOrNativeDetector } from "../../detector/SampleOrNativeDetector";
 import { DetectorLogEntry, ImeSnapshot } from "../../model/types";
 import * as vscode from "vscode";
+
+const helperDescriptor: NativeHelperDescriptor = {
+  helperPath: "helper.exe",
+  relativePath: "resources/bin/win-x64/WinImeWatcher.exe",
+  backendName: "WinImeWatcher",
+  platformKey: "win-x64"
+};
 
 class FailingNativeDetector implements ImeDetector {
   private readonly snapshotEmitter = new vscode.EventEmitter<ImeSnapshot>();
@@ -109,9 +116,8 @@ class SuccessfulNativeDetector implements ImeDetector {
 
 suite("SampleOrNativeDetector", () => {
   test("falls back once and keeps unknown semantics", async () => {
-    const platformStub = sinon.stub(process, "platform").value("win32");
     const failingDetector = new FailingNativeDetector();
-    const detector = new SampleOrNativeDetector("helper.exe", () => failingDetector);
+    const detector = new SampleOrNativeDetector(helperDescriptor, () => failingDetector);
 
     try {
       await detector.start();
@@ -123,69 +129,85 @@ suite("SampleOrNativeDetector", () => {
       assert.match(detector.getDebugInfo().fallbackReason ?? "", /native-start-failed/);
     } finally {
       detector.dispose();
-      platformStub.restore();
     }
   });
 
-  test("non-win32 path always takes the fallback branch", async () => {
-    // The platform check lives in `extension.ts` (see
-    // `process.platform !== "win32"`), so the wrapper itself can be
-    // constructed anywhere. On non-Windows, the composition root
-    // never instantiates the native factory, which means the only
-    // path the wrapper can take is the fallback branch. We simulate
-    // that by stubbing `process.platform` and confirming the wrapper
-    // does not invoke the native factory.
-    const originalPlatform = process.platform;
-    const platformStub = sinon.stub(process, "platform").value("linux");
+  test("unavailable helper resolution takes the fallback branch", async () => {
+    const unavailable: NativeHelperUnavailable = {
+      reason: "Experimental native helper for linux-x64 is disabled."
+    };
+    let nativeFactoryCalls = 0;
+    const detector = new SampleOrNativeDetector(unavailable, () => {
+      nativeFactoryCalls += 1;
+      return new SuccessfulNativeDetector();
+    });
 
     try {
-      let nativeFactoryCalls = 0;
-      const detector = new SampleOrNativeDetector("helper.exe", () => {
-        nativeFactoryCalls += 1;
-        return new SuccessfulNativeDetector();
-      });
       await detector.start();
 
-      assert.equal(nativeFactoryCalls, 0, "non-win32 must never instantiate the native factory");
-      assert.equal(detector.getDebugInfo().usingFallback, true, "non-win32 always uses fallback");
+      assert.equal(
+        nativeFactoryCalls,
+        0,
+        "unavailable helpers must not instantiate native factory"
+      );
+      assert.equal(detector.getDebugInfo().usingFallback, true, "unavailable helper uses fallback");
+      assert.match(detector.getDebugInfo().fallbackReason ?? "", /linux-x64/);
       assert.equal(detector.getSnapshot().state, "unknown");
-
-      detector.dispose();
     } finally {
-      platformStub.restore();
-      // Defensive: make sure the stub is gone even if `value()` did not
-      // return a stub for some reason.
-      Object.defineProperty(process, "platform", { value: originalPlatform, configurable: true });
+      detector.dispose();
+    }
+  });
+
+  test("resolved experimental helper path uses the native factory", async () => {
+    const experimentalHelper: NativeHelperDescriptor = {
+      helperPath: "linux-helper",
+      relativePath: "resources/bin/linux-x64/LinuxImeWatcher",
+      backendName: "LinuxImeWatcher",
+      platformKey: "linux-x64"
+    };
+    const nativeDetector = new SuccessfulNativeDetector();
+    let nativeFactoryCalls = 0;
+    const detector = new SampleOrNativeDetector(experimentalHelper, (helper) => {
+      nativeFactoryCalls += 1;
+      assert.equal(helper.backendName, "LinuxImeWatcher");
+      assert.equal(helper.helperPath, "linux-helper");
+      return nativeDetector;
+    });
+
+    try {
+      await detector.start();
+
+      assert.equal(nativeFactoryCalls, 1);
+      assert.equal(nativeDetector.startCalls, 1);
+      assert.equal(detector.getDebugInfo().usingFallback, false);
+      assert.equal(detector.getDebugInfo().backendName, "SuccessfulNativeDetector");
+      assert.equal(detector.getSnapshot().state, "cn");
+    } finally {
+      detector.dispose();
     }
   });
 
   test("dispose-during-start releases the native detector and never activates the fallback", async () => {
-    const platformStub = sinon.stub(process, "platform").value("win32");
     const failingDetector = new FailingNativeDetector();
-    const detector = new SampleOrNativeDetector("helper.exe", () => {
+    const detector = new SampleOrNativeDetector(helperDescriptor, () => {
       // Replace the factory so the second invocation (fallback) never
       // resolves and we can assert it was never called.
       return failingDetector;
     });
 
-    try {
-      const startPromise = detector.start();
-      detector.dispose();
-      await startPromise;
+    const startPromise = detector.start();
+    detector.dispose();
+    await startPromise;
 
-      // The contract is that disposal during start is safe: the failed
-      // native detector is disposed, the wrapper does not throw, and
-      // the lifecycle is reported as disposed.
-      assert.equal(detector.getDebugInfo().lifecycleState, "disposed");
-    } finally {
-      platformStub.restore();
-    }
+    // The contract is that disposal during start is safe: the failed
+    // native detector is disposed, the wrapper does not throw, and
+    // the lifecycle is reported as disposed.
+    assert.equal(detector.getDebugInfo().lifecycleState, "disposed");
   });
 
   test("successful native start transitions the wrapper to running with the native snapshot", async () => {
-    const platformStub = sinon.stub(process, "platform").value("win32");
     const nativeDetector = new SuccessfulNativeDetector();
-    const detector = new SampleOrNativeDetector("helper.exe", () => nativeDetector);
+    const detector = new SampleOrNativeDetector(helperDescriptor, () => nativeDetector);
 
     try {
       assert.equal(detector.getDebugInfo().lifecycleState, "idle");
@@ -203,7 +225,6 @@ suite("SampleOrNativeDetector", () => {
       assert.equal(detector.getSnapshot().source, "native-helper");
     } finally {
       detector.dispose();
-      platformStub.restore();
     }
   });
 });

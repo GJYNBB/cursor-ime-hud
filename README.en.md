@@ -2,7 +2,9 @@
 
 [简体中文](README.md) | English
 
-Cursor IME HUD is a VS Code extension for Windows that shows a lightweight semi-transparent IME label near the primary caret and mirrors the current state in the status bar.
+Cursor IME HUD is a VS Code/Cursor extension that shows a lightweight semi-transparent IME label near the primary caret and mirrors the current state in the status bar.
+
+The stable path today is Windows 10/11 x64 Chinese/English IME detection. macOS and Linux support is under experimental development: the extension now has platform native-helper resolution groundwork, but macOS/Linux helper binaries and full internal IME-mode detection are not yet promised as stable behavior.
 
 The extension is intentionally narrow in scope:
 
@@ -22,6 +24,17 @@ The extension is intentionally narrow in scope:
 - Windows native helper process for IME state detection
 - Status bar fallback with tooltip details
 - Diagnostics command with raw detector information and recent logs
+
+## Platform support status
+
+| Platform          | Status                   | Detection path                                           | Notes                                                                             |
+| ----------------- | ------------------------ | -------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| Windows 10/11 x64 | Stable                   | Rust `WinImeWatcher.exe` + Win32 IMM32 / keyboard layout | Current production path.                                                          |
+| macOS             | Experimental development | Reserved `MacImeWatcher` native-helper path              | Disabled by default; requires the experimental switch and future helper binaries. |
+| Linux x64/arm64   | Experimental development | Reserved `LinuxImeWatcher` native-helper path            | Disabled by default; Fcitx5 / IBus validation is planned first.                   |
+| Other platforms   | Fallback                 | Sample detector                                          | Reports `unknown`; useful for development and fallback-path testing.              |
+
+On macOS/Linux, `cursorImeHud.experimental.nativeHelper.enabled` or `CURSOR_IME_HUD_EXPERIMENTAL_NATIVE_HELPER=1` enables experimental native-helper path resolution. During the experimental phase, detectors may only identify the active input source or input framework, and may not expose an IME's internal Chinese/English mode.
 
 ## Screenshot
 
@@ -90,18 +103,19 @@ The repository already includes `.vscode/launch.json` and `.vscode/tasks.json` s
 
 ## Settings
 
-| Setting                                        | Default  | Notes                                                                                                |
-| ---------------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------- |
-| `cursorImeHud.overlay.enabled`                 | `true`   | Enables the caret-adjacent HUD.                                                                      |
-| `cursorImeHud.overlay.labelPreset`             | `custom` | Label preset: `custom` uses custom labels, `zh-en` shows `中` / `英`, and `en-zh` shows `ZH` / `EN`. |
-| `cursorImeHud.overlay.cnLabel`                 | `中`     | Custom label used for Chinese input mode when `labelPreset` is `custom`.                             |
-| `cursorImeHud.overlay.enLabel`                 | `英`     | Custom label used for English input mode when `labelPreset` is `custom`.                             |
-| `cursorImeHud.overlay.opacity`                 | `0.78`   | Background opacity for the overlay.                                                                  |
-| `cursorImeHud.overlay.mode`                    | `text`   | `text+icon` is reserved for future work and currently behaves the same as `text`.                    |
-| `cursorImeHud.statusBar.enabled`               | `true`   | Shows the current state in the status bar.                                                           |
-| `cursorImeHud.overlay.hideWhenEditorUnfocused` | `true`   | Hides the overlay when the VS Code window loses focus.                                               |
-| `cursorImeHud.overlay.offsetX`                 | `6`      | Horizontal offset for the overlay.                                                                   |
-| `cursorImeHud.overlay.offsetY`                 | `0`      | Vertical offset for the overlay.                                                                     |
+| Setting                                          | Default  | Notes                                                                                                    |
+| ------------------------------------------------ | -------- | -------------------------------------------------------------------------------------------------------- |
+| `cursorImeHud.overlay.enabled`                   | `true`   | Enables the caret-adjacent HUD.                                                                          |
+| `cursorImeHud.overlay.labelPreset`               | `custom` | Label preset: `custom` uses custom labels, `zh-en` shows `中` / `英`, and `en-zh` shows `ZH` / `EN`.     |
+| `cursorImeHud.overlay.cnLabel`                   | `中`     | Custom label used for Chinese input mode when `labelPreset` is `custom`.                                 |
+| `cursorImeHud.overlay.enLabel`                   | `英`     | Custom label used for English input mode when `labelPreset` is `custom`.                                 |
+| `cursorImeHud.overlay.opacity`                   | `0.78`   | Background opacity for the overlay.                                                                      |
+| `cursorImeHud.overlay.mode`                      | `text`   | `text+icon` is reserved for future work and currently behaves the same as `text`.                        |
+| `cursorImeHud.statusBar.enabled`                 | `true`   | Shows the current state in the status bar.                                                               |
+| `cursorImeHud.overlay.hideWhenEditorUnfocused`   | `true`   | Hides the overlay when the VS Code window loses focus.                                                   |
+| `cursorImeHud.overlay.offsetX`                   | `6`      | Horizontal offset for the overlay.                                                                       |
+| `cursorImeHud.overlay.offsetY`                   | `0`      | Vertical offset for the overlay.                                                                         |
+| `cursorImeHud.experimental.nativeHelper.enabled` | `false`  | Enables experimental native-helper path resolution on macOS/Linux; Windows stable behavior is unchanged. |
 
 > The VS Code/Cursor Settings UI and command titles follow the editor display language automatically: Simplified Chinese uses Chinese strings, while English and unsupported locales fall back to English. Setting IDs such as `cursorImeHud.overlay.enabled` remain stable.
 

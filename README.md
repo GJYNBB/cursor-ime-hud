@@ -6,7 +6,9 @@
 [![VS Code](https://img.shields.io/badge/VS%20Code-%5E1.107.0-007ACC)](https://code.visualstudio.com/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-**Cursor IME HUD** 是一个面向 Windows 的 VS Code / Cursor 扩展：它会在主光标附近显示当前中文/英文输入状态，并同步到状态栏，帮助你在写代码、写文档、聊天和搜索时减少“明明想输入英文却打出中文”的误输入。
+**Cursor IME HUD** 是一个 VS Code / Cursor 扩展：它会在主光标附近显示当前输入法状态，并同步到状态栏，帮助你在写代码、写文档、聊天和搜索时减少“明明想输入英文却打出中文”的误输入。
+
+当前稳定支持路径是 **Windows 10/11 x64 中文/英文输入状态探测**。macOS / Linux 支持正在实验性开发中，现阶段只提供平台 helper 路径解析和回退基础能力，不承诺完整等价 Windows 的输入法内部中英模式检测。
 
 它的目标很克制：**只提示输入法状态，不自动切换输入法，不读取文件内容、剪贴板或实际输入文本。**
 
@@ -37,6 +39,17 @@
 - **Windows native helper 探测**：通过独立 helper 读取前台窗口 IME 状态，扩展侧通过 JSONL 协议消费状态。
 - **诊断命令**：内置 `Show Diagnostics`，便于定位 helper、协议、状态解析和生命周期问题。
 - **不自动切换输入法**：只做显示，不改变用户的输入法和键盘布局。
+
+## 平台支持状态
+
+| 平台              | 状态       | 检测方式                                                 | 说明                                         |
+| ----------------- | ---------- | -------------------------------------------------------- | -------------------------------------------- |
+| Windows 10/11 x64 | 稳定支持   | Rust `WinImeWatcher.exe` + Win32 IMM32 / keyboard layout | 当前正式发布路径。                           |
+| macOS             | 实验性开发 | 预留 `MacImeWatcher` native helper 路径                  | 默认关闭；需要实验开关和后续 helper 二进制。 |
+| Linux x64/arm64   | 实验性开发 | 预留 `LinuxImeWatcher` native helper 路径                | 默认关闭；后续优先验证 Fcitx5 / IBus。       |
+| 其他平台          | 回退       | Sample detector                                          | 显示 `unknown`，用于开发和回退路径测试。     |
+
+macOS / Linux 上可以通过 `cursorImeHud.experimental.nativeHelper.enabled` 或环境变量 `CURSOR_IME_HUD_EXPERIMENTAL_NATIVE_HELPER=1` 打开实验性 native helper 路径解析。由于不同输入法和桌面环境暴露的信息不同，实验阶段可能只能检测输入源或输入法框架，无法保证识别输入法内部中文/英文模式。
 
 ## 效果预览
 
@@ -89,18 +102,19 @@ Cursor IME HUD: Show Diagnostics
 
 ## 配置项
 
-| 设置                                           | 默认值   | 说明                                                                                    |
-| ---------------------------------------------- | -------- | --------------------------------------------------------------------------------------- |
-| `cursorImeHud.overlay.enabled`                 | `true`   | 是否启用光标旁 HUD。                                                                    |
-| `cursorImeHud.overlay.labelPreset`             | `custom` | 标签预设：`custom` 使用自定义标签，`zh-en` 显示 `中` / `英`，`en-zh` 显示 `ZH` / `EN`。 |
-| `cursorImeHud.overlay.cnLabel`                 | `中`     | `labelPreset` 为 `custom` 时的中文输入状态显示标签。                                    |
-| `cursorImeHud.overlay.enLabel`                 | `英`     | `labelPreset` 为 `custom` 时的英文输入状态显示标签。                                    |
-| `cursorImeHud.overlay.opacity`                 | `0.78`   | HUD 背景透明度，范围 `0.15` 到 `1`。                                                    |
-| `cursorImeHud.overlay.mode`                    | `text`   | HUD 渲染模式；`text+icon` 当前为预留模式，表现与 `text` 相同。                          |
-| `cursorImeHud.statusBar.enabled`               | `true`   | 是否在状态栏显示输入状态。                                                              |
-| `cursorImeHud.overlay.hideWhenEditorUnfocused` | `true`   | VS Code 窗口失焦时是否隐藏 HUD。                                                        |
-| `cursorImeHud.overlay.offsetX`                 | `6`      | HUD 横向偏移。                                                                          |
-| `cursorImeHud.overlay.offsetY`                 | `0`      | HUD 纵向偏移。                                                                          |
+| 设置                                             | 默认值   | 说明                                                                                    |
+| ------------------------------------------------ | -------- | --------------------------------------------------------------------------------------- |
+| `cursorImeHud.overlay.enabled`                   | `true`   | 是否启用光标旁 HUD。                                                                    |
+| `cursorImeHud.overlay.labelPreset`               | `custom` | 标签预设：`custom` 使用自定义标签，`zh-en` 显示 `中` / `英`，`en-zh` 显示 `ZH` / `EN`。 |
+| `cursorImeHud.overlay.cnLabel`                   | `中`     | `labelPreset` 为 `custom` 时的中文输入状态显示标签。                                    |
+| `cursorImeHud.overlay.enLabel`                   | `英`     | `labelPreset` 为 `custom` 时的英文输入状态显示标签。                                    |
+| `cursorImeHud.overlay.opacity`                   | `0.78`   | HUD 背景透明度，范围 `0.15` 到 `1`。                                                    |
+| `cursorImeHud.overlay.mode`                      | `text`   | HUD 渲染模式；`text+icon` 当前为预留模式，表现与 `text` 相同。                          |
+| `cursorImeHud.statusBar.enabled`                 | `true`   | 是否在状态栏显示输入状态。                                                              |
+| `cursorImeHud.overlay.hideWhenEditorUnfocused`   | `true`   | VS Code 窗口失焦时是否隐藏 HUD。                                                        |
+| `cursorImeHud.overlay.offsetX`                   | `6`      | HUD 横向偏移。                                                                          |
+| `cursorImeHud.overlay.offsetY`                   | `0`      | HUD 纵向偏移。                                                                          |
+| `cursorImeHud.experimental.nativeHelper.enabled` | `false`  | 在 macOS / Linux 上启用实验性 native helper 路径解析；Windows 稳定行为不受影响。        |
 
 > VS Code / Cursor 设置页和命令标题会跟随编辑器显示语言自动本地化：中文界面显示中文说明，英文或未支持语言回退到英文。设置 ID（例如 `cursorImeHud.overlay.enabled`）保持不变。
 

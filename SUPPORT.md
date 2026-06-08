@@ -6,15 +6,21 @@ This document explains where to get help and what information to include when re
 
 Cursor IME HUD currently targets:
 
-- Windows 10 or Windows 11
+- Windows 10 or Windows 11 x64 with the bundled Rust `WinImeWatcher.exe` helper
 - VS Code `^1.107.0`
 - Cursor on a best-effort basis
-- bundled Rust `win-x64` native helper packages
 - Chinese IME detection using the Windows primary language id `0x0004`
 
-macOS and Linux can load the extension for development and fallback-path testing, but they do not run the bundled Windows native helper. Japanese, Korean, and other non-Chinese IMEs are not accurately detected in the current version.
+Support status:
 
-Current support applies to the bundled Rust `WinImeWatcher.exe`. Older classic/.NET-helper packages are historical releases and are not the current supported implementation.
+| Platform          | Status                   | Notes                                                                                                                                      |
+| ----------------- | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| Windows 10/11 x64 | Stable                   | Current production path with bundled Rust helper.                                                                                          |
+| macOS             | Experimental development | Native-helper path resolution exists behind an experimental switch; helper binaries and exact input-source behavior still need validation. |
+| Linux x64/arm64   | Experimental development | Native-helper path resolution exists behind an experimental switch; Fcitx5 / IBus validation is planned first.                             |
+| Other platforms   | Fallback                 | The extension can load for development and fallback testing, but reports `unknown`.                                                        |
+
+Japanese, Korean, and other non-Chinese IMEs are not accurately detected in the current stable Windows path. Older classic/.NET-helper packages are historical releases and are not the current supported implementation.
 
 ## Where to ask for help
 
@@ -31,7 +37,8 @@ Please include:
 - Cursor IME HUD extension version
 - Install source: Marketplace, GitHub Release VSIX, or local source build
 - VS Code or Cursor version
-- Windows version and architecture
+- Operating system version and architecture
+- On Linux: desktop environment, X11/Wayland session, and active input framework if known (Fcitx5, IBus, etc.)
 - Active IME name/language
 - Whether the problem happens in VS Code, Cursor, or both
 - Steps to reproduce

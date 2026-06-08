@@ -49,7 +49,10 @@ export class NativeHelperImeDetector implements ImeDetector {
   public readonly onDidChangeSnapshot = this.onDidChangeSnapshotEmitter.event;
   public readonly onDidLog = this.onDidLogEmitter.event;
 
-  public constructor(private readonly helperPath: string) {}
+  public constructor(
+    private readonly helperPath: string,
+    private readonly backendName = "WinImeWatcher"
+  ) {}
 
   public async start(): Promise<void> {
     if (this.disposed || this.lifecycleState === "disposed") {
@@ -98,7 +101,7 @@ export class NativeHelperImeDetector implements ImeDetector {
   public getDebugInfo(): ImeDetectorDebugInfo {
     return {
       source: "native-helper",
-      backendName: "WinImeWatcher",
+      backendName: this.backendName,
       helperPath: this.helperPath,
       usingFallback: false,
       lifecycleState: this.lifecycleState
