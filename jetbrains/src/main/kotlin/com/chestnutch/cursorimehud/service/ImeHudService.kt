@@ -62,7 +62,7 @@ class ImeHudService(private val project: Project) : Disposable, WinImeWatcherPro
 
   fun displayText(): String {
     val settings = service<CursorImeHudSettings>().state
-    val labels = CursorImeHudLabels(settings.cnLabel.ifBlank { "中" }, settings.enLabel.ifBlank { "英" })
+    val labels = CursorImeHudLabels.fromSettings(settings.labelPreset, settings.cnLabel, settings.enLabel)
     return "IME: ${latestSnapshot.displayLabel(labels)}"
   }
 
@@ -108,6 +108,7 @@ class ImeHudService(private val project: Project) : Disposable, WinImeWatcherPro
     val settings = service<CursorImeHudSettings>().state
     appendLine("  statusBarEnabled=${settings.statusBarEnabled}")
     appendLine("  caretHudEnabled=${settings.caretHudEnabled}")
+    appendLine("  labelPreset=${settings.labelPreset}")
     appendLine("  cnLabel=${settings.cnLabel}")
     appendLine("  enLabel=${settings.enLabel}")
     appendLine("  opacity=${settings.opacity}")

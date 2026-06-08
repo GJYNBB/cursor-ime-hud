@@ -1,5 +1,6 @@
 package com.chestnutch.cursorimehud.settings
 
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.PersistentStateComponent
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.State
@@ -11,6 +12,7 @@ class CursorImeHudSettings : PersistentStateComponent<CursorImeHudSettings.State
   data class State(
     var statusBarEnabled: Boolean = true,
     var caretHudEnabled: Boolean = true,
+    var labelPreset: String = "zh-en",
     var cnLabel: String = "中",
     var enLabel: String = "英",
     var opacity: Double = 0.78,
@@ -29,5 +31,17 @@ class CursorImeHudSettings : PersistentStateComponent<CursorImeHudSettings.State
 
   fun update(mutator: (State) -> Unit) {
     mutator(state)
+  }
+
+  fun publishChanged() {
+    val application = ApplicationManager.getApplication()
+    val publish = Runnable {
+      application.messageBus.syncPublisher(CursorImeHudSettingsListener.TOPIC).settingsChanged()
+    }
+    if (application.isDispatchThread) {
+      publish.run()
+    } else {
+      application.invokeLater(publish)
+    }
   }
 }

@@ -8,9 +8,10 @@ This module is intentionally isolated under `jetbrains/` so the existing VS Code
 
 - Windows native helper only.
 - Reuses the existing Rust `WinImeWatcher.exe` protocol from `../docs/helper-protocol.md`.
-- Status bar indicator: `IME: 中`, `IME: 英`, or `IME: ?`.
+- Status bar indicator: `IME: 中`, `IME: 英`, `IME: ZH`, `IME: EN`, or `IME: ?`.
+- Caret-adjacent HUD: a small rounded chip near the active editor caret, with `中`/`英`, `ZH`/`EN`, or custom labels.
 - Actions: refresh IME state, toggle caret HUD setting, show diagnostics.
-- Settings: labels, status bar enablement, caret HUD enablement, opacity, offsets, hide when editor unfocused.
+- Settings: label/icon preset, custom labels, status bar enablement, caret HUD enablement, opacity, offsets, hide when editor unfocused.
 - Non-Windows IDEs load safely but do not spawn the helper.
 
 ## Build

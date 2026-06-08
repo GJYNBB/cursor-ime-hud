@@ -21,6 +21,8 @@
   <extensions defaultExtensionNs="com.intellij">
     <applicationService serviceImplementation="com.chestnutch.cursorimehud.settings.CursorImeHudSettings"/>
     <projectService serviceImplementation="com.chestnutch.cursorimehud.service.ImeHudService"/>
+    <projectService serviceImplementation="com.chestnutch.cursorimehud.ui.caret.CaretHudController"/>
+    <postStartupActivity implementation="com.chestnutch.cursorimehud.ui.caret.CaretHudStartupActivity"/>
     <statusBarWidgetFactory id="CursorImeHudStatusBar" implementation="com.chestnutch.cursorimehud.ui.ImeStatusBarWidgetFactory"/>
     <applicationConfigurable instance="com.chestnutch.cursorimehud.settings.CursorImeHudConfigurable" id="cursorImeHud" displayName="Cursor IME HUD"/>
   </extensions>

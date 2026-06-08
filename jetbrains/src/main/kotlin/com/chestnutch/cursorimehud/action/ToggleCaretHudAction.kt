@@ -9,5 +9,6 @@ class ToggleCaretHudAction : AnAction() {
   override fun actionPerformed(event: AnActionEvent) {
     val settings = service<CursorImeHudSettings>()
     settings.update { it.caretHudEnabled = !it.caretHudEnabled }
+    settings.publishChanged()
   }
 }

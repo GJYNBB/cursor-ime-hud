@@ -1,5 +1,6 @@
 package com.chestnutch.cursorimehud.settings
 
+import com.chestnutch.cursorimehud.model.CursorImeHudLabelPreset
 import com.intellij.openapi.components.service
 import com.intellij.openapi.options.SearchableConfigurable
 import com.intellij.ui.components.JBCheckBox
@@ -7,6 +8,7 @@ import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBTextField
 import java.awt.GridBagConstraints
 import java.awt.GridBagLayout
+import javax.swing.JComboBox
 import javax.swing.JComponent
 import javax.swing.JPanel
 
@@ -15,6 +17,7 @@ class CursorImeHudConfigurable : SearchableConfigurable {
   private var panel: JPanel? = null
   private lateinit var statusBarEnabled: JBCheckBox
   private lateinit var caretHudEnabled: JBCheckBox
+  private lateinit var labelPreset: JComboBox<CursorImeHudLabelPreset>
   private lateinit var cnLabel: JBTextField
   private lateinit var enLabel: JBTextField
   private lateinit var opacity: JBTextField
@@ -29,7 +32,10 @@ class CursorImeHudConfigurable : SearchableConfigurable {
   override fun createComponent(): JComponent {
     val state = settings.state
     statusBarEnabled = JBCheckBox("Show IME state in the status bar", state.statusBarEnabled)
-    caretHudEnabled = JBCheckBox("Enable caret-adjacent HUD setting (experimental in JetBrains MVP)", state.caretHudEnabled)
+    caretHudEnabled = JBCheckBox("Show caret-adjacent HUD", state.caretHudEnabled)
+    labelPreset = JComboBox(CursorImeHudLabelPreset.entries.toTypedArray()).also {
+      it.selectedItem = CursorImeHudLabelPreset.fromId(state.labelPreset)
+    }
     cnLabel = JBTextField(state.cnLabel)
     enLabel = JBTextField(state.enLabel)
     opacity = JBTextField(state.opacity.toString())
@@ -42,6 +48,7 @@ class CursorImeHudConfigurable : SearchableConfigurable {
       root.add(statusBarEnabled, constraints(row++, 0, 2))
       root.add(caretHudEnabled, constraints(row++, 0, 2))
       root.add(hideWhenEditorUnfocused, constraints(row++, 0, 2))
+      addField(root, row++, "HUD label/icon preset", labelPreset)
       addField(root, row++, "Chinese label", cnLabel)
       addField(root, row++, "English label", enLabel)
       addField(root, row++, "Opacity", opacity)
@@ -57,6 +64,7 @@ class CursorImeHudConfigurable : SearchableConfigurable {
     val state = settings.state
     return statusBarEnabled.isSelected != state.statusBarEnabled ||
       caretHudEnabled.isSelected != state.caretHudEnabled ||
+      selectedPreset().id != state.labelPreset ||
       cnLabel.text != state.cnLabel ||
       enLabel.text != state.enLabel ||
       opacity.text != state.opacity.toString() ||
@@ -69,6 +77,7 @@ class CursorImeHudConfigurable : SearchableConfigurable {
     settings.update { state ->
       state.statusBarEnabled = statusBarEnabled.isSelected
       state.caretHudEnabled = caretHudEnabled.isSelected
+      state.labelPreset = selectedPreset().id
       state.cnLabel = cnLabel.text.ifBlank { "中" }
       state.enLabel = enLabel.text.ifBlank { "英" }
       state.opacity = opacity.text.toDoubleOrNull()?.coerceIn(0.15, 1.0) ?: 0.78
@@ -76,12 +85,14 @@ class CursorImeHudConfigurable : SearchableConfigurable {
       state.offsetY = offsetY.text.toIntOrNull()?.coerceIn(-16, 16) ?: 0
       state.hideWhenEditorUnfocused = hideWhenEditorUnfocused.isSelected
     }
+    settings.publishChanged()
   }
 
   override fun reset() {
     val state = settings.state
     statusBarEnabled.isSelected = state.statusBarEnabled
     caretHudEnabled.isSelected = state.caretHudEnabled
+    labelPreset.selectedItem = CursorImeHudLabelPreset.fromId(state.labelPreset)
     cnLabel.text = state.cnLabel
     enLabel.text = state.enLabel
     opacity.text = state.opacity.toString()
@@ -98,6 +109,9 @@ class CursorImeHudConfigurable : SearchableConfigurable {
     root.add(JBLabel(label), constraints(row, 0, 1))
     root.add(field, constraints(row, 1, 1, fill = GridBagConstraints.HORIZONTAL, weightX = 1.0))
   }
+
+  private fun selectedPreset(): CursorImeHudLabelPreset = labelPreset.selectedItem as? CursorImeHudLabelPreset
+    ?: CursorImeHudLabelPreset.ZH_EN
 
   private fun constraints(
     row: Int,

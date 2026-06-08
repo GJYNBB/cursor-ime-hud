@@ -45,10 +45,30 @@ data class DetectorLogEntry(
   val details: String? = null
 )
 
+enum class CursorImeHudLabelPreset(val id: String, val displayName: String) {
+  ZH_EN("zh-en", "中 / 英"),
+  EN_ZH("en-zh", "ZH / EN"),
+  CUSTOM("custom", "Custom labels");
+
+  override fun toString(): String = displayName
+
+  companion object {
+    fun fromId(id: String?): CursorImeHudLabelPreset = entries.firstOrNull { it.id == id } ?: ZH_EN
+  }
+}
+
 data class CursorImeHudLabels(
   val cnLabel: String = "中",
   val enLabel: String = "英"
-)
+) {
+  companion object {
+    fun fromSettings(labelPreset: String?, cnLabel: String, enLabel: String): CursorImeHudLabels = when (CursorImeHudLabelPreset.fromId(labelPreset)) {
+      CursorImeHudLabelPreset.ZH_EN -> CursorImeHudLabels("中", "英")
+      CursorImeHudLabelPreset.EN_ZH -> CursorImeHudLabels("ZH", "EN")
+      CursorImeHudLabelPreset.CUSTOM -> CursorImeHudLabels(cnLabel.ifBlank { "中" }, enLabel.ifBlank { "英" })
+    }
+  }
+}
 
 enum class HelperLifecycleState {
   IDLE,
