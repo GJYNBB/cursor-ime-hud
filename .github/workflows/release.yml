@@ -48,6 +48,25 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Verify release version
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          const lock = JSON.parse(fs.readFileSync('package-lock.json', 'utf8'));
+          const expectedTag = `v${pkg.version}`;
+
+          if (process.env.GITHUB_REF_NAME !== expectedTag) {
+            throw new Error(`Tag '${process.env.GITHUB_REF_NAME}' does not match package.json version '${expectedTag}'.`);
+          }
+
+          if (lock.version !== pkg.version || lock.packages?.['']?.version !== pkg.version) {
+            throw new Error(`package-lock.json version does not match package.json version '${pkg.version}'.`);
+          }
+          NODE
+
       - name: Lint
         run: npm run lint
 
@@ -66,6 +85,16 @@ jobs:
       - name: Package .vsix
         run: npm run package:vsix
 
+      - name: Verify VSIX filename
+        shell: pwsh
+        run: |
+          $pkg = Get-Content package.json | ConvertFrom-Json
+          $expected = "cursor-ime-hud-$($pkg.version).vsix"
+          if (-not (Test-Path $expected)) {
+            Get-ChildItem *.vsix | Format-Table -AutoSize
+            throw "Expected VSIX '$expected' was not produced."
+          }
+
       - name: Upload .vsix artifact
         uses: actions/upload-artifact@v4
         with:
@@ -83,6 +112,6 @@ jobs:
           set -euo pipefail
           tag="${GITHUB_REF_NAME}"
           if ! gh release view "$tag" >/dev/null 2>&1; then
-            gh release create "$tag" --title "$tag" --notes "Cursor IME HUD $tag"
+            gh release create "$tag" --title "$tag" --generate-notes
           fi
           gh release upload "$tag" ./*.vsix --clobber

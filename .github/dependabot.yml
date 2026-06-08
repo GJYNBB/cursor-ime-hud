@@ -29,3 +29,15 @@ updates:
     labels:
       - "dependencies"
       - "github-actions"
+
+  - package-ecosystem: "cargo"
+    directory: "/native/WinImeWatcher"
+    schedule:
+      interval: "weekly"
+      day: "wednesday"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "deps"
+    labels:
+      - "dependencies"
+      - "cargo"

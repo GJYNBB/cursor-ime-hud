@@ -7,10 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.0.3] - 2026-06-08
+
 ### Changed
 
 - Replaced the Windows native helper implementation with a Rust `WinImeWatcher.exe` while keeping the existing JSONL protocol, `.sha256` integrity sidecar, and user-facing IME detection behavior unchanged.
 - Updated helper build and release automation to use the Rust stable toolchain instead of the .NET SDK.
+- Promoted the Rust helper as the only current bundled implementation; earlier classic/.NET helper packages remain available only as historical releases.
 
 ## [0.0.2] - 2026-06-07
 
@@ -69,6 +72,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Extension smoke tests, position strategy tests, and helper smoke test
 - Marketplace packaging scripts and documentation
 
-[Unreleased]: https://github.com/GJYNBB/cursor-ime-hud/compare/v0.0.2...HEAD
+[Unreleased]: https://github.com/GJYNBB/cursor-ime-hud/compare/v0.0.3...HEAD
+[0.0.3]: https://github.com/GJYNBB/cursor-ime-hud/compare/v0.0.2...v0.0.3
 [0.0.2]: https://github.com/GJYNBB/cursor-ime-hud/releases/tag/v0.0.2
 [0.0.1]: https://github.com/GJYNBB/cursor-ime-hud/releases/tag/v0.0.1

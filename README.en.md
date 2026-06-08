@@ -44,6 +44,18 @@ Marketplace screenshots should use real captures from VS Code or Cursor on Windo
 
 Rust and the MSVC toolchain are only required when you build the bundled Windows helper from source. They are not required to install the packaged VSIX.
 
+## Installation
+
+After Marketplace publication, install **Cursor IME HUD** from the VS Code / Cursor extensions view.
+
+You can also install the packaged VSIX manually from GitHub Releases:
+
+```powershell
+code --install-extension .\cursor-ime-hud-0.0.3.vsix
+```
+
+Current releases bundle the Rust-built `WinImeWatcher.exe`. Users installing the Marketplace or VSIX package do not need Rust, .NET, C# tooling, MSVC Build Tools, or PowerShell. Earlier classic/.NET-helper packages remain available only as historical GitHub Releases and are not the current supported implementation.
+
 ## Development
 
 ```powershell
@@ -131,7 +143,7 @@ This runs:
 - Only the primary caret is rendered in v1
 - The native helper is conservative and can return `unknown` when Windows does not expose enough reliable IME signals
 - `text+icon` is not a distinct rendering mode yet
-- The bundled helper is a Rust single-file executable, so package size is still larger than a pure TypeScript extension
+- The bundled helper is a Rust single-file executable, so the package is larger than a pure TypeScript extension
 
 ### Language support
 
@@ -184,13 +196,13 @@ npm run package:vsix
 This produces a local VSIX such as:
 
 ```text
-cursor-ime-hud-0.0.2.vsix
+cursor-ime-hud-0.0.3.vsix
 ```
 
 To install the packaged extension locally:
 
 ```powershell
-code --install-extension .\cursor-ime-hud-0.0.2.vsix
+code --install-extension .\cursor-ime-hud-0.0.3.vsix
 ```
 
 ## Marketplace Publishing

@@ -6,8 +6,7 @@ $paths = @(
   (Join-Path $PSScriptRoot "..\\out"),
   (Join-Path $PSScriptRoot "..\\.vscode-test"),
   (Join-Path $PSScriptRoot "..\\resources\\bin"),
-  (Join-Path $PSScriptRoot "..\\native\\WinImeWatcher\\bin"),
-  (Join-Path $PSScriptRoot "..\\native\\WinImeWatcher\\obj")
+  (Join-Path $PSScriptRoot "..\\native\\WinImeWatcher\\target")
 )
 
 foreach ($path in $paths) {

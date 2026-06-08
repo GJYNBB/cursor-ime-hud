@@ -2,7 +2,7 @@
   "name": "cursor-ime-hud",
   "displayName": "%extension.displayName%",
   "description": "%extension.description%",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "publisher": "chestnut-ch",
   "license": "MIT",
   "icon": "resources/icon.png",

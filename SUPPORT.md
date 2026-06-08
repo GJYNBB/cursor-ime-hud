@@ -9,10 +9,12 @@ Cursor IME HUD currently targets:
 - Windows 10 or Windows 11
 - VS Code `^1.107.0`
 - Cursor on a best-effort basis
-- `win-x64` native helper packages
+- bundled Rust `win-x64` native helper packages
 - Chinese IME detection using the Windows primary language id `0x0004`
 
 macOS and Linux can load the extension for development and fallback-path testing, but they do not run the bundled Windows native helper. Japanese, Korean, and other non-Chinese IMEs are not accurately detected in the current version.
+
+Current support applies to the bundled Rust `WinImeWatcher.exe`. Older classic/.NET-helper packages are historical releases and are not the current supported implementation.
 
 ## Where to ask for help
 

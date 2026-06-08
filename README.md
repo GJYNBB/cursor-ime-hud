@@ -2,7 +2,7 @@
 
 [English](README.en.md) | 简体中文
 
-[![Release](https://img.shields.io/github/v/release/GJYNBB/cursor-ime-hud?include_prereleases&label=release)](https://github.com/GJYNBB/cursor-ime-hud/releases)
+[![Release](https://img.shields.io/github/v/release/GJYNBB/cursor-ime-hud?label=release)](https://github.com/GJYNBB/cursor-ime-hud/releases)
 [![VS Code](https://img.shields.io/badge/VS%20Code-%5E1.107.0-007ACC)](https://code.visualstudio.com/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
@@ -13,7 +13,7 @@
 ## 目录
 
 - [功能特性](#功能特性)
-- [安装与试用](#安装与试用)
+- [安装](#安装)
 - [快速开始](#快速开始)
 - [命令](#命令)
 - [配置项](#配置项)
@@ -37,21 +37,23 @@
 - **诊断命令**：内置 `Show Diagnostics`，便于定位 helper、协议、状态解析和生命周期问题。
 - **不自动切换输入法**：只做显示，不改变用户的输入法和键盘布局。
 
-## 安装与试用
+## 安装
 
-当前建议先通过 GitHub Release 下载 VSIX 测试包：
+发布到 Marketplace 后，可以在 VS Code / Cursor 扩展市场搜索 **Cursor IME HUD** 并安装。
 
-- [下载 cursor-ime-hud-0.0.2.vsix](https://github.com/GJYNBB/cursor-ime-hud/releases/download/v0.0.2/cursor-ime-hud-0.0.2.vsix)
+也可以从 GitHub Release 手动下载 VSIX：
+
+- [下载 cursor-ime-hud-0.0.3.vsix](https://github.com/GJYNBB/cursor-ime-hud/releases/download/v0.0.3/cursor-ime-hud-0.0.3.vsix)
 
 在 Windows 上安装：
 
 ```powershell
-code --install-extension .\cursor-ime-hud-0.0.2.vsix
+code --install-extension .\cursor-ime-hud-0.0.3.vsix
 ```
 
 如果你使用 Cursor，也可以在扩展页面选择 **Install from VSIX...**，然后选择下载的 `.vsix` 文件。
 
-> VS Code Marketplace 发布流程会在测试稳定后继续推进。当前 GitHub Release 包更适合先行试用和反馈。
+> 当前发布版只包含 Rust 构建的 Windows helper。安装 Marketplace 或 VSIX 包不需要额外安装 Rust、.NET、C# 工具链、MSVC 或 PowerShell。
 
 ## 快速开始
 
@@ -101,6 +103,8 @@ Cursor IME HUD: Show Diagnostics
 
 1. **VS Code 扩展侧**：负责命令、配置、状态栏、HUD 渲染、诊断输出和 helper 生命周期管理。
 2. **Windows native helper**：负责读取前台窗口 IME 状态，并通过 stdio 发送 line-delimited JSON 消息。
+
+当前仓库和新发布版本只包含 Rust 构建的 `WinImeWatcher.exe` helper。早期 classic/.NET helper 只保留在历史 GitHub Release（例如 `v0.0.1` / `v0.0.2`）中，不再作为当前实现维护。
 
 helper 主要使用 Windows IMM32 API（例如 `ImmGetOpenStatus`、`ImmGetDescription`）和 `GetKeyboardLayout`，识别中文 IME 的 Win32 primary language id `0x0004`。协议细节见 [docs/helper-protocol.md](docs/helper-protocol.md)，整体架构见 [ARCHITECTURE.md](ARCHITECTURE.md)。
 
@@ -245,13 +249,13 @@ npm run package:vsix
 这会生成类似下面的文件：
 
 ```text
-cursor-ime-hud-0.0.2.vsix
+cursor-ime-hud-0.0.3.vsix
 ```
 
 本地安装：
 
 ```powershell
-code --install-extension .\cursor-ime-hud-0.0.2.vsix
+code --install-extension .\cursor-ime-hud-0.0.3.vsix
 ```
 
 ### GitHub Release 打包

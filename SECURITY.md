@@ -4,7 +4,7 @@ Thank you for helping keep Cursor IME HUD safe for users. The extension bundles 
 
 ## Supported versions
 
-Security fixes are considered for the latest published GitHub Release / VSIX and the current `main` branch. Older test packages may not receive backported fixes unless the issue also affects the latest release.
+Security fixes are considered for the latest Marketplace version, the latest stable GitHub Release / VSIX, and the current `main` branch. Older historical packages, including classic/.NET-helper releases, generally do not receive backported fixes unless the issue also affects the current Rust-based implementation or release infrastructure.
 
 ## Reporting a vulnerability
 
@@ -45,7 +45,7 @@ resources/bin/win-x64/WinImeWatcher.exe
 resources/bin/win-x64/WinImeWatcher.exe.sha256
 ```
 
-At runtime, the extension verifies the helper against the adjacent `.sha256` sidecar. If the hash is missing or mismatched, the native helper is disabled and the extension falls back to the sample detector.
+Current releases bundle the official Rust-built `WinImeWatcher.exe`. At runtime, the extension verifies the helper against the adjacent `.sha256` sidecar. If the hash is missing or mismatched, the native helper is disabled and the extension falls back to the sample detector.
 
 Security-sensitive examples include, but are not limited to:
 
