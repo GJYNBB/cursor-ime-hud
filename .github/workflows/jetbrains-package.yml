@@ -72,12 +72,17 @@ jobs:
           New-Item -ItemType Directory -Force -Path $inspectDir | Out-Null
           Expand-Archive -LiteralPath $zip.FullName -DestinationPath $inspectDir -Force
 
-          $jar = Get-ChildItem -Path $inspectDir -Recurse -Filter "*.jar" | Select-Object -First 1
-          if (-not $jar) {
-            throw "JetBrains plugin ZIP does not contain a plugin JAR."
+          $jars = Get-ChildItem -Path $inspectDir -Recurse -Filter "*.jar"
+          if (-not $jars) {
+            throw "JetBrains plugin ZIP does not contain any plugin JARs."
           }
 
-          $jarEntries = & jar tf $jar.FullName
+          $allEntries = New-Object System.Collections.Generic.HashSet[string]
+          foreach ($jar in $jars) {
+            Write-Host "Inspecting JAR: $($jar.FullName)"
+            & jar tf $jar.FullName | ForEach-Object { [void]$allEntries.Add($_) }
+          }
+
           $required = @(
             "META-INF/plugin.xml",
             "bin/win-x64/WinImeWatcher.exe",
@@ -85,8 +90,8 @@ jobs:
           )
 
           foreach ($entry in $required) {
-            if (-not ($jarEntries -contains $entry)) {
-              throw "Plugin JAR is missing required entry '$entry'."
+            if (-not $allEntries.Contains($entry)) {
+              throw "Plugin artifact is missing required entry '$entry'."
             }
           }
 
