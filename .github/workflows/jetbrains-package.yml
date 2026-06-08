@@ -1,6 +1,9 @@
 name: JetBrains Plugin Package
 
 on:
+  push:
+    branches:
+      - jetbrains-plugin-windows
   workflow_dispatch:
 
 concurrency:
