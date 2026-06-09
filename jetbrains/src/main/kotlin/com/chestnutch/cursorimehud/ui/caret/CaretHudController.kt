@@ -11,8 +11,12 @@ import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.editor.event.CaretEvent
 import com.intellij.openapi.editor.event.CaretListener
+import com.intellij.openapi.editor.event.DocumentEvent
+import com.intellij.openapi.editor.event.DocumentListener
 import com.intellij.openapi.editor.event.EditorFactoryEvent
 import com.intellij.openapi.editor.event.EditorFactoryListener
+import com.intellij.openapi.editor.event.SelectionEvent
+import com.intellij.openapi.editor.event.SelectionListener
 import com.intellij.openapi.editor.event.VisibleAreaEvent
 import com.intellij.openapi.editor.event.VisibleAreaListener
 import com.intellij.openapi.fileEditor.FileEditorManager
@@ -50,14 +54,33 @@ class CaretHudController(private val project: Project) : Disposable, ImeHudServi
     editorFactory.eventMulticaster.addCaretListener(object : CaretListener {
       override fun caretPositionChanged(event: CaretEvent) {
         if (event.editor.project == project) {
-          scheduleRender()
+          scheduleEditorRender()
         }
       }
     }, this)
     editorFactory.eventMulticaster.addVisibleAreaListener(object : VisibleAreaListener {
       override fun visibleAreaChanged(event: VisibleAreaEvent) {
         if (event.editor.project == project) {
-          scheduleRender()
+          scheduleEditorRender()
+        }
+      }
+    }, this)
+    editorFactory.eventMulticaster.addSelectionListener(object : SelectionListener {
+      override fun selectionChanged(event: SelectionEvent) {
+        if (event.editor.project == project) {
+          scheduleEditorRender()
+        }
+      }
+    }, this)
+    editorFactory.eventMulticaster.addDocumentListener(object : DocumentListener {
+      override fun documentChanged(event: DocumentEvent) {
+        if (!settings.state.caretHudEnabled) return
+        val changedDocument = event.document
+        ApplicationManager.getApplication().invokeLater {
+          if (project.isDisposed || !settings.state.caretHudEnabled) return@invokeLater
+          if (activeEditor()?.document == changedDocument) {
+            scheduleRender()
+          }
         }
       }
     }, this)
@@ -97,6 +120,11 @@ class CaretHudController(private val project: Project) : Disposable, ImeHudServi
     KeyboardFocusManager.getCurrentKeyboardFocusManager().removePropertyChangeListener("focusOwner", focusListener)
     service.removeListener(this)
     renderer.hide()
+  }
+
+  private fun scheduleEditorRender() {
+    if (!settings.state.caretHudEnabled) return
+    scheduleRender()
   }
 
   private fun scheduleRender(immediate: Boolean = false) {

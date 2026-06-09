@@ -42,8 +42,7 @@ class CaretHudRenderer {
     }
 
     val hudChip = ensureChip(layeredPane)
-    hudChip.update(label, state, settings.opacity)
-    val size = hudChip.preferredSize
+    val size = hudChip.preferredSizeFor(label)
     val centeredY = caretPoint.y + max(0, (editor.lineHeight - size.height) / 2)
     val target = SwingUtilities.convertPoint(
       content,
@@ -67,10 +66,15 @@ class CaretHudRenderer {
       return
     }
 
+    val oldBounds = Rectangle(hudChip.bounds)
+    hudChip.update(label, state, settings.opacity)
     hudChip.setBounds(x, y, size.width, size.height)
     hudChip.isVisible = true
     hudChip.repaint()
     layeredPane.revalidate()
+    if (!oldBounds.isEmpty) {
+      layeredPane.repaint(oldBounds)
+    }
     layeredPane.repaint(hudChip.bounds)
     lastState = nextState
   }
