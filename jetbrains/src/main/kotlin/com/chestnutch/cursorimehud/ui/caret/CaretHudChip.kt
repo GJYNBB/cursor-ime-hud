@@ -28,11 +28,13 @@ class CaretHudChip : JComponent() {
   }
 
   fun update(label: String, state: ImeState, opacity: Double) {
+    val sizeChanged = this.label != label
     this.label = label
     this.state = state
     this.opacity = opacity.coerceIn(0.15, 1.0)
-    revalidate()
-    repaint()
+    if (sizeChanged) {
+      revalidate()
+    }
   }
 
   fun preferredSizeFor(label: String): Dimension {

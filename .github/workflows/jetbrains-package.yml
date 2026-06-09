@@ -77,23 +77,41 @@ jobs:
             throw "JetBrains plugin ZIP does not contain any plugin JARs."
           }
 
-          $allEntries = New-Object System.Collections.Generic.HashSet[string]
+          $mainPluginJars = @()
           foreach ($jar in $jars) {
             Write-Host "Inspecting JAR: $($jar.FullName)"
-            & jar tf $jar.FullName | ForEach-Object { [void]$allEntries.Add($_) }
+            $entries = & jar tf $jar.FullName
+            if ($entries -contains "META-INF/plugin.xml") {
+              $mainPluginJars += [PSCustomObject]@{
+                Jar = $jar
+                Entries = $entries
+              }
+            }
           }
+
+          if ($mainPluginJars.Count -ne 1) {
+            throw "Expected exactly one main plugin JAR containing META-INF/plugin.xml, found $($mainPluginJars.Count)."
+          }
+
+          $mainPluginJar = $mainPluginJars[0]
+          $mainEntries = New-Object System.Collections.Generic.HashSet[string]
+          $mainPluginJar.Entries | ForEach-Object { [void]$mainEntries.Add($_) }
 
           $required = @(
             "META-INF/plugin.xml",
+            "META-INF/pluginIcon.svg",
+            "META-INF/pluginIcon_dark.svg",
             "bin/win-x64/WinImeWatcher.exe",
             "bin/win-x64/WinImeWatcher.exe.sha256"
           )
 
           foreach ($entry in $required) {
-            if (-not $allEntries.Contains($entry)) {
-              throw "Plugin artifact is missing required entry '$entry'."
+            if (-not $mainEntries.Contains($entry)) {
+              throw "Main plugin JAR '$($mainPluginJar.Jar.FullName)' is missing required entry '$entry'."
             }
           }
+
+          Write-Host "Verified main plugin JAR: $($mainPluginJar.Jar.FullName)"
 
           Write-Host "Verified JetBrains plugin artifact: $($zip.FullName)"
 

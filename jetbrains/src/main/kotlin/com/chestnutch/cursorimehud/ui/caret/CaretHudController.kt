@@ -7,6 +7,7 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
+import com.intellij.openapi.editor.Document
 import com.intellij.openapi.editor.Editor
 import com.intellij.openapi.editor.EditorFactory
 import com.intellij.openapi.editor.event.CaretEvent
@@ -43,11 +44,59 @@ class CaretHudController(private val project: Project) : Disposable, ImeHudServi
   }
   @Volatile
   private var renderScheduled = false
+  @Volatile
+  private var documentRenderScheduled = false
+  @Volatile
+  private var pendingChangedDocument: Document? = null
   private var started = false
+  private var hudStarted = false
 
   fun start() {
     if (started || project.isDisposed) return
     started = true
+
+    ApplicationManager.getApplication().messageBus.connect(this).subscribe(
+      CursorImeHudSettingsListener.TOPIC,
+      object : CursorImeHudSettingsListener {
+        override fun settingsChanged() {
+          if (settings.state.caretHudEnabled) {
+            startHud()
+            scheduleRender(immediate = true)
+          } else {
+            renderAlarm.cancelAllRequests()
+            renderScheduled = false
+            documentRenderScheduled = false
+            pendingChangedDocument = null
+            renderer.hide()
+          }
+        }
+      }
+    )
+
+    if (settings.state.caretHudEnabled) {
+      startHud()
+    }
+  }
+
+  override fun onImeHudChanged() {
+    if (settings.state.caretHudEnabled) {
+      scheduleRender(immediate = true)
+    }
+  }
+
+  override fun dispose() {
+    renderAlarm.cancelAllRequests()
+    renderScheduled = false
+    documentRenderScheduled = false
+    pendingChangedDocument = null
+    KeyboardFocusManager.getCurrentKeyboardFocusManager().removePropertyChangeListener("focusOwner", focusListener)
+    service.removeListener(this)
+    renderer.hide()
+  }
+
+  private fun startHud() {
+    if (hudStarted || project.isDisposed) return
+    hudStarted = true
 
     service.addListener(this)
     service.start()
@@ -62,8 +111,13 @@ class CaretHudController(private val project: Project) : Disposable, ImeHudServi
     }, this)
     editorFactory.eventMulticaster.addVisibleAreaListener(object : VisibleAreaListener {
       override fun visibleAreaChanged(event: VisibleAreaEvent) {
-        if (event.editor.project == project) {
-          scheduleEditorRender()
+        if (CaretHudEventScheduling.shouldScheduleVisibleAreaRender(
+            caretHudEnabled = settings.state.caretHudEnabled,
+            editorBelongsToProject = event.editor.project == project,
+            hudShowingForEditor = renderer.isShowingFor(event.editor)
+          )
+        ) {
+          scheduleRender()
         }
       }
     }, this)
@@ -76,14 +130,7 @@ class CaretHudController(private val project: Project) : Disposable, ImeHudServi
     }, this)
     editorFactory.eventMulticaster.addDocumentListener(object : DocumentListener {
       override fun documentChanged(event: DocumentEvent) {
-        if (!settings.state.caretHudEnabled) return
-        val changedDocument = event.document
-        ApplicationManager.getApplication().invokeLater {
-          if (project.isDisposed || !settings.state.caretHudEnabled) return@invokeLater
-          if (activeEditor()?.document == changedDocument) {
-            scheduleRender()
-          }
-        }
+        scheduleDocumentRender(event.document)
       }
     }, this)
     editorFactory.addEditorFactoryListener(object : EditorFactoryListener {
@@ -100,34 +147,31 @@ class CaretHudController(private val project: Project) : Disposable, ImeHudServi
         }
       }
     )
-    ApplicationManager.getApplication().messageBus.connect(this).subscribe(
-      CursorImeHudSettingsListener.TOPIC,
-      object : CursorImeHudSettingsListener {
-        override fun settingsChanged() {
-          scheduleRender(immediate = true)
-        }
-      }
-    )
 
     KeyboardFocusManager.getCurrentKeyboardFocusManager().addPropertyChangeListener("focusOwner", focusListener)
     scheduleRender(immediate = true)
   }
 
-  override fun onImeHudChanged() {
-    scheduleRender(immediate = true)
-  }
-
-  override fun dispose() {
-    renderAlarm.cancelAllRequests()
-    renderScheduled = false
-    KeyboardFocusManager.getCurrentKeyboardFocusManager().removePropertyChangeListener("focusOwner", focusListener)
-    service.removeListener(this)
-    renderer.hide()
-  }
-
   private fun scheduleEditorRender() {
-    if (!settings.state.caretHudEnabled) return
+    if (!CaretHudEventScheduling.shouldScheduleEditorRender(settings.state.caretHudEnabled)) return
     scheduleRender()
+  }
+
+  private fun scheduleDocumentRender(changedDocument: Document) {
+    if (project.isDisposed || !settings.state.caretHudEnabled) return
+    pendingChangedDocument = changedDocument
+    if (documentRenderScheduled) return
+
+    documentRenderScheduled = true
+    ApplicationManager.getApplication().invokeLater {
+      val document = pendingChangedDocument
+      pendingChangedDocument = null
+      documentRenderScheduled = false
+      if (project.isDisposed || !settings.state.caretHudEnabled) return@invokeLater
+      if (activeEditor()?.document == document) {
+        scheduleRender()
+      }
+    }
   }
 
   private fun scheduleRender(immediate: Boolean = false) {

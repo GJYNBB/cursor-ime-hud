@@ -3,16 +3,14 @@ package com.chestnutch.cursorimehud.ui.caret
 import com.chestnutch.cursorimehud.model.ImeState
 import com.chestnutch.cursorimehud.settings.CursorImeHudSettings
 import com.intellij.openapi.editor.Editor
-import java.awt.Point
 import java.awt.Rectangle
-import javax.swing.JLayeredPane
-import javax.swing.SwingUtilities
+import javax.swing.JComponent
 import kotlin.math.max
 
 class CaretHudRenderer {
   private var chip: CaretHudChip? = null
   private var currentEditor: Editor? = null
-  private var currentLayeredPane: JLayeredPane? = null
+  private var currentParent: JComponent? = null
   private var lastState: CaretHudRenderState? = null
 
   fun show(editor: Editor, label: String, state: ImeState, settings: CursorImeHudSettings.State) {
@@ -22,11 +20,6 @@ class CaretHudRenderer {
     }
 
     val content = editor.contentComponent
-    val layeredPane = content.rootPane?.layeredPane ?: run {
-      hide()
-      return
-    }
-
     val caretPoint = editor.visualPositionToXY(editor.caretModel.primaryCaret.visualPosition)
     val visibleArea = editor.scrollingModel.visibleArea
     val caretBounds = Rectangle(caretPoint.x, caretPoint.y, 1, max(1, editor.lineHeight))
@@ -35,22 +28,21 @@ class CaretHudRenderer {
       return
     }
 
-    if (currentEditor !== editor || currentLayeredPane !== layeredPane) {
+    if (currentEditor !== editor || currentParent !== content) {
       hide()
       currentEditor = editor
-      currentLayeredPane = layeredPane
+      currentParent = content
     }
 
-    val hudChip = ensureChip(layeredPane)
+    val hudChip = ensureChip(content)
     val size = hudChip.preferredSizeFor(label)
     val centeredY = caretPoint.y + max(0, (editor.lineHeight - size.height) / 2)
-    val target = SwingUtilities.convertPoint(
-      content,
-      Point(caretPoint.x + settings.offsetX, centeredY + settings.offsetY),
-      layeredPane
-    )
-    val x = target.x.coerceIn(0, max(0, layeredPane.width - size.width))
-    val y = target.y.coerceIn(0, max(0, layeredPane.height - size.height))
+    val xMin = visibleArea.x
+    val yMin = visibleArea.y
+    val xMax = max(xMin, visibleArea.x + visibleArea.width - size.width)
+    val yMax = max(yMin, visibleArea.y + visibleArea.height - size.height)
+    val x = (caretPoint.x + settings.offsetX).coerceIn(xMin, xMax)
+    val y = (centeredY + settings.offsetY).coerceIn(yMin, yMax)
     val nextState = CaretHudRenderState(
       editorIdentity = System.identityHashCode(editor),
       label = label,
@@ -71,13 +63,14 @@ class CaretHudRenderer {
     hudChip.setBounds(x, y, size.width, size.height)
     hudChip.isVisible = true
     hudChip.repaint()
-    layeredPane.revalidate()
     if (!oldBounds.isEmpty) {
-      layeredPane.repaint(oldBounds)
+      content.repaint(oldBounds)
     }
-    layeredPane.repaint(hudChip.bounds)
+    content.repaint(hudChip.bounds)
     lastState = nextState
   }
+
+  fun isShowingFor(editor: Editor): Boolean = currentEditor === editor && chip?.isVisible == true
 
   fun hideFor(editor: Editor) {
     if (currentEditor === editor) {
@@ -86,24 +79,26 @@ class CaretHudRenderer {
   }
 
   fun hide() {
-    val pane = currentLayeredPane
+    val parent = currentParent
     chip?.let { hudChip ->
+      val oldBounds = Rectangle(hudChip.bounds)
       hudChip.isVisible = false
-      pane?.remove(hudChip)
-      pane?.revalidate()
-      pane?.repaint(hudChip.bounds)
+      parent?.remove(hudChip)
+      parent?.revalidate()
+      parent?.repaint(oldBounds)
     }
     chip = null
     currentEditor = null
-    currentLayeredPane = null
+    currentParent = null
     lastState = null
   }
 
-  private fun ensureChip(layeredPane: JLayeredPane): CaretHudChip {
+  private fun ensureChip(parent: JComponent): CaretHudChip {
     chip?.let { return it }
     return CaretHudChip().also { hudChip ->
       chip = hudChip
-      layeredPane.add(hudChip, JLayeredPane.POPUP_LAYER)
+      parent.add(hudChip)
+      parent.setComponentZOrder(hudChip, 0)
     }
   }
 }
