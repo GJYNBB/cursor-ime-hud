@@ -112,8 +112,9 @@ class CaretHudController(private val project: Project) : Disposable, ImeHudServi
     }
 
     val editor = activeEditor()
+    val snapshot = service.snapshot()
     val state = CaretHudVisibility.resolve(
-      snapshot = service.snapshot(),
+      snapshot = snapshot,
       settings = settings.state,
       editorAvailable = editor != null && !editor.isDisposed,
       editorFocused = editor?.let { isEditorFocused(it) } ?: false
@@ -124,7 +125,7 @@ class CaretHudController(private val project: Project) : Disposable, ImeHudServi
       return
     }
 
-    renderer.show(editor, state.label, settings.state)
+    renderer.show(editor, state.label, snapshot.state, settings.state)
   }
 
   private fun activeEditor(): Editor? = FileEditorManager.getInstance(project).selectedTextEditor

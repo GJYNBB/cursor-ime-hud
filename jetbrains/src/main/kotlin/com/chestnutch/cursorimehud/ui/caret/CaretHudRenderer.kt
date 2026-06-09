@@ -1,5 +1,6 @@
 package com.chestnutch.cursorimehud.ui.caret
 
+import com.chestnutch.cursorimehud.model.ImeState
 import com.chestnutch.cursorimehud.settings.CursorImeHudSettings
 import com.intellij.openapi.editor.Editor
 import java.awt.Point
@@ -14,7 +15,7 @@ class CaretHudRenderer {
   private var currentLayeredPane: JLayeredPane? = null
   private var lastState: CaretHudRenderState? = null
 
-  fun show(editor: Editor, label: String, settings: CursorImeHudSettings.State) {
+  fun show(editor: Editor, label: String, state: ImeState, settings: CursorImeHudSettings.State) {
     if (editor.isDisposed) {
       hide()
       return
@@ -41,7 +42,7 @@ class CaretHudRenderer {
     }
 
     val hudChip = ensureChip(layeredPane)
-    hudChip.update(label, settings.opacity)
+    hudChip.update(label, state, settings.opacity)
     val size = hudChip.preferredSize
     val centeredY = caretPoint.y + max(0, (editor.lineHeight - size.height) / 2)
     val target = SwingUtilities.convertPoint(
@@ -54,6 +55,7 @@ class CaretHudRenderer {
     val nextState = CaretHudRenderState(
       editorIdentity = System.identityHashCode(editor),
       label = label,
+      state = state.wireValue,
       opacity = settings.opacity,
       x = x,
       y = y,
