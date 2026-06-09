@@ -41,6 +41,8 @@ class CaretHudController(private val project: Project) : Disposable, ImeHudServi
       scheduleRender()
     }
   }
+  @Volatile
+  private var renderScheduled = false
   private var started = false
 
   fun start() {
@@ -117,6 +119,7 @@ class CaretHudController(private val project: Project) : Disposable, ImeHudServi
 
   override fun dispose() {
     renderAlarm.cancelAllRequests()
+    renderScheduled = false
     KeyboardFocusManager.getCurrentKeyboardFocusManager().removePropertyChangeListener("focusOwner", focusListener)
     service.removeListener(this)
     renderer.hide()
@@ -129,8 +132,24 @@ class CaretHudController(private val project: Project) : Disposable, ImeHudServi
 
   private fun scheduleRender(immediate: Boolean = false) {
     if (project.isDisposed) return
-    renderAlarm.cancelAllRequests()
-    renderAlarm.addRequest({ renderNow() }, if (immediate) 0 else 16)
+    if (immediate) {
+      renderAlarm.cancelAllRequests()
+      renderScheduled = false
+    } else if (renderScheduled) {
+      return
+    }
+
+    renderScheduled = true
+    renderAlarm.addRequest(
+      {
+        try {
+          renderNow()
+        } finally {
+          renderScheduled = false
+        }
+      },
+      if (immediate) 0 else 16
+    )
   }
 
   private fun renderNow() {
