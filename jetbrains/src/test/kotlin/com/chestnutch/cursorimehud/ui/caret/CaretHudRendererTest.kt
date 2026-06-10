@@ -14,7 +14,6 @@ import javax.swing.JPanel
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertFalse
-import kotlin.test.assertNotNull
 import kotlin.test.assertSame
 import kotlin.test.assertTrue
 
@@ -70,10 +69,40 @@ class CaretHudRendererTest {
 
     assertEquals(0, firstContent.componentCount)
     assertEquals(1, secondContent.componentCount)
-    assertNotNull(firstChip)
-    assertSame(secondContent.getComponent(0), secondContent.getComponent(0))
+    assertTrue(firstChip is CaretHudChip)
+    assertSame(secondContent, secondContent.getComponent(0).parent)
     assertTrue(renderer.isShowingFor(secondEditor))
     assertFalse(renderer.isShowingFor(firstEditor))
+  }
+
+  @Test
+  fun rerendersWhenEditorGeometryChangesAfterZoom() {
+    val content = JPanel(null)
+    var caretPoint = Point(32, 20)
+    var lineHeight = 20
+    val editor = fakeEditor(
+      content = content,
+      caretPoint = caretPoint,
+      visibleArea = Rectangle(0, 0, 300, 200),
+      caretPointProvider = { caretPoint },
+      lineHeightProvider = { lineHeight }
+    )
+    val renderer = CaretHudRenderer()
+    val settings = CursorImeHudSettings.State()
+
+    renderer.show(editor, "中", ImeState.CN, settings)
+    val chip = content.getComponent(0)
+    val firstBounds = Rectangle(chip.bounds)
+
+    caretPoint = Point(64, 38)
+    lineHeight = 28
+    renderer.show(editor, "中", ImeState.CN, settings)
+
+    val secondBounds = Rectangle(chip.bounds)
+    assertTrue(firstBounds != secondBounds)
+    assertEquals(caretPoint.x + settings.offsetX, secondBounds.x)
+    assertTrue(secondBounds.y != firstBounds.y)
+    assertSame(chip, content.getComponent(0))
   }
 
   private fun fakeEditor(
@@ -81,7 +110,9 @@ class CaretHudRendererTest {
     caretPoint: Point,
     visibleArea: Rectangle,
     lineHeight: Int = 20,
-    disposed: Boolean = false
+    disposed: Boolean = false,
+    caretPointProvider: () -> Point = { caretPoint },
+    lineHeightProvider: () -> Int = { lineHeight }
   ): Editor {
     val caret = proxy<Caret> { method, _ ->
       when (method.name) {
@@ -102,14 +133,15 @@ class CaretHudRendererTest {
       }
     }
 
-    return proxy { method, args ->
+    return proxy { method, _ ->
       when (method.name) {
         "getContentComponent" -> content
+        "getComponent" -> content
         "getCaretModel" -> caretModel
         "getScrollingModel" -> scrollingModel
-        "getLineHeight" -> lineHeight
+        "getLineHeight" -> lineHeightProvider()
         "isDisposed" -> disposed
-        "visualPositionToXY" -> caretPoint
+        "visualPositionToXY" -> caretPointProvider()
         else -> defaultValue(method.returnType)
       }
     }

@@ -62,11 +62,14 @@ class CaretHudRenderer {
     hudChip.update(label, state, settings.opacity)
     hudChip.setBounds(x, y, size.width, size.height)
     hudChip.isVisible = true
-    hudChip.repaint()
-    if (!oldBounds.isEmpty) {
-      content.repaint(oldBounds)
+    if (oldBounds == hudChip.bounds) {
+      hudChip.repaint()
+    } else {
+      if (!oldBounds.isEmpty) {
+        content.repaint(oldBounds)
+      }
+      content.repaint(hudChip.bounds)
     }
-    content.repaint(hudChip.bounds)
     lastState = nextState
   }
 
