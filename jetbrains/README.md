@@ -2,7 +2,7 @@
 
 Windows-only JetBrains IDE plugin MVP for Cursor IME HUD（输入法状态提示）.
 
-This module is intentionally isolated under `jetbrains/` so the existing VS Code/Cursor extension packaging remains unchanged.
+This module is intentionally isolated under `jetbrains/` so the existing VS Code/Cursor extension packaging remains unchanged. The repository `main` branch contains both clients: the VS Code/Cursor extension at the root and this JetBrains plugin in `jetbrains/`.
 
 ## MVP scope
 

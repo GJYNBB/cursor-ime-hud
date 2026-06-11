@@ -6,13 +6,21 @@
 [![VS Code](https://img.shields.io/badge/VS%20Code-%5E1.107.0-007ACC)](https://code.visualstudio.com/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-**Cursor IME HUD** 是一个面向 Windows 的 VS Code / Cursor 扩展：它会在主光标附近显示当前中文/英文输入状态，并同步到状态栏，帮助你在写代码、写文档、聊天和搜索时减少“明明想输入英文却打出中文”的误输入。
+**Cursor IME HUD** 是一个面向多 IDE 的输入法状态提示项目：它会在编辑器主光标附近显示当前中文/英文输入状态，并同步到状态栏，帮助你在写代码、写文档、聊天和搜索时减少“明明想输入英文却打出中文”的误输入。
+
+当前仓库同时开源维护两个客户端：
+
+- **VS Code / Cursor 扩展**：根目录 TypeScript 项目，发布为 VSIX / VS Code Marketplace 扩展。
+- **JetBrains IDE 插件**：[`jetbrains/`](jetbrains/) 子项目，发布为 JetBrains Marketplace 插件。
+
+两者共用同一套产品定位、图标资源和 Windows Rust native helper 协议。根 README 默认介绍 VS Code / Cursor 扩展；JetBrains 插件的开发与打包说明见 [`jetbrains/README.md`](jetbrains/README.md)。
 
 它的目标很克制：**只提示输入法状态，不自动切换输入法，不读取文件内容、剪贴板或实际输入文本。**
 
 ## 目录
 
 - [功能特性](#功能特性)
+- [源码结构](#源码结构)
 - [效果预览](#效果预览)
 - [安装](#安装)
 - [快速开始](#快速开始)
@@ -37,6 +45,20 @@
 - **Windows native helper 探测**：通过独立 helper 读取前台窗口 IME 状态，扩展侧通过 JSONL 协议消费状态。
 - **诊断命令**：内置 `Show Diagnostics`，便于定位 helper、协议、状态解析和生命周期问题。
 - **不自动切换输入法**：只做显示，不改变用户的输入法和键盘布局。
+
+## 源码结构
+
+```text
+cursor-ime-hud/
+  src/                  # VS Code / Cursor 扩展源码
+  native/               # Rust Windows IME helper 源码
+  resources/            # VS Code 扩展图标、截图和 helper 打包产物
+  jetbrains/            # JetBrains IDE 插件源码（Kotlin + Gradle）
+  docs/                 # helper 协议等共享文档
+  .github/workflows/    # VS Code Release 与 JetBrains 插件打包工作流
+```
+
+建议 issue / PR 都继续提交到同一个仓库。涉及 JetBrains 插件的问题请在标题或正文中注明 `JetBrains`，涉及 VS Code / Cursor 扩展的问题请注明 `VS Code` 或 `Cursor`。
 
 ## 效果预览
 

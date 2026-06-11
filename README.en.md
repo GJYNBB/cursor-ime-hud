@@ -2,9 +2,16 @@
 
 [简体中文](README.md) | English
 
-Cursor IME HUD is a VS Code extension for Windows that shows a lightweight semi-transparent IME label near the primary caret and mirrors the current state in the status bar.
+Cursor IME HUD is a multi-IDE input method state indicator project. It shows a lightweight IME label near the primary caret and mirrors the current state in the status bar, helping Chinese-language developers avoid typing in the wrong input mode while coding, writing, searching, or chatting.
 
-The extension is intentionally narrow in scope:
+This repository now maintains two open-source clients:
+
+- **VS Code / Cursor extension**: the TypeScript project at the repository root, packaged as a VSIX / VS Code Marketplace extension.
+- **JetBrains IDE plugin**: the [`jetbrains/`](jetbrains/) Kotlin + Gradle subproject, packaged for JetBrains Marketplace.
+
+Both clients share the same product direction, icon assets, and Windows Rust native helper protocol. This root README primarily documents the VS Code / Cursor extension; JetBrains plugin development and packaging notes live in [`jetbrains/README.md`](jetbrains/README.md).
+
+The project is intentionally narrow in scope:
 
 - show the current input state near the caret
 - keep the signal low-noise and readable
@@ -22,6 +29,20 @@ The extension is intentionally narrow in scope:
 - Windows native helper process for IME state detection
 - Status bar fallback with tooltip details
 - Diagnostics command with raw detector information and recent logs
+
+## Source Layout
+
+```text
+cursor-ime-hud/
+  src/                  # VS Code / Cursor extension source
+  native/               # Rust Windows IME helper source
+  resources/            # VS Code icon, screenshots, and packaged helper artifacts
+  jetbrains/            # JetBrains IDE plugin source (Kotlin + Gradle)
+  docs/                 # Shared helper protocol documentation
+  .github/workflows/    # VS Code release and JetBrains package workflows
+```
+
+Please keep issues and pull requests in this repository. For JetBrains plugin reports, mention `JetBrains` in the title or body; for VS Code / Cursor extension reports, mention `VS Code` or `Cursor`.
 
 ## Screenshot
 
