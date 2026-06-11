@@ -3,6 +3,7 @@ name: JetBrains Plugin Package
 on:
   push:
     branches:
+      - main
       - jetbrains-plugin-windows
   workflow_dispatch:
 
