@@ -42,6 +42,7 @@ class CaretHudController(private val project: Project) : Disposable, ImeHudServi
   private val settings = service<CursorImeHudSettings>()
   private val renderer = CaretHudRenderer()
   private val renderAlarm = Alarm(Alarm.ThreadToUse.SWING_THREAD, this)
+  private val ctrlWheelZoomAlarm = Alarm(Alarm.ThreadToUse.SWING_THREAD, this)
   private val focusListener = PropertyChangeListener { event: PropertyChangeEvent ->
     if (event.propertyName == "focusOwner") {
       scheduleRender()
@@ -57,12 +58,23 @@ class CaretHudController(private val project: Project) : Disposable, ImeHudServi
   @Volatile
   private var metricRenderScheduled = false
   @Volatile
+  private var ctrlWheelZoomTracking = false
+  @Volatile
+  private var lastCtrlWheelZoomEventMs = 0L
+  @Volatile
+  private var ctrlWheelZoomTargetEditor: Editor? = null
+  @Volatile
   private var documentRenderScheduled = false
   @Volatile
   private var pendingChangedDocument: Document? = null
   private var started = false
   private var hudStarted = false
   private var ctrlWheelZoomListenerRegistered = false
+
+  private companion object {
+    const val CTRL_WHEEL_ZOOM_FRAME_MS = 16
+    const val CTRL_WHEEL_ZOOM_QUIET_MS = 100L
+  }
 
   fun start() {
     if (started || project.isDisposed) return
@@ -81,8 +93,12 @@ class CaretHudController(private val project: Project) : Disposable, ImeHudServi
             }
           } else {
             renderAlarm.cancelAllRequests()
+            ctrlWheelZoomAlarm.cancelAllRequests()
             renderScheduled = false
             metricRenderScheduled = false
+            ctrlWheelZoomTracking = false
+            lastCtrlWheelZoomEventMs = 0L
+            ctrlWheelZoomTargetEditor = null
             documentRenderScheduled = false
             pendingChangedDocument = null
             removeCtrlWheelListener()
@@ -105,8 +121,12 @@ class CaretHudController(private val project: Project) : Disposable, ImeHudServi
 
   override fun dispose() {
     renderAlarm.cancelAllRequests()
+    ctrlWheelZoomAlarm.cancelAllRequests()
     renderScheduled = false
     metricRenderScheduled = false
+    ctrlWheelZoomTracking = false
+    lastCtrlWheelZoomEventMs = 0L
+    ctrlWheelZoomTargetEditor = null
     documentRenderScheduled = false
     pendingChangedDocument = null
     if (ctrlWheelZoomListenerRegistered) {
@@ -217,8 +237,45 @@ class CaretHudController(private val project: Project) : Disposable, ImeHudServi
         ctrlDown = true
       )
     ) {
-      scheduleMetricRender()
+      markCtrlWheelZoomActive(editor)
     }
+  }
+
+  private fun markCtrlWheelZoomActive(editor: Editor) {
+    ctrlWheelZoomTargetEditor = editor
+    lastCtrlWheelZoomEventMs = System.currentTimeMillis()
+    if (ctrlWheelZoomTracking) return
+
+    ctrlWheelZoomTracking = true
+    ctrlWheelZoomAlarm.addRequest({ runCtrlWheelZoomTracking() }, 0)
+  }
+
+  private fun runCtrlWheelZoomTracking() {
+    if (project.isDisposed || !settings.state.caretHudEnabled) {
+      clearCtrlWheelZoomTracking()
+      return
+    }
+
+    val editor = ctrlWheelZoomTargetEditor?.takeIf { !it.isDisposed } ?: run {
+      clearCtrlWheelZoomTracking()
+      return
+    }
+
+    renderNow(editor)
+
+    val quietMs = System.currentTimeMillis() - lastCtrlWheelZoomEventMs
+    if (quietMs >= CTRL_WHEEL_ZOOM_QUIET_MS) {
+      clearCtrlWheelZoomTracking()
+      return
+    }
+
+    ctrlWheelZoomAlarm.addRequest({ runCtrlWheelZoomTracking() }, CTRL_WHEEL_ZOOM_FRAME_MS)
+  }
+
+  private fun clearCtrlWheelZoomTracking() {
+    ctrlWheelZoomTracking = false
+    lastCtrlWheelZoomEventMs = 0L
+    ctrlWheelZoomTargetEditor = null
   }
 
   private fun scheduleMetricRender() {
@@ -260,13 +317,13 @@ class CaretHudController(private val project: Project) : Disposable, ImeHudServi
     )
   }
 
-  private fun renderNow() {
+  private fun renderNow(editorOverride: Editor? = null) {
     if (project.isDisposed) {
       renderer.hide()
       return
     }
 
-    val editor = activeEditor()
+    val editor = editorOverride?.takeIf { !it.isDisposed } ?: activeEditor()
     val snapshot = service.snapshot()
     val state = CaretHudVisibility.resolve(
       snapshot = snapshot,

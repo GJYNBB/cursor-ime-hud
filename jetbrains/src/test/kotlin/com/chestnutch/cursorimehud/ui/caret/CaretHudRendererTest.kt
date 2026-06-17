@@ -97,11 +97,18 @@ class CaretHudRendererTest {
     caretPoint = Point(64, 38)
     lineHeight = 28
     renderer.show(editor, "中", ImeState.CN, settings)
-
     val secondBounds = Rectangle(chip.bounds)
+
+    caretPoint = Point(96, 54)
+    lineHeight = 34
+    renderer.show(editor, "中", ImeState.CN, settings)
+    val thirdBounds = Rectangle(chip.bounds)
+
     assertTrue(firstBounds != secondBounds)
-    assertEquals(caretPoint.x + settings.offsetX, secondBounds.x)
+    assertTrue(secondBounds != thirdBounds)
+    assertEquals(caretPoint.x + settings.offsetX, thirdBounds.x)
     assertTrue(secondBounds.y != firstBounds.y)
+    assertTrue(thirdBounds.y != secondBounds.y)
     assertSame(chip, content.getComponent(0))
   }
 
