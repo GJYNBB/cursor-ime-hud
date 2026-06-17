@@ -7,17 +7,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.0.2] - 2026-06-17
+## [JetBrains 1.0.0] - 2026-06-17
 
 ### Added
 
+- Added the first formal JetBrains plugin release artifact.
 - Added smoother Ctrl+mouse-wheel zoom tracking for the JetBrains caret HUD so it follows editor zoom more continuously.
-- Included the JetBrains plugin artifact alongside the VS Code extension in the formal release process.
 
 ### Changed
 
+- Promoted the JetBrains plugin version from `0.1.0` to `1.0.0`.
 - Improved JetBrains caret HUD scheduling to render against live editor geometry during zoom bursts and settle cleanly after input stops.
-- Kept the existing scroll-follow behavior and normal render paths unchanged.
+- Kept the existing VS Code/Cursor extension version unchanged at `1.0.1`.
 
 ## [1.0.1] - 2026-06-08
 
@@ -102,8 +103,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Extension smoke tests, position strategy tests, and helper smoke test
 - Marketplace packaging scripts and documentation
 
-[Unreleased]: https://github.com/GJYNBB/cursor-ime-hud/compare/v1.0.2...HEAD
-[1.0.2]: https://github.com/GJYNBB/cursor-ime-hud/compare/v1.0.1...v1.0.2
+[Unreleased]: https://github.com/GJYNBB/cursor-ime-hud/compare/jetbrains-v1.0.0...HEAD
+[JetBrains 1.0.0]: https://github.com/GJYNBB/cursor-ime-hud/compare/v1.0.1...jetbrains-v1.0.0
 [1.0.1]: https://github.com/GJYNBB/cursor-ime-hud/compare/v1.0.0...v1.0.1
 [1.0.0]: https://github.com/GJYNBB/cursor-ime-hud/compare/v0.0.3...v1.0.0
 [0.0.3]: https://github.com/GJYNBB/cursor-ime-hud/compare/v0.0.2...v0.0.3
