@@ -1,15 +1,15 @@
-import * as vscode from "vscode";
 import {
   DetectorLogEntry,
   DetectorSource,
   ImeDetectorDebugInfo,
   ImeSnapshot
 } from "../model/types";
+import { SimpleEventEmitter } from "../model/events";
 import { ImeDetector } from "./ImeDetector";
 
 export class SampleImeDetector implements ImeDetector {
-  private readonly onDidChangeSnapshotEmitter = new vscode.EventEmitter<ImeSnapshot>();
-  private readonly onDidLogEmitter = new vscode.EventEmitter<DetectorLogEntry>();
+  private readonly onDidChangeSnapshotEmitter = new SimpleEventEmitter<ImeSnapshot>();
+  private readonly onDidLogEmitter = new SimpleEventEmitter<DetectorLogEntry>();
   private snapshot: ImeSnapshot;
   private started = false;
   private disposed = false;
@@ -44,6 +44,14 @@ export class SampleImeDetector implements ImeDetector {
     this.onDidChangeSnapshotEmitter.fire(this.snapshot);
   }
 
+  public stop(): void {
+    if (this.disposed) {
+      return;
+    }
+
+    this.started = false;
+  }
+
   public getSnapshot(): ImeSnapshot {
     return this.snapshot;
   }
@@ -60,6 +68,7 @@ export class SampleImeDetector implements ImeDetector {
 
   public dispose(): void {
     this.disposed = true;
+    this.started = false;
     this.onDidChangeSnapshotEmitter.dispose();
     this.onDidLogEmitter.dispose();
   }
