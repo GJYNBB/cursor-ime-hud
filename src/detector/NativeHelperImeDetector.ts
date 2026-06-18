@@ -1,7 +1,7 @@
 import * as crypto from "node:crypto";
 import * as fs from "node:fs";
 import { ChildProcessWithoutNullStreams, spawn } from "node:child_process";
-import * as vscode from "vscode";
+import { SimpleEventEmitter } from "../model/events";
 import { DetectorLogEntry, ImeDetectorDebugInfo, ImeSnapshot } from "../model/types";
 import { ImeDetector } from "./ImeDetector";
 import {
@@ -23,8 +23,8 @@ const SHUTDOWN_TIMEOUT_MS = 2000;
 type HelperLifecycleState = "idle" | "starting" | "running" | "stopping" | "disposed";
 
 export class NativeHelperImeDetector implements ImeDetector {
-  private readonly onDidChangeSnapshotEmitter = new vscode.EventEmitter<ImeSnapshot>();
-  private readonly onDidLogEmitter = new vscode.EventEmitter<DetectorLogEntry>();
+  private readonly onDidChangeSnapshotEmitter = new SimpleEventEmitter<ImeSnapshot>();
+  private readonly onDidLogEmitter = new SimpleEventEmitter<DetectorLogEntry>();
   private child?: ChildProcessWithoutNullStreams;
   private childCleanup?: () => void;
   private stdoutBuffer = "";
@@ -68,13 +68,13 @@ export class NativeHelperImeDetector implements ImeDetector {
     this.lifecycleState = "starting";
     this.startPromise = this.spawnAndWaitForFirstSnapshot()
       .then(() => {
-        if (!this.disposed) {
+        if (!this.disposed && this.lifecycleState === "starting") {
           this.lifecycleState = "running";
           this.restartAttempts = 0;
         }
       })
       .catch((error) => {
-        if (!this.disposed) {
+        if (!this.disposed && this.lifecycleState !== "stopping") {
           this.lifecycleState = "idle";
         }
 
@@ -89,6 +89,27 @@ export class NativeHelperImeDetector implements ImeDetector {
 
   public refresh(): void {
     this.tryWriteCommand({ command: "refresh" }, this.child);
+  }
+
+  public stop(): void {
+    if (this.disposed || this.lifecycleState === "disposed") {
+      return;
+    }
+
+    this.clearRestartTimer();
+    const child = this.child;
+    if (!child && this.lifecycleState !== "starting") {
+      this.lifecycleState = "idle";
+      return;
+    }
+
+    this.lifecycleState = "stopping";
+    if (child) {
+      this.teardownSpecificChild(child, false);
+      this.requestChildShutdown(child);
+      this.pendingExitCleanup = this.awaitChildExit(child);
+    }
+    this.lifecycleState = "idle";
   }
 
   public getSnapshot(): ImeSnapshot {
@@ -114,18 +135,6 @@ export class NativeHelperImeDetector implements ImeDetector {
     this.lifecycleState = "stopping";
     this.clearRestartTimer();
 
-    // Graceful shutdown:
-    //  1. Detach listeners so a late exit does not feed the restart loop.
-    //  2. End stdin so the Rust helper's stdin reader observes EOF and
-    //     its main loop can fall through cleanly.
-    //  3. Kick off an async wait for the child to exit. If it has not
-    //     exited within `SHUTDOWN_TIMEOUT_MS`, escalate to `taskkill /F /T`
-    //     on Windows so any descendants also die, or `kill()` elsewhere.
-    //
-    // `vscode.Disposable.dispose()` is synchronous, so the await runs as
-    // a fire-and-forget promise. We keep the reference on
-    // `pendingExitCleanup` so the test harness (and dispose() callers
-    // that want deterministic teardown) can await it.
     const child = this.child;
     if (child) {
       this.teardownSpecificChild(child, false);
@@ -139,8 +148,8 @@ export class NativeHelperImeDetector implements ImeDetector {
   }
 
   /**
-   * Promise tracking the post-dispose child exit wait. Tests can await
-   * this for deterministic teardown; production callers can ignore it.
+   * Promise tracking the post-stop child exit wait. Tests can await this for
+   * deterministic teardown; production callers can ignore it.
    */
   public async waitForPendingExit(): Promise<void> {
     if (this.pendingExitCleanup) {
@@ -302,7 +311,7 @@ export class NativeHelperImeDetector implements ImeDetector {
     stream: "stdout" | "stderr",
     error: string
   ): void {
-    if (this.disposed || this.child !== child) {
+    if (this.disposed || this.child !== child || this.lifecycleState !== "running") {
       return;
     }
 
@@ -315,7 +324,7 @@ export class NativeHelperImeDetector implements ImeDetector {
 
   private scheduleRestart(delayMs: number): void {
     this.clearRestartTimer();
-    if (this.disposed) {
+    if (this.disposed || this.lifecycleState === "stopping" || this.lifecycleState === "disposed") {
       return;
     }
 
@@ -328,7 +337,7 @@ export class NativeHelperImeDetector implements ImeDetector {
 
     this.restartTimer = setTimeout(() => {
       this.restartTimer = undefined;
-      if (!this.disposed) {
+      if (!this.disposed && this.lifecycleState !== "stopping" && this.lifecycleState !== "disposed") {
         void this.restart();
       }
     }, jitteredDelay);
@@ -612,7 +621,7 @@ export class NativeHelperImeDetector implements ImeDetector {
         try {
           child.kill();
         } catch {
-          // Ignore kill races; the OS will reap the process when its handles close.
+          // Ignore shutdown races; the OS will reap the process when its handles close.
         }
       }
     }
@@ -625,21 +634,13 @@ export class NativeHelperImeDetector implements ImeDetector {
     }
   }
 
-  private teardownChild(killProcess: boolean): void {
-    if (!this.child) {
-      return;
-    }
-
-    this.teardownSpecificChild(this.child, killProcess);
-  }
-
-  private teardownSpecificChild(child: ChildProcessWithoutNullStreams, killProcess: boolean): void {
+  private teardownSpecificChild(child: ChildProcessWithoutNullStreams, endProcess: boolean): void {
     if (this.childCleanup) {
       this.childCleanup();
       this.childCleanup = undefined;
     }
 
-    if (killProcess && !child.killed) {
+    if (endProcess && !child.killed) {
       try {
         child.kill();
       } catch {
