@@ -1,8 +1,11 @@
 package com.chestnutch.cursorimehud.settings
 
 import com.chestnutch.cursorimehud.model.CursorImeHudLabelPreset
+import com.chestnutch.cursorimehud.ui.ImeStatusBarWidgetFactory
 import com.intellij.openapi.components.service
 import com.intellij.openapi.options.SearchableConfigurable
+import com.intellij.openapi.project.ProjectManager
+import com.intellij.openapi.wm.impl.status.widget.StatusBarWidgetsManager
 import com.intellij.ui.components.JBCheckBox
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBTextField
@@ -74,6 +77,7 @@ class CursorImeHudConfigurable : SearchableConfigurable {
   }
 
   override fun apply() {
+    val statusBarAvailabilityChanged = statusBarEnabled.isSelected != settings.state.statusBarEnabled
     settings.update { state ->
       state.statusBarEnabled = statusBarEnabled.isSelected
       state.caretHudEnabled = caretHudEnabled.isSelected
@@ -86,6 +90,9 @@ class CursorImeHudConfigurable : SearchableConfigurable {
       state.hideWhenEditorUnfocused = hideWhenEditorUnfocused.isSelected
     }
     settings.publishChanged()
+    if (statusBarAvailabilityChanged) {
+      refreshStatusBarWidgetAvailability()
+    }
   }
 
   override fun reset() {
@@ -112,6 +119,12 @@ class CursorImeHudConfigurable : SearchableConfigurable {
 
   private fun selectedPreset(): CursorImeHudLabelPreset = labelPreset.selectedItem as? CursorImeHudLabelPreset
     ?: CursorImeHudLabelPreset.ZH_EN
+
+  private fun refreshStatusBarWidgetAvailability() {
+    ProjectManager.getInstance().openProjects.forEach { project ->
+      project.service<StatusBarWidgetsManager>().updateWidget(ImeStatusBarWidgetFactory::class.java)
+    }
+  }
 
   private fun constraints(
     row: Int,

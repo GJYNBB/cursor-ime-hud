@@ -15,6 +15,8 @@ import javax.swing.JComponent;
 import org.jetbrains.annotations.NotNull;
 
 public final class ImeStatusBarWidget implements CustomStatusBarWidget, ImeHudService.Listener {
+  private static final String SERVICE_CONSUMER_ID = "status-bar";
+
   private final ImeHudService service;
   private final JBLabel component;
   private StatusBar statusBar;
@@ -50,7 +52,7 @@ public final class ImeStatusBarWidget implements CustomStatusBarWidget, ImeHudSe
         statusBar.updateWidget(ID());
       }
     });
-    service.start();
+    service.acquireConsumer(SERVICE_CONSUMER_ID);
   }
 
   @Override
@@ -60,6 +62,7 @@ public final class ImeStatusBarWidget implements CustomStatusBarWidget, ImeHudSe
       settingsConnection = null;
     }
     service.removeListener(this);
+    service.releaseConsumer(SERVICE_CONSUMER_ID);
     statusBar = null;
   }
 

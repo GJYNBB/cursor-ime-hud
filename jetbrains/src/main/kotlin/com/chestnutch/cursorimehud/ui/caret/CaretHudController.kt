@@ -69,11 +69,13 @@ class CaretHudController(private val project: Project) : Disposable, ImeHudServi
   private var pendingChangedDocument: Document? = null
   private var started = false
   private var hudStarted = false
+  private var caretHudConsumerAcquired = false
   private var ctrlWheelZoomListenerRegistered = false
 
   private companion object {
     const val CTRL_WHEEL_ZOOM_FRAME_MS = 16
     const val CTRL_WHEEL_ZOOM_QUIET_MS = 100L
+    const val SERVICE_CONSUMER_ID = "caret-hud"
   }
 
   fun start() {
@@ -87,6 +89,7 @@ class CaretHudController(private val project: Project) : Disposable, ImeHudServi
           if (settings.state.caretHudEnabled) {
             val wasHudStarted = hudStarted
             startHud()
+            ensureServiceConsumer()
             ensureCtrlWheelListener()
             if (wasHudStarted) {
               scheduleRender(immediate = true)
@@ -102,6 +105,7 @@ class CaretHudController(private val project: Project) : Disposable, ImeHudServi
             documentRenderScheduled = false
             pendingChangedDocument = null
             removeCtrlWheelListener()
+            releaseServiceConsumer()
             renderer.hide()
           }
         }
@@ -135,6 +139,7 @@ class CaretHudController(private val project: Project) : Disposable, ImeHudServi
     }
     KeyboardFocusManager.getCurrentKeyboardFocusManager().removePropertyChangeListener("focusOwner", focusListener)
     service.removeListener(this)
+    releaseServiceConsumer()
     renderer.hide()
   }
 
@@ -143,7 +148,7 @@ class CaretHudController(private val project: Project) : Disposable, ImeHudServi
     hudStarted = true
 
     service.addListener(this)
-    service.start()
+    ensureServiceConsumer()
 
     val editorFactory = EditorFactory.getInstance()
     editorFactory.eventMulticaster.addCaretListener(object : CaretListener {
@@ -208,6 +213,18 @@ class CaretHudController(private val project: Project) : Disposable, ImeHudServi
   private fun scheduleEditorRender() {
     if (!CaretHudEventScheduling.shouldScheduleEditorRender(settings.state.caretHudEnabled)) return
     scheduleRender()
+  }
+
+  private fun ensureServiceConsumer() {
+    if (caretHudConsumerAcquired) return
+    caretHudConsumerAcquired = true
+    service.acquireConsumer(SERVICE_CONSUMER_ID)
+  }
+
+  private fun releaseServiceConsumer() {
+    if (!caretHudConsumerAcquired) return
+    caretHudConsumerAcquired = false
+    service.releaseConsumer(SERVICE_CONSUMER_ID)
   }
 
   private fun scheduleDocumentRender(changedDocument: Document) {

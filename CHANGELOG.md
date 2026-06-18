@@ -12,6 +12,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Fixed
 
 - Replaced the deprecated JetBrains status bar presentation API with `CustomStatusBarWidget` while preserving the existing status text, tooltip, and click-to-refresh behavior.
+- Refresh the JetBrains status bar widget factory when the status bar setting changes so enabling or disabling the widget applies without restarting the IDE.
+- Stop the native helper when the last JetBrains UI consumer is disabled or disposed, while keeping it alive if either the status bar or caret HUD still needs it.
 
 ## [JetBrains 1.0.0] - 2026-06-17
 

@@ -22,6 +22,7 @@ class ImeHudService(private val project: Project) : Disposable, WinImeWatcherPro
   }
 
   private val listeners = CopyOnWriteArrayList<Listener>()
+  private val helperConsumers = mutableSetOf<String>()
   private val logs = ArrayDeque<DetectorLogEntry>()
   private val helper = WinImeWatcherProcess()
   private var listenerRegistered = false
@@ -35,13 +36,33 @@ class ImeHudService(private val project: Project) : Disposable, WinImeWatcherPro
   private var lastStableSnapshot: ImeSnapshot? = null
   private var debugInfo = helper.debugInfo()
 
+  @Synchronized
   fun start() {
     if (project.isDisposed) return
+    ensureHelperListener()
+    helper.start()
+  }
+
+  @Synchronized
+  fun acquireConsumer(consumerId: String) {
+    if (project.isDisposed) return
+    helperConsumers.add(consumerId)
+    start()
+  }
+
+  @Synchronized
+  fun releaseConsumer(consumerId: String) {
+    helperConsumers.remove(consumerId)
+    if (helperConsumers.isEmpty()) {
+      helper.stop()
+    }
+  }
+
+  private fun ensureHelperListener() {
     if (!listenerRegistered) {
       listenerRegistered = true
       helper.addListener(this)
     }
-    helper.start()
   }
 
   fun addListener(listener: Listener) {
@@ -148,6 +169,7 @@ class ImeHudService(private val project: Project) : Disposable, WinImeWatcherPro
   }
 
   override fun dispose() {
+    helperConsumers.clear()
     helper.removeListener(this)
     helper.dispose()
     listeners.clear()

@@ -76,15 +76,26 @@ class WinImeWatcherProcess {
       try {
         val helper = materializeHelper()
         verifySha256(helper)
+        if (!shouldContinueStarting()) return@executeOnPooledThread
         val child = ProcessBuilder(helper.absolutePath)
           .redirectError(ProcessBuilder.Redirect.PIPE)
           .redirectOutput(ProcessBuilder.Redirect.PIPE)
           .start()
-        synchronized(this) {
-          process = child
-          stdin = BufferedWriter(OutputStreamWriter(child.outputStream, StandardCharsets.UTF_8))
-          lifecycleState = HelperLifecycleState.RUNNING
-          lastError = null
+        val shouldDiscardChild = synchronized(this) {
+          if (disposed.get() || lifecycleState != HelperLifecycleState.STARTING) {
+            true
+          } else {
+            process = child
+            stdin = BufferedWriter(OutputStreamWriter(child.outputStream, StandardCharsets.UTF_8))
+            lifecycleState = HelperLifecycleState.RUNNING
+            lastError = null
+            false
+          }
+        }
+        if (shouldDiscardChild) {
+          child.destroy()
+          waitThenForceKill(child)
+          return@executeOnPooledThread
         }
         emitDebug()
 
@@ -117,6 +128,9 @@ class WinImeWatcherProcess {
     }
   }
 
+  @Synchronized
+  private fun shouldContinueStarting(): Boolean = !disposed.get() && lifecycleState == HelperLifecycleState.STARTING
+
   fun refresh() {
     try {
       stdin?.apply {
@@ -128,6 +142,43 @@ class WinImeWatcherProcess {
     }
   }
 
+  @Synchronized
+  fun stop() {
+    if (disposed.get()) return
+    val child = process ?: run {
+      if (lifecycleState == HelperLifecycleState.RUNNING || lifecycleState == HelperLifecycleState.STARTING) {
+        lifecycleState = HelperLifecycleState.IDLE
+        emitDebug()
+      }
+      return
+    }
+    val writer = stdin
+    process = null
+    stdin = null
+    lifecycleState = HelperLifecycleState.STOPPING
+    emitDebug()
+
+    ApplicationManager.getApplication().executeOnPooledThread {
+      try {
+        writer?.close()
+      } catch (_: Exception) {
+      }
+
+      try {
+        child.destroy()
+      } catch (_: Exception) {
+      }
+      waitThenForceKill(child)
+
+      synchronized(this) {
+        if (!disposed.get() && process == null) {
+          lifecycleState = HelperLifecycleState.IDLE
+        }
+      }
+      emitDebug()
+    }
+  }
+
   fun dispose() {
     if (!disposed.compareAndSet(false, true)) return
     lifecycleState = HelperLifecycleState.STOPPING
@@ -135,6 +186,8 @@ class WinImeWatcherProcess {
 
     val child = process
     val writer = stdin
+    process = null
+    stdin = null
     ApplicationManager.getApplication().executeOnPooledThread {
       try {
         writer?.close()
@@ -272,12 +325,17 @@ class WinImeWatcherProcess {
 
   private fun waitForExit(child: Process) {
     val code = child.waitFor()
-    synchronized(this) {
+    val wasActive = synchronized(this) {
       if (process === child) {
         process = null
         stdin = null
+        true
+      } else {
+        false
       }
     }
+
+    if (!wasActive) return
 
     if (!disposed.get() && lifecycleState != HelperLifecycleState.FAILED) {
       lifecycleState = HelperLifecycleState.FAILED
