@@ -1,5 +1,5 @@
-import * as vscode from "vscode";
 import { DetectorLogEntry, ImeDetectorDebugInfo, ImeSnapshot } from "../model/types";
+import { Disposable, SimpleEventEmitter } from "../model/events";
 import { ImeDetector } from "./ImeDetector";
 import { NativeHelperImeDetector } from "./NativeHelperImeDetector";
 import { SampleImeDetector } from "./SampleImeDetector";
@@ -8,9 +8,9 @@ type DetectorFactory = (helperPath: string) => ImeDetector;
 type WrapperLifecycleState = "idle" | "starting" | "running" | "disposed";
 
 export class SampleOrNativeDetector implements ImeDetector {
-  private readonly onDidChangeSnapshotEmitter = new vscode.EventEmitter<ImeSnapshot>();
-  private readonly onDidLogEmitter = new vscode.EventEmitter<DetectorLogEntry>();
-  private readonly subscriptions: vscode.Disposable[] = [];
+  private readonly onDidChangeSnapshotEmitter = new SimpleEventEmitter<ImeSnapshot>();
+  private readonly onDidLogEmitter = new SimpleEventEmitter<DetectorLogEntry>();
+  private readonly subscriptions: Disposable[] = [];
   private activeDetector: ImeDetector;
   private debugInfo: ImeDetectorDebugInfo;
   private lifecycleState: WrapperLifecycleState = "idle";
@@ -59,6 +59,16 @@ export class SampleOrNativeDetector implements ImeDetector {
     }
 
     this.activeDetector.refresh();
+  }
+
+  public stop(): void {
+    if (this.disposed) {
+      return;
+    }
+
+    this.activeDetector.stop?.();
+    this.lifecycleState = "idle";
+    this.debugInfo = this.withLifecycleState(this.activeDetector.getDebugInfo());
   }
 
   public getSnapshot(): ImeSnapshot {
