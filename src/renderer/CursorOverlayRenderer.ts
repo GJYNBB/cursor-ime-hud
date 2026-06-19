@@ -159,7 +159,8 @@ export class CursorOverlayRenderer implements OverlayRenderer {
       backgroundColor,
       border: `1px solid ${borderColor}`,
       fontWeight: "600",
-      textDecoration: "none; font-size: 0.85em; border-radius: 999px;"
+      textDecoration:
+        "none; font-size: 0.85em; border-radius: 999px; position: absolute; z-index: 20; pointer-events: none; white-space: nowrap;"
     };
 
     this.beforeDecorationType = vscode.window.createTextEditorDecorationType({

@@ -5,57 +5,35 @@ import { PositionStrategy } from "../../renderer/PositionStrategy";
 suite("PositionStrategy", () => {
   const strategy = new PositionStrategy();
 
-  test("uses before attachment at line start", async () => {
-    const document = await vscode.workspace.openTextDocument({ content: "abc" });
-    const placement = strategy.resolve(document, new vscode.Position(0, 0));
-
-    assert.ok(placement);
-    assert.equal(placement?.attachment, "before");
-    assert.equal(placement?.range.start.character, 0);
-    assert.equal(placement?.range.end.character, 1);
-  });
-
-  test("uses previous character for mid-line cursor", async () => {
-    const document = await vscode.workspace.openTextDocument({ content: "abcd" });
-    const placement = strategy.resolve(document, new vscode.Position(0, 2));
+  async function assertCaretAnchor(content: string, cursor: vscode.Position): Promise<void> {
+    const document = await vscode.workspace.openTextDocument({ content });
+    const placement = strategy.resolve(document, cursor);
 
     assert.ok(placement);
     assert.equal(placement?.attachment, "after");
-    assert.equal(placement?.range.start.character, 1);
-    assert.equal(placement?.range.end.character, 2);
+    assert.equal(placement?.range.start.line, cursor.line);
+    assert.equal(placement?.range.start.character, cursor.character);
+    assert.equal(placement?.range.end.line, cursor.line);
+    assert.equal(placement?.range.end.character, cursor.character);
+  }
+
+  test("anchors to the caret at line start", async () => {
+    await assertCaretAnchor("abc", new vscode.Position(0, 0));
   });
 
-  test("uses previous character for line end cursor", async () => {
-    const document = await vscode.workspace.openTextDocument({ content: "abcd" });
-    const placement = strategy.resolve(document, new vscode.Position(0, 4));
-
-    assert.ok(placement);
-    assert.equal(placement?.attachment, "after");
-    assert.equal(placement?.range.start.character, 3);
-    assert.equal(placement?.range.end.character, 4);
+  test("anchors to the caret in the middle of a line", async () => {
+    await assertCaretAnchor("abcd", new vscode.Position(0, 2));
   });
 
-  test("uses a zero-width after attachment on empty lines", async () => {
-    const document = await vscode.workspace.openTextDocument({ content: "\n" });
-    const placement = strategy.resolve(document, new vscode.Position(0, 0));
-
-    assert.ok(placement);
-    assert.equal(placement?.attachment, "after");
-    assert.equal(placement?.range.start.line, 0);
-    assert.equal(placement?.range.start.character, 0);
-    assert.equal(placement?.range.end.line, 0);
-    assert.equal(placement?.range.end.character, 0);
+  test("anchors to the caret at line end", async () => {
+    await assertCaretAnchor("abcd", new vscode.Position(0, 4));
   });
 
-  test("uses a zero-width after attachment on interior empty lines", async () => {
-    const document = await vscode.workspace.openTextDocument({ content: "abc\n\nxyz" });
-    const placement = strategy.resolve(document, new vscode.Position(1, 0));
+  test("anchors to the caret on empty lines", async () => {
+    await assertCaretAnchor("\n", new vscode.Position(0, 0));
+  });
 
-    assert.ok(placement);
-    assert.equal(placement?.attachment, "after");
-    assert.equal(placement?.range.start.line, 1);
-    assert.equal(placement?.range.start.character, 0);
-    assert.equal(placement?.range.end.line, 1);
-    assert.equal(placement?.range.end.character, 0);
+  test("anchors to the caret on interior empty lines", async () => {
+    await assertCaretAnchor("abc\n\nxyz", new vscode.Position(1, 0));
   });
 });
