@@ -83,6 +83,24 @@ suite("Services", () => {
       await setSetting("opacity", 0.78);
       assert.equal(service.getSettings().opacity, 0.78);
     });
+
+    test("allows the larger vertical offset range", async () => {
+      await setSetting("offsetY", 20);
+      assert.equal(service.getSettings().offsetY, 20, "new default value passes through");
+
+      await setSetting("offsetY", 30);
+      assert.equal(service.getSettings().offsetY, 30, "new maximum boundary passes through");
+
+      await setSetting("offsetY", 31);
+      assert.equal(service.getSettings().offsetY, 30, "values above maximum clamp to maximum");
+
+      await setSetting("offsetY", -17);
+      assert.equal(
+        service.getSettings().offsetY,
+        -16,
+        "values below minimum still clamp to minimum"
+      );
+    });
   });
 
   suite("SettingsService.asNonEmptyString", () => {

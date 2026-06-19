@@ -45,7 +45,7 @@ export class SettingsService implements vscode.Disposable {
       statusBarEnabled: this.asBoolean(statusBar.enabled, true),
       hideWhenEditorUnfocused: this.asBoolean(overlay.hideWhenEditorUnfocused, true),
       offsetX: this.clampNumber(overlay.offsetX, 6, 0, 32),
-      offsetY: this.clampNumber(overlay.offsetY, 0, -16, 16)
+      offsetY: this.clampNumber(overlay.offsetY, 20, -16, 30)
     };
   }
 

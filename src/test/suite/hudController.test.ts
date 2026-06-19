@@ -136,7 +136,7 @@ class FakeSettingsService {
       statusBarEnabled: true,
       hideWhenEditorUnfocused: false,
       offsetX: 6,
-      offsetY: 0
+      offsetY: 20
     };
   }
 
