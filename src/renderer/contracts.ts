@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { CursorImeHudSettings } from "../model/types";
+import { CursorImeHudSettings, ImeState } from "../model/types";
 import { OverlayPlacement } from "./PositionStrategy";
 
 /**
@@ -34,6 +34,11 @@ export interface OverlayRenderInput {
   label: string;
   settings: CursorImeHudSettings;
   placement: OverlayPlacement;
+  /**
+   * IME state the label represents. Drives the per-state label color; when
+   * omitted the renderer falls back to its neutral default color.
+   */
+  state?: ImeState;
 }
 
 /**

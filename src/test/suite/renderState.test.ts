@@ -16,6 +16,7 @@ suite("OverlayRenderState", () => {
     const left = createOverlayRenderState({
       editorUri: "file:///a.ts",
       label: "\u4e2d",
+      state: "cn",
       visible: true,
       styleKey: "style",
       placement
@@ -23,6 +24,7 @@ suite("OverlayRenderState", () => {
     const right = createOverlayRenderState({
       editorUri: "file:///a.ts",
       label: "\u4e2d",
+      state: "cn",
       visible: true,
       styleKey: "style",
       placement
@@ -44,6 +46,7 @@ suite("OverlayRenderState", () => {
     const left = createOverlayRenderState({
       editorUri: "file:///a.ts",
       label: "\u4e2d",
+      state: "cn",
       visible: true,
       styleKey: "style",
       placement: beforePlacement
@@ -51,6 +54,7 @@ suite("OverlayRenderState", () => {
     const right = createOverlayRenderState({
       editorUri: "file:///a.ts",
       label: "\u82f1",
+      state: "en",
       visible: true,
       styleKey: "style",
       placement: afterPlacement

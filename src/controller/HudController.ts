@@ -299,7 +299,8 @@ export class HudController implements vscode.Disposable {
       label: displayLabel ?? null,
       visible: overlayDecision.visible,
       styleKey,
-      placement
+      placement,
+      state: displayState.displaySnapshot.state
     });
 
     if (overlayRenderStateEquals(this.lastRenderState, nextRenderState)) {
@@ -319,7 +320,8 @@ export class HudController implements vscode.Disposable {
       editor,
       label: displayLabel,
       settings,
-      placement
+      placement,
+      state: displayState.displaySnapshot.state
     });
     this.lastRenderState = nextRenderState;
   }

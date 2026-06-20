@@ -40,6 +40,8 @@ export class SettingsService implements vscode.Disposable {
       labelPreset,
       cnLabel: labels.cnLabel,
       enLabel: labels.enLabel,
+      cnColor: this.asColor(overlay.cnColor, "#4FA6FF"),
+      enColor: this.asColor(overlay.enColor, "#FF6B6B"),
       opacity: this.clampNumber(overlay.opacity, 0.78, 0.15, 1),
       overlayMode: overlay.mode === "text+icon" ? "text+icon" : "text",
       statusBarEnabled: this.asBoolean(statusBar.enabled, true),
@@ -109,6 +111,31 @@ export class SettingsService implements vscode.Disposable {
    */
   private asNonEmptyString(value: unknown, fallback: string): string {
     return typeof value === "string" && value.trim().length > 0 ? value : fallback;
+  }
+
+  /**
+   * Validate a user-supplied CSS color before it is injected into the
+   * decoration's `color` style. Only hex (`#rgb`/`#rgba`/`#rrggbb`/`#rrggbbaa`),
+   * `rgb()/rgba()/hsl()/hsla()` functions, and bare color keywords are
+   * accepted; anything containing CSS-breaking characters (`;`, `{`, `}`,
+   * quotes, …) falls back to the default so a malformed value cannot corrupt
+   * or escape the inline style.
+   */
+  private asColor(value: unknown, fallback: string): string {
+    if (typeof value !== "string") {
+      return fallback;
+    }
+
+    const trimmed = value.trim();
+    const hex = /^#(?:[0-9a-fA-F]{3,4}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
+    const func = /^(?:rgb|rgba|hsl|hsla)\([0-9.,%\s/]+\)$/i;
+    const keyword = /^[a-zA-Z]+$/;
+
+    if (hex.test(trimmed) || func.test(trimmed) || keyword.test(trimmed)) {
+      return trimmed;
+    }
+
+    return fallback;
   }
 
   /**

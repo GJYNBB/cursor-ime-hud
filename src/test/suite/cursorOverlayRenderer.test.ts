@@ -1,0 +1,174 @@
+import * as assert from "node:assert";
+import * as sinon from "sinon";
+import * as vscode from "vscode";
+import { CursorImeHudSettings } from "../../model/types";
+import { CursorOverlayRenderer } from "../../renderer/CursorOverlayRenderer";
+import { PositionStrategy } from "../../renderer/PositionStrategy";
+
+suite("CursorOverlayRenderer", () => {
+  let createDecorationTypeStub: sinon.SinonStub;
+  let setDecorationsSpy: sinon.SinonSpy;
+
+  function buildSettings(overrides: Partial<CursorImeHudSettings> = {}): CursorImeHudSettings {
+    return {
+      overlayEnabled: true,
+      labelPreset: "custom",
+      cnLabel: "中",
+      enLabel: "英",
+      cnColor: "#4FA6FF",
+      enColor: "#FF6B6B",
+      opacity: 0.78,
+      overlayMode: "text",
+      statusBarEnabled: true,
+      hideWhenEditorUnfocused: false,
+      offsetX: 6,
+      offsetY: 20,
+      ...overrides
+    };
+  }
+
+  function buildEditor(): vscode.TextEditor {
+    const document = {
+      uri: vscode.Uri.parse("file:///cursor-overlay-renderer.test.ts")
+    } as vscode.TextDocument;
+
+    return {
+      document,
+      selection: {
+        active: new vscode.Position(0, 0),
+        anchor: new vscode.Position(0, 0),
+        activeSelection: new vscode.Selection(0, 0, 0, 0),
+        isEmpty: true,
+        start: new vscode.Position(0, 0),
+        end: new vscode.Position(0, 0)
+      } as unknown as vscode.Selection,
+      setDecorations: setDecorationsSpy,
+      revealRange: () => undefined,
+      edit: async () => true,
+      insertSnippet: async () => true,
+      options: {},
+      viewColumn: vscode.ViewColumn.One,
+      documentColumn: vscode.ViewColumn.One,
+      visibleRanges: [new vscode.Range(0, 0, 0, 0)],
+      selections: [new vscode.Selection(0, 0, 0, 0)],
+      show: async () => undefined,
+      hide: () => undefined,
+      dispose: () => undefined,
+      id: "cursor-overlay-renderer-test"
+    } as unknown as vscode.TextEditor;
+  }
+
+  setup(() => {
+    setDecorationsSpy = sinon.spy();
+    createDecorationTypeStub = sinon.stub(vscode.window as any, "createTextEditorDecorationType");
+    createDecorationTypeStub.callsFake(() => {
+      return { dispose: () => undefined } as vscode.TextEditorDecorationType;
+    });
+  });
+
+  teardown(() => {
+    sinon.restore();
+  });
+
+  test("renders bare text without a background pill", () => {
+    const renderer = new CursorOverlayRenderer(new PositionStrategy());
+    const editor = buildEditor();
+    const placement = {
+      attachment: "after" as const,
+      range: new vscode.Range(0, 0, 0, 0)
+    };
+
+    renderer.render({
+      editor,
+      label: "中",
+      settings: buildSettings(),
+      placement,
+      state: "cn"
+    });
+
+    assert.equal(
+      createDecorationTypeStub.callCount,
+      2,
+      "renderer should create before/after types once"
+    );
+    const beforeOptions = createDecorationTypeStub.firstCall
+      .args[0] as vscode.DecorationRenderOptions;
+    const afterOptions = createDecorationTypeStub.secondCall
+      .args[0] as vscode.DecorationRenderOptions;
+
+    for (const attachment of [beforeOptions.before, afterOptions.after]) {
+      assert.ok(attachment, "attachment styles should exist");
+      assert.equal(
+        (attachment as vscode.ThemableDecorationAttachmentRenderOptions).backgroundColor,
+        undefined
+      );
+      assert.equal(
+        (attachment as vscode.ThemableDecorationAttachmentRenderOptions).border,
+        undefined
+      );
+      const textDecoration =
+        (attachment as vscode.ThemableDecorationAttachmentRenderOptions).textDecoration ?? "";
+      assert.ok(textDecoration.includes("position: absolute"));
+      assert.ok(textDecoration.includes("pointer-events: none"));
+      assert.ok(textDecoration.includes("white-space: nowrap"));
+      assert.ok(textDecoration.includes("opacity: 0.78"));
+      assert.ok(!textDecoration.includes("border-radius"), "pill styling should be removed");
+    }
+
+    assert.equal(setDecorationsSpy.callCount, 2);
+    const rendered = setDecorationsSpy.secondCall.args[1] as vscode.DecorationOptions[];
+    assert.equal(rendered.length, 1);
+    assert.equal(rendered[0].renderOptions?.after?.contentText, "中");
+    assert.equal(rendered[0].renderOptions?.after?.color, "#4FA6FF");
+  });
+
+  test("applies different colors for cn and en states without rebuilding styles", () => {
+    const renderer = new CursorOverlayRenderer(new PositionStrategy());
+    const editor = buildEditor();
+    const placement = {
+      attachment: "after" as const,
+      range: new vscode.Range(0, 0, 0, 0)
+    };
+    const settings = buildSettings();
+
+    renderer.render({
+      editor,
+      label: "中",
+      settings,
+      placement,
+      state: "cn"
+    });
+    renderer.render({
+      editor,
+      label: "英",
+      settings,
+      placement,
+      state: "en"
+    });
+
+    assert.equal(
+      createDecorationTypeStub.callCount,
+      2,
+      "state-only changes should reuse cached decoration types"
+    );
+    assert.equal(setDecorationsSpy.callCount, 4);
+
+    const cnRendered = setDecorationsSpy.secondCall.args[1] as vscode.DecorationOptions[];
+    const enRendered = setDecorationsSpy.getCall(3).args[1] as vscode.DecorationOptions[];
+
+    assert.equal(cnRendered[0].renderOptions?.after?.color, "#4FA6FF");
+    assert.equal(enRendered[0].renderOptions?.after?.color, "#FF6B6B");
+    assert.equal(cnRendered[0].renderOptions?.after?.contentText, "中");
+    assert.equal(enRendered[0].renderOptions?.after?.contentText, "英");
+  });
+
+  test("includes label colors in the style key", () => {
+    const renderer = new CursorOverlayRenderer(new PositionStrategy());
+    const base = buildSettings();
+    const cnChanged = buildSettings({ cnColor: "#123456" });
+    const enChanged = buildSettings({ enColor: "#abcdef" });
+
+    assert.notEqual(renderer.getStyleKey(base), renderer.getStyleKey(cnChanged));
+    assert.notEqual(renderer.getStyleKey(base), renderer.getStyleKey(enChanged));
+  });
+});

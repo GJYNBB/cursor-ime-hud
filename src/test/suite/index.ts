@@ -18,6 +18,7 @@ export function run(): Promise<void> {
   mocha.addFile(path.resolve(testsRoot, "./extension.test.js"));
   mocha.addFile(path.resolve(testsRoot, "./hudController.test.js"));
   mocha.addFile(path.resolve(testsRoot, "./renderState.test.js"));
+  mocha.addFile(path.resolve(testsRoot, "./cursorOverlayRenderer.test.js"));
   mocha.addFile(path.resolve(testsRoot, "./detectorLifecycle.test.js"));
   mocha.addFile(path.resolve(testsRoot, "./helperProtocol.test.js"));
   mocha.addFile(path.resolve(testsRoot, "./positionStrategy.test.js"));

@@ -1,5 +1,5 @@
 import * as vscode from "vscode";
-import { CursorImeHudSettings } from "../model/types";
+import { CursorImeHudSettings, ImeState } from "../model/types";
 import { OverlayPlacement, PositionStrategy } from "./PositionStrategy";
 import {
   ContentProvider,
@@ -58,7 +58,9 @@ export class CursorOverlayRenderer implements OverlayRenderer {
       opacity: settings.opacity,
       offsetX: settings.offsetX,
       offsetY: settings.offsetY,
-      overlayMode: settings.overlayMode
+      overlayMode: settings.overlayMode,
+      cnColor: settings.cnColor,
+      enColor: settings.enColor
     });
   }
 
@@ -83,7 +85,8 @@ export class CursorOverlayRenderer implements OverlayRenderer {
     }
 
     const content = this.contentProvider.resolveContent(input, input.label);
-    const option = this.createDecorationOption(input.placement, content);
+    const color = this.resolveColor(input.settings, input.state);
+    const option = this.createDecorationOption(input.placement, content, color);
     if (input.placement.attachment === "before") {
       input.editor.setDecorations(this.beforeDecorationType!, [option]);
       input.editor.setDecorations(this.afterDecorationType!, []);
@@ -150,17 +153,15 @@ export class CursorOverlayRenderer implements OverlayRenderer {
     this.beforeDecorationType?.dispose();
     this.afterDecorationType?.dispose();
 
-    const backgroundColor = `rgba(28, 32, 38, ${settings.opacity.toFixed(2)})`;
-    const borderColor = `rgba(255, 255, 255, ${(settings.opacity * 0.3).toFixed(2)})`;
     const topMargin = settings.offsetY;
 
+    // No background pill: the label is rendered as bare text. `opacity` now
+    // applies to the text itself, and `position: absolute` keeps the chip out
+    // of the inline text flow so characters after the caret are not shifted.
     const sharedAttachmentStyles: vscode.ThemableDecorationAttachmentRenderOptions = {
       color: "#F7FAFC",
-      backgroundColor,
-      border: `1px solid ${borderColor}`,
       fontWeight: "600",
-      textDecoration:
-        "none; font-size: 0.85em; border-radius: 999px; position: absolute; z-index: 20; pointer-events: none; white-space: nowrap;"
+      textDecoration: `none; font-size: 0.85em; position: absolute; z-index: 20; pointer-events: none; white-space: nowrap; opacity: ${settings.opacity.toFixed(2)};`
     };
 
     this.beforeDecorationType = vscode.window.createTextEditorDecorationType({
@@ -182,29 +183,44 @@ export class CursorOverlayRenderer implements OverlayRenderer {
     this.styleCacheKey = nextCacheKey;
   }
 
+  /**
+   * Resolve the label color for the given IME state. Returns `undefined`
+   * for states without a dedicated color (e.g. `unknown`) so the decoration
+   * type's neutral default color is used instead.
+   */
+  private resolveColor(settings: CursorImeHudSettings, state?: ImeState): string | undefined {
+    if (state === "cn") {
+      return settings.cnColor;
+    }
+
+    if (state === "en") {
+      return settings.enColor;
+    }
+
+    return undefined;
+  }
+
   private createDecorationOption(
     placement: OverlayPlacement,
-    content: OverlayContent
+    content: OverlayContent,
+    color?: string
   ): vscode.DecorationOptions {
+    const attachment: vscode.ThemableDecorationAttachmentRenderOptions = {
+      contentText: content.contentText,
+      ...(color ? { color } : {})
+    };
+
     if (placement.attachment === "before") {
       return {
         range: placement.range,
-        renderOptions: {
-          before: {
-            contentText: content.contentText
-          }
-        },
+        renderOptions: { before: attachment },
         hoverMessage: content.hoverMessage
       };
     }
 
     return {
       range: placement.range,
-      renderOptions: {
-        after: {
-          contentText: content.contentText
-        }
-      },
+      renderOptions: { after: attachment },
       hoverMessage: content.hoverMessage
     };
   }

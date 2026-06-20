@@ -131,6 +131,16 @@
           "default": "英",
           "description": "%configuration.overlay.enLabel.description%"
         },
+        "cursorImeHud.overlay.cnColor": {
+          "type": "string",
+          "default": "#4FA6FF",
+          "description": "%configuration.overlay.cnColor.description%"
+        },
+        "cursorImeHud.overlay.enColor": {
+          "type": "string",
+          "default": "#FF6B6B",
+          "description": "%configuration.overlay.enColor.description%"
+        },
         "cursorImeHud.overlay.opacity": {
           "type": "number",
           "default": 0.78,

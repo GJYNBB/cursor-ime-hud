@@ -1,3 +1,4 @@
+import { ImeState } from "../model/types";
 import { OverlayPlacement } from "./PositionStrategy";
 
 /**
@@ -10,6 +11,8 @@ export interface OverlayRenderState {
   editorUri: string | null;
   /** Label string the renderer is currently showing, or `null` if hidden. */
   label: string | null;
+  /** IME state that produced the current label, or `null` if hidden. */
+  state: ImeState | null;
   /** Whether the overlay is currently visible. */
   visible: boolean;
   /** Hash of the current visual style; see `OverlayRenderer.getStyleKey`. */
@@ -25,6 +28,7 @@ export interface OverlayRenderState {
 interface CreateOverlayRenderStateInput {
   editorUri: string | null;
   label: string | null;
+  state: ImeState | null;
   visible: boolean;
   styleKey: string;
   placement?: OverlayPlacement;
@@ -40,6 +44,7 @@ export function createOverlayRenderState(input: CreateOverlayRenderStateInput): 
   return {
     editorUri: input.editorUri,
     label: input.label,
+    state: input.state,
     visible: input.visible,
     styleKey: input.styleKey,
     placementKey: input.placement ? getOverlayPlacementKey(input.placement) : null
@@ -62,6 +67,7 @@ export function overlayRenderStateEquals(
   return (
     left.editorUri === right.editorUri &&
     left.label === right.label &&
+    left.state === right.state &&
     left.visible === right.visible &&
     left.styleKey === right.styleKey &&
     left.placementKey === right.placementKey

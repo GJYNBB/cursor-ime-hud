@@ -33,7 +33,9 @@ suite("Services", () => {
       "overlay.offsetY",
       "overlay.labelPreset",
       "overlay.cnLabel",
-      "overlay.enLabel"
+      "overlay.enLabel",
+      "overlay.cnColor",
+      "overlay.enColor"
     ]) {
       originalValues[key] = await readSetting(key);
     }
@@ -100,6 +102,50 @@ suite("Services", () => {
         -16,
         "values below minimum still clamp to minimum"
       );
+    });
+  });
+
+  suite("SettingsService.asColor", () => {
+    let service: SettingsService;
+
+    setup(() => {
+      service = new SettingsService();
+    });
+
+    teardown(() => {
+      service.dispose();
+    });
+
+    test("uses the blue/red defaults when unset", async () => {
+      await setSetting("cnColor", undefined);
+      await setSetting("enColor", undefined);
+      assert.equal(service.getSettings().cnColor, "#4FA6FF");
+      assert.equal(service.getSettings().enColor, "#FF6B6B");
+    });
+
+    test("accepts valid hex, rgb(), and keyword colors", async () => {
+      await setSetting("cnColor", "#0af");
+      assert.equal(service.getSettings().cnColor, "#0af");
+
+      await setSetting("cnColor", "rgb(10, 20, 30)");
+      assert.equal(service.getSettings().cnColor, "rgb(10, 20, 30)");
+
+      await setSetting("enColor", "tomato");
+      assert.equal(service.getSettings().enColor, "tomato");
+
+      await setSetting("enColor", "  #FF6B6B  ");
+      assert.equal(service.getSettings().enColor, "#FF6B6B", "surrounding whitespace is trimmed");
+    });
+
+    test("rejects malformed or CSS-breaking values", async () => {
+      await setSetting("cnColor", "#12");
+      assert.equal(service.getSettings().cnColor, "#4FA6FF", "too-short hex falls back");
+
+      await setSetting("cnColor", "red; position: fixed");
+      assert.equal(service.getSettings().cnColor, "#4FA6FF", "values with ';' fall back");
+
+      await setSetting("enColor", "");
+      assert.equal(service.getSettings().enColor, "#FF6B6B", "empty string falls back");
     });
   });
 

@@ -131,6 +131,8 @@ class FakeSettingsService {
       labelPreset: "custom" as const,
       cnLabel: "中",
       enLabel: "英",
+      cnColor: "#4FA6FF",
+      enColor: "#FF6B6B",
       opacity: 0.78,
       overlayMode: "text" as const,
       statusBarEnabled: true,

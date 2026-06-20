@@ -63,6 +63,10 @@ export interface CursorImeHudSettings {
   labelPreset: LabelPreset;
   cnLabel: string;
   enLabel: string;
+  /** CSS color used for the Chinese-mode label. */
+  cnColor: string;
+  /** CSS color used for the English-mode label. */
+  enColor: string;
   opacity: number;
   overlayMode: "text" | "text+icon";
   statusBarEnabled: boolean;
