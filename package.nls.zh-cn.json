@@ -15,6 +15,7 @@
   "configuration.overlay.enLabel.description": "当探测器报告英文输入模式且 labelPreset 为 custom 时显示的自定义标签。",
   "configuration.overlay.cnColor.description": "中文模式标签的 CSS 颜色（例如 #4FA6FF 或 rgb(79,166,255)）。",
   "configuration.overlay.enColor.description": "英文模式标签的 CSS 颜色（例如 #FF6B6B 或 rgb(255,107,107)）。",
+  "configuration.overlay.backgroundEnabled.description": "是否在 HUD 标签背后绘制圆角矩形背景遮罩。",
   "configuration.overlay.opacity.description": "HUD 标签透明度，范围为 0.15 到 1。",
   "configuration.overlay.mode.markdownDescription": "HUD 渲染模式。`text+icon` 为未来功能预留，目前与纯文本 HUD `text` 的渲染效果相同。",
   "configuration.statusBar.enabled.description": "在状态栏显示当前输入法状态。",

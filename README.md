@@ -119,7 +119,8 @@ Cursor IME HUD: Show Diagnostics
 | `cursorImeHud.overlay.enLabel`                 | `英`      | `labelPreset` 为 `custom` 时的英文输入状态显示标签。                                    |
 | `cursorImeHud.overlay.cnColor`                 | `#4FA6FF` | 中文输入状态标签颜色（适用于 `中` / `ZH` 或自定义中文标签）。                           |
 | `cursorImeHud.overlay.enColor`                 | `#FF6B6B` | 英文输入状态标签颜色（适用于 `英` / `EN` 或自定义英文标签）。                           |
-| `cursorImeHud.overlay.opacity`                 | `0.78`    | HUD 标签文字透明度，范围 `0.15` 到 `1`。                                                |
+| `cursorImeHud.overlay.backgroundEnabled`       | `true`    | 是否在标签背后显示圆角矩形背景遮罩。                                                    |
+| `cursorImeHud.overlay.opacity`                 | `0.78`    | HUD 标签透明度，范围 `0.15` 到 `1`。                                                    |
 | `cursorImeHud.overlay.mode`                    | `text`    | HUD 渲染模式；`text+icon` 当前为预留模式，表现与 `text` 相同。                          |
 | `cursorImeHud.statusBar.enabled`               | `true`    | 是否在状态栏显示输入状态。                                                              |
 | `cursorImeHud.overlay.hideWhenEditorUnfocused` | `true`    | VS Code 窗口失焦时是否隐藏 HUD。                                                        |

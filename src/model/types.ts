@@ -67,6 +67,8 @@ export interface CursorImeHudSettings {
   cnColor: string;
   /** CSS color used for the English-mode label. */
   enColor: string;
+  /** Whether the label is drawn with a rounded-rectangle background mask. */
+  backgroundEnabled: boolean;
   opacity: number;
   overlayMode: "text" | "text+icon";
   statusBarEnabled: boolean;

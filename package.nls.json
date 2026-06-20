@@ -15,6 +15,7 @@
   "configuration.overlay.enLabel.description": "Custom label shown when the detector reports English input mode and labelPreset is custom.",
   "configuration.overlay.cnColor.description": "CSS color for the Chinese-mode label (e.g. #4FA6FF or rgb(79,166,255)).",
   "configuration.overlay.enColor.description": "CSS color for the English-mode label (e.g. #FF6B6B or rgb(255,107,107)).",
+  "configuration.overlay.backgroundEnabled.description": "Draw a rounded-rectangle background mask behind the overlay label.",
   "configuration.overlay.opacity.description": "Overlay label opacity between 0.15 and 1.",
   "configuration.overlay.mode.markdownDescription": "Overlay rendering mode. `text+icon` is reserved for future work and currently renders the same text-only HUD as `text`.",
   "configuration.statusBar.enabled.description": "Show the current IME state in the status bar.",

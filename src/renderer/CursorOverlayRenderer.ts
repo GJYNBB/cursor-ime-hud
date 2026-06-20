@@ -60,7 +60,8 @@ export class CursorOverlayRenderer implements OverlayRenderer {
       offsetY: settings.offsetY,
       overlayMode: settings.overlayMode,
       cnColor: settings.cnColor,
-      enColor: settings.enColor
+      enColor: settings.enColor,
+      backgroundEnabled: settings.backgroundEnabled
     });
   }
 
@@ -155,13 +156,16 @@ export class CursorOverlayRenderer implements OverlayRenderer {
 
     const topMargin = settings.offsetY;
 
-    // No background pill: the label is rendered as bare text. `opacity` now
-    // applies to the text itself, and `position: absolute` keeps the chip out
-    // of the inline text flow so characters after the caret are not shifted.
     const sharedAttachmentStyles: vscode.ThemableDecorationAttachmentRenderOptions = {
       color: "#F7FAFC",
       fontWeight: "600",
-      textDecoration: `none; font-size: 0.85em; position: absolute; z-index: 20; pointer-events: none; white-space: nowrap; opacity: ${settings.opacity.toFixed(2)};`
+      textDecoration: `none; font-size: 0.85em; position: absolute; z-index: 20; pointer-events: none; white-space: nowrap; opacity: ${settings.opacity.toFixed(2)};${settings.backgroundEnabled ? " padding: 1px 5px; border-radius: 4px;" : ""}`,
+      ...(settings.backgroundEnabled
+        ? {
+            backgroundColor: "rgba(17, 24, 39, 0.72)",
+            border: "1px solid rgba(255, 255, 255, 0.16)"
+          }
+        : {})
     };
 
     this.beforeDecorationType = vscode.window.createTextEditorDecorationType({

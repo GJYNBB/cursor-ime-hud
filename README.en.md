@@ -119,7 +119,8 @@ The repository already includes `.vscode/launch.json` and `.vscode/tasks.json` s
 | `cursorImeHud.overlay.enLabel`                 | `英`      | Custom label used for English input mode when `labelPreset` is `custom`.                             |
 | `cursorImeHud.overlay.cnColor`                 | `#4FA6FF` | Text color for the Chinese-mode label (`中` / `ZH`, or the custom Chinese label).                    |
 | `cursorImeHud.overlay.enColor`                 | `#FF6B6B` | Text color for the English-mode label (`英` / `EN`, or the custom English label).                    |
-| `cursorImeHud.overlay.opacity`                 | `0.78`    | Text opacity for the overlay label.                                                                  |
+| `cursorImeHud.overlay.backgroundEnabled`       | `true`    | Shows a rounded-rectangle background mask behind the label.                                          |
+| `cursorImeHud.overlay.opacity`                 | `0.78`    | Opacity for the overlay label.                                                                       |
 | `cursorImeHud.overlay.mode`                    | `text`    | `text+icon` is reserved for future work and currently behaves the same as `text`.                    |
 | `cursorImeHud.statusBar.enabled`               | `true`    | Shows the current state in the status bar.                                                           |
 | `cursorImeHud.overlay.hideWhenEditorUnfocused` | `true`    | Hides the overlay when the VS Code window loses focus.                                               |
@@ -132,7 +133,8 @@ The repository already includes `.vscode/launch.json` and `.vscode/tasks.json` s
 
 - **500ms grace period.** When a snapshot reports `unknown`, the controller keeps the last stable `cn` or `en` state for up to 500ms before falling back to `unknown`. This avoids flicker when Windows briefly drops IME signals (e.g. when a context menu opens). The grace window resets on every fresh `cn`/`en` snapshot.
 - **`overlay.labelPreset`.** Use `custom` to keep the editable `cnLabel` / `enLabel` strings, `zh-en` for `中` / `英`, or `en-zh` for `ZH` / `EN`.
-- **`overlay.opacity` (0.15 - 1.0).** The value is a multiplier on the background alpha used by `TextEditorDecorationType`. Values below `0.15` may become hard to see; values above `1.0` are clamped. The default `0.78` is tuned for typical light and dark themes.
+- **`overlay.backgroundEnabled`.** Enabled by default to draw a subtle rounded-rectangle mask behind the label, improving readability over code. Disable it for bare `中` / `英` or `ZH` / `EN` text.
+- **`overlay.opacity` (0.15 - 1.0).** The value controls the label opacity. Values below `0.15` may become hard to see; values above `1.0` are clamped. The default `0.78` is tuned for typical light and dark themes.
 - **`overlay.mode = "text+icon"`.** Reserved for a future dual-render mode (label plus a tiny icon glyph). In v1 it behaves identically to `"text"`. The setting is exposed so user `settings.json` does not need to change when the icon path lands.
 - **`overlay.hideWhenEditorUnfocused`.** When `true` (default), the overlay is cleared whenever the active editor loses focus, the workbench is hidden, or the window is minimized. The status bar continues to reflect the latest state. Set to `false` if you want the HUD to remain visible across window blur (rarely useful).
 

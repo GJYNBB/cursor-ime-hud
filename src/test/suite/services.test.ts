@@ -35,7 +35,8 @@ suite("Services", () => {
       "overlay.cnLabel",
       "overlay.enLabel",
       "overlay.cnColor",
-      "overlay.enColor"
+      "overlay.enColor",
+      "overlay.backgroundEnabled"
     ]) {
       originalValues[key] = await readSetting(key);
     }
@@ -102,6 +103,28 @@ suite("Services", () => {
         -16,
         "values below minimum still clamp to minimum"
       );
+    });
+  });
+
+  suite("SettingsService.asBoolean", () => {
+    let service: SettingsService;
+
+    setup(() => {
+      service = new SettingsService();
+    });
+
+    teardown(() => {
+      service.dispose();
+    });
+
+    test("uses rounded label backgrounds by default", async () => {
+      await setSetting("backgroundEnabled", undefined);
+      assert.equal(service.getSettings().backgroundEnabled, true);
+    });
+
+    test("allows disabling rounded label backgrounds", async () => {
+      await setSetting("backgroundEnabled", false);
+      assert.equal(service.getSettings().backgroundEnabled, false);
     });
   });
 

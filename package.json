@@ -141,6 +141,11 @@
           "default": "#FF6B6B",
           "description": "%configuration.overlay.enColor.description%"
         },
+        "cursorImeHud.overlay.backgroundEnabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "%configuration.overlay.backgroundEnabled.description%"
+        },
         "cursorImeHud.overlay.opacity": {
           "type": "number",
           "default": 0.78,

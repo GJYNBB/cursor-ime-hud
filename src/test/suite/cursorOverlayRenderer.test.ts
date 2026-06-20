@@ -17,6 +17,7 @@ suite("CursorOverlayRenderer", () => {
       enLabel: "英",
       cnColor: "#4FA6FF",
       enColor: "#FF6B6B",
+      backgroundEnabled: true,
       opacity: 0.78,
       overlayMode: "text",
       statusBarEnabled: true,
@@ -78,7 +79,7 @@ suite("CursorOverlayRenderer", () => {
     sinon.restore();
   });
 
-  test("renders bare text without a background pill", () => {
+  test("renders a rounded background mask by default", () => {
     const renderer = new CursorOverlayRenderer(new PositionStrategy());
     const editor = buildEditor();
     const placement = {
@@ -108,6 +109,54 @@ suite("CursorOverlayRenderer", () => {
       assert.ok(attachment, "attachment styles should exist");
       assert.equal(
         (attachment as vscode.ThemableDecorationAttachmentRenderOptions).backgroundColor,
+        "rgba(17, 24, 39, 0.72)"
+      );
+      assert.equal(
+        (attachment as vscode.ThemableDecorationAttachmentRenderOptions).border,
+        "1px solid rgba(255, 255, 255, 0.16)"
+      );
+      const textDecoration =
+        (attachment as vscode.ThemableDecorationAttachmentRenderOptions).textDecoration ?? "";
+      assert.ok(textDecoration.includes("position: absolute"));
+      assert.ok(textDecoration.includes("pointer-events: none"));
+      assert.ok(textDecoration.includes("white-space: nowrap"));
+      assert.ok(textDecoration.includes("opacity: 0.78"));
+      assert.ok(textDecoration.includes("padding: 1px 5px"));
+      assert.ok(textDecoration.includes("border-radius: 4px"));
+    }
+
+    assert.equal(setDecorationsSpy.callCount, 2);
+    const rendered = setDecorationsSpy.secondCall.args[1] as vscode.DecorationOptions[];
+    assert.equal(rendered.length, 1);
+    assert.equal(rendered[0].renderOptions?.after?.contentText, "中");
+    assert.equal(rendered[0].renderOptions?.after?.color, "#4FA6FF");
+  });
+
+  test("renders bare text when the background mask is disabled", () => {
+    const renderer = new CursorOverlayRenderer(new PositionStrategy());
+    const editor = buildEditor();
+    const placement = {
+      attachment: "after" as const,
+      range: new vscode.Range(0, 0, 0, 0)
+    };
+
+    renderer.render({
+      editor,
+      label: "中",
+      settings: buildSettings({ backgroundEnabled: false }),
+      placement,
+      state: "cn"
+    });
+
+    const beforeOptions = createDecorationTypeStub.firstCall
+      .args[0] as vscode.DecorationRenderOptions;
+    const afterOptions = createDecorationTypeStub.secondCall
+      .args[0] as vscode.DecorationRenderOptions;
+
+    for (const attachment of [beforeOptions.before, afterOptions.after]) {
+      assert.ok(attachment, "attachment styles should exist");
+      assert.equal(
+        (attachment as vscode.ThemableDecorationAttachmentRenderOptions).backgroundColor,
         undefined
       );
       assert.equal(
@@ -116,18 +165,9 @@ suite("CursorOverlayRenderer", () => {
       );
       const textDecoration =
         (attachment as vscode.ThemableDecorationAttachmentRenderOptions).textDecoration ?? "";
-      assert.ok(textDecoration.includes("position: absolute"));
-      assert.ok(textDecoration.includes("pointer-events: none"));
-      assert.ok(textDecoration.includes("white-space: nowrap"));
-      assert.ok(textDecoration.includes("opacity: 0.78"));
-      assert.ok(!textDecoration.includes("border-radius"), "pill styling should be removed");
+      assert.ok(!textDecoration.includes("padding: 1px 5px"));
+      assert.ok(!textDecoration.includes("border-radius"));
     }
-
-    assert.equal(setDecorationsSpy.callCount, 2);
-    const rendered = setDecorationsSpy.secondCall.args[1] as vscode.DecorationOptions[];
-    assert.equal(rendered.length, 1);
-    assert.equal(rendered[0].renderOptions?.after?.contentText, "中");
-    assert.equal(rendered[0].renderOptions?.after?.color, "#4FA6FF");
   });
 
   test("applies different colors for cn and en states without rebuilding styles", () => {
@@ -170,13 +210,15 @@ suite("CursorOverlayRenderer", () => {
     assert.equal(enRendered[0].renderOptions?.after?.contentText, "英");
   });
 
-  test("includes label colors in the style key", () => {
+  test("includes visual style settings in the style key", () => {
     const renderer = new CursorOverlayRenderer(new PositionStrategy());
     const base = buildSettings();
     const cnChanged = buildSettings({ cnColor: "#123456" });
     const enChanged = buildSettings({ enColor: "#abcdef" });
+    const backgroundChanged = buildSettings({ backgroundEnabled: false });
 
     assert.notEqual(renderer.getStyleKey(base), renderer.getStyleKey(cnChanged));
     assert.notEqual(renderer.getStyleKey(base), renderer.getStyleKey(enChanged));
+    assert.notEqual(renderer.getStyleKey(base), renderer.getStyleKey(backgroundChanged));
   });
 });

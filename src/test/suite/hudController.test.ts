@@ -133,6 +133,7 @@ class FakeSettingsService {
       enLabel: "英",
       cnColor: "#4FA6FF",
       enColor: "#FF6B6B",
+      backgroundEnabled: true,
       opacity: 0.78,
       overlayMode: "text" as const,
       statusBarEnabled: true,
