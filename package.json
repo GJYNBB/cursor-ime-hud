@@ -146,6 +146,13 @@
           "default": true,
           "description": "%configuration.overlay.backgroundEnabled.description%"
         },
+        "cursorImeHud.overlay.backgroundOpacity": {
+          "type": "number",
+          "default": 0.72,
+          "minimum": 0,
+          "maximum": 1,
+          "description": "%configuration.overlay.backgroundOpacity.description%"
+        },
         "cursorImeHud.overlay.opacity": {
           "type": "number",
           "default": 0.78,

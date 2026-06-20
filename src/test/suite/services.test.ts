@@ -36,7 +36,8 @@ suite("Services", () => {
       "overlay.enLabel",
       "overlay.cnColor",
       "overlay.enColor",
-      "overlay.backgroundEnabled"
+      "overlay.backgroundEnabled",
+      "overlay.backgroundOpacity"
     ]) {
       originalValues[key] = await readSetting(key);
     }
@@ -85,6 +86,20 @@ suite("Services", () => {
     test("preserves the non-boundary default", async () => {
       await setSetting("opacity", 0.78);
       assert.equal(service.getSettings().opacity, 0.78);
+    });
+
+    test("clamps background opacity independently", async () => {
+      await setSetting("backgroundOpacity", undefined);
+      assert.equal(service.getSettings().backgroundOpacity, 0.72);
+
+      await setSetting("backgroundOpacity", -0.1);
+      assert.equal(service.getSettings().backgroundOpacity, 0);
+
+      await setSetting("backgroundOpacity", 0.42);
+      assert.equal(service.getSettings().backgroundOpacity, 0.42);
+
+      await setSetting("backgroundOpacity", 2);
+      assert.equal(service.getSettings().backgroundOpacity, 1);
     });
 
     test("allows the larger vertical offset range", async () => {

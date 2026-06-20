@@ -43,6 +43,7 @@ export class SettingsService implements vscode.Disposable {
       cnColor: this.asColor(overlay.cnColor, "#4FA6FF"),
       enColor: this.asColor(overlay.enColor, "#FF6B6B"),
       backgroundEnabled: this.asBoolean(overlay.backgroundEnabled, true),
+      backgroundOpacity: this.clampNumber(overlay.backgroundOpacity, 0.72, 0, 1),
       opacity: this.clampNumber(overlay.opacity, 0.78, 0.15, 1),
       overlayMode: overlay.mode === "text+icon" ? "text+icon" : "text",
       statusBarEnabled: this.asBoolean(statusBar.enabled, true),

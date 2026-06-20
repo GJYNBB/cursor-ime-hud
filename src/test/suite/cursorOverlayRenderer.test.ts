@@ -18,6 +18,7 @@ suite("CursorOverlayRenderer", () => {
       cnColor: "#4FA6FF",
       enColor: "#FF6B6B",
       backgroundEnabled: true,
+      backgroundOpacity: 0.72,
       opacity: 0.78,
       overlayMode: "text",
       statusBarEnabled: true,
@@ -121,8 +122,9 @@ suite("CursorOverlayRenderer", () => {
       assert.ok(textDecoration.includes("pointer-events: none"));
       assert.ok(textDecoration.includes("white-space: nowrap"));
       assert.ok(textDecoration.includes("opacity: 0.78"));
-      assert.ok(textDecoration.includes("padding: 1px 5px"));
-      assert.ok(textDecoration.includes("border-radius: 4px"));
+      assert.ok(textDecoration.includes("line-height: 1"));
+      assert.ok(textDecoration.includes("padding: 0 2px"));
+      assert.ok(textDecoration.includes("border-radius: 3px"));
     }
 
     assert.equal(setDecorationsSpy.callCount, 2);
@@ -130,6 +132,31 @@ suite("CursorOverlayRenderer", () => {
     assert.equal(rendered.length, 1);
     assert.equal(rendered[0].renderOptions?.after?.contentText, "中");
     assert.equal(rendered[0].renderOptions?.after?.color, "#4FA6FF");
+  });
+
+  test("uses the configured background mask opacity", () => {
+    const renderer = new CursorOverlayRenderer(new PositionStrategy());
+    const editor = buildEditor();
+    const placement = {
+      attachment: "after" as const,
+      range: new vscode.Range(0, 0, 0, 0)
+    };
+
+    renderer.render({
+      editor,
+      label: "中",
+      settings: buildSettings({ backgroundOpacity: 0.35 }),
+      placement,
+      state: "cn"
+    });
+
+    const afterOptions = createDecorationTypeStub.secondCall
+      .args[0] as vscode.DecorationRenderOptions;
+    assert.equal(
+      afterOptions.after?.backgroundColor,
+      "rgba(17, 24, 39, 0.35)",
+      "background opacity should control only the mask alpha"
+    );
   });
 
   test("renders bare text when the background mask is disabled", () => {
@@ -165,7 +192,7 @@ suite("CursorOverlayRenderer", () => {
       );
       const textDecoration =
         (attachment as vscode.ThemableDecorationAttachmentRenderOptions).textDecoration ?? "";
-      assert.ok(!textDecoration.includes("padding: 1px 5px"));
+      assert.ok(!textDecoration.includes("padding:"));
       assert.ok(!textDecoration.includes("border-radius"));
     }
   });
@@ -216,9 +243,11 @@ suite("CursorOverlayRenderer", () => {
     const cnChanged = buildSettings({ cnColor: "#123456" });
     const enChanged = buildSettings({ enColor: "#abcdef" });
     const backgroundChanged = buildSettings({ backgroundEnabled: false });
+    const backgroundOpacityChanged = buildSettings({ backgroundOpacity: 0.35 });
 
     assert.notEqual(renderer.getStyleKey(base), renderer.getStyleKey(cnChanged));
     assert.notEqual(renderer.getStyleKey(base), renderer.getStyleKey(enChanged));
     assert.notEqual(renderer.getStyleKey(base), renderer.getStyleKey(backgroundChanged));
+    assert.notEqual(renderer.getStyleKey(base), renderer.getStyleKey(backgroundOpacityChanged));
   });
 });

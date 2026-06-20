@@ -134,6 +134,7 @@ class FakeSettingsService {
       cnColor: "#4FA6FF",
       enColor: "#FF6B6B",
       backgroundEnabled: true,
+      backgroundOpacity: 0.72,
       opacity: 0.78,
       overlayMode: "text" as const,
       statusBarEnabled: true,

@@ -61,7 +61,8 @@ export class CursorOverlayRenderer implements OverlayRenderer {
       overlayMode: settings.overlayMode,
       cnColor: settings.cnColor,
       enColor: settings.enColor,
-      backgroundEnabled: settings.backgroundEnabled
+      backgroundEnabled: settings.backgroundEnabled,
+      backgroundOpacity: settings.backgroundOpacity
     });
   }
 
@@ -159,10 +160,10 @@ export class CursorOverlayRenderer implements OverlayRenderer {
     const sharedAttachmentStyles: vscode.ThemableDecorationAttachmentRenderOptions = {
       color: "#F7FAFC",
       fontWeight: "600",
-      textDecoration: `none; font-size: 0.85em; position: absolute; z-index: 20; pointer-events: none; white-space: nowrap; opacity: ${settings.opacity.toFixed(2)};${settings.backgroundEnabled ? " padding: 1px 5px; border-radius: 4px;" : ""}`,
+      textDecoration: `none; font-size: 0.85em; line-height: 1; position: absolute; z-index: 20; pointer-events: none; white-space: nowrap; opacity: ${settings.opacity.toFixed(2)};${settings.backgroundEnabled ? " padding: 0 2px; border-radius: 3px;" : ""}`,
       ...(settings.backgroundEnabled
         ? {
-            backgroundColor: "rgba(17, 24, 39, 0.72)",
+            backgroundColor: `rgba(17, 24, 39, ${settings.backgroundOpacity.toFixed(2)})`,
             border: "1px solid rgba(255, 255, 255, 0.16)"
           }
         : {})

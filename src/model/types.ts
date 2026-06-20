@@ -69,6 +69,8 @@ export interface CursorImeHudSettings {
   enColor: string;
   /** Whether the label is drawn with a rounded-rectangle background mask. */
   backgroundEnabled: boolean;
+  /** Alpha channel used by the rounded-rectangle background mask. */
+  backgroundOpacity: number;
   opacity: number;
   overlayMode: "text" | "text+icon";
   statusBarEnabled: boolean;
