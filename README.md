@@ -111,20 +111,20 @@ Cursor IME HUD: Show Diagnostics
 
 ## 配置项
 
-| 设置                                           | 默认值   | 说明                                                                                    |
-| ---------------------------------------------- | -------- | --------------------------------------------------------------------------------------- |
-| `cursorImeHud.overlay.enabled`                 | `true`   | 是否启用光标旁 HUD。                                                                    |
-| `cursorImeHud.overlay.labelPreset`             | `custom` | 标签预设：`custom` 使用自定义标签，`zh-en` 显示 `中` / `英`，`en-zh` 显示 `ZH` / `EN`。 |
-| `cursorImeHud.overlay.cnLabel`                 | `中`     | `labelPreset` 为 `custom` 时的中文输入状态显示标签。                                    |
-| `cursorImeHud.overlay.enLabel`                 | `英`     | `labelPreset` 为 `custom` 时的英文输入状态显示标签。                                    |
+| 设置                                           | 默认值    | 说明                                                                                    |
+| ---------------------------------------------- | --------- | --------------------------------------------------------------------------------------- |
+| `cursorImeHud.overlay.enabled`                 | `true`    | 是否启用光标旁 HUD。                                                                    |
+| `cursorImeHud.overlay.labelPreset`             | `custom`  | 标签预设：`custom` 使用自定义标签，`zh-en` 显示 `中` / `英`，`en-zh` 显示 `ZH` / `EN`。 |
+| `cursorImeHud.overlay.cnLabel`                 | `中`      | `labelPreset` 为 `custom` 时的中文输入状态显示标签。                                    |
+| `cursorImeHud.overlay.enLabel`                 | `英`      | `labelPreset` 为 `custom` 时的英文输入状态显示标签。                                    |
 | `cursorImeHud.overlay.cnColor`                 | `#4FA6FF` | 中文输入状态标签颜色（适用于 `中` / `ZH` 或自定义中文标签）。                           |
 | `cursorImeHud.overlay.enColor`                 | `#FF6B6B` | 英文输入状态标签颜色（适用于 `英` / `EN` 或自定义英文标签）。                           |
-| `cursorImeHud.overlay.opacity`                 | `0.78`   | HUD 标签文字透明度，范围 `0.15` 到 `1`。                                                |
-| `cursorImeHud.overlay.mode`                    | `text`   | HUD 渲染模式；`text+icon` 当前为预留模式，表现与 `text` 相同。                          |
-| `cursorImeHud.statusBar.enabled`               | `true`   | 是否在状态栏显示输入状态。                                                              |
-| `cursorImeHud.overlay.hideWhenEditorUnfocused` | `true`   | VS Code 窗口失焦时是否隐藏 HUD。                                                        |
-| `cursorImeHud.overlay.offsetX`                 | `6`      | HUD 横向偏移。                                                                          |
-| `cursorImeHud.overlay.offsetY`                 | `20`     | HUD 纵向偏移，可调到 `30`。                                                            |
+| `cursorImeHud.overlay.opacity`                 | `0.78`    | HUD 标签文字透明度，范围 `0.15` 到 `1`。                                                |
+| `cursorImeHud.overlay.mode`                    | `text`    | HUD 渲染模式；`text+icon` 当前为预留模式，表现与 `text` 相同。                          |
+| `cursorImeHud.statusBar.enabled`               | `true`    | 是否在状态栏显示输入状态。                                                              |
+| `cursorImeHud.overlay.hideWhenEditorUnfocused` | `true`    | VS Code 窗口失焦时是否隐藏 HUD。                                                        |
+| `cursorImeHud.overlay.offsetX`                 | `6`       | HUD 横向偏移。                                                                          |
+| `cursorImeHud.overlay.offsetY`                 | `20`      | HUD 纵向偏移，可调到 `30`。                                                             |
 
 > VS Code / Cursor 设置页和命令标题会跟随编辑器显示语言自动本地化：中文界面显示中文说明，英文或未支持语言回退到英文。设置 ID（例如 `cursorImeHud.overlay.enabled`）保持不变。
 

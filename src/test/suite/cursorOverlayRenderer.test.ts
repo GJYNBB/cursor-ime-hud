@@ -60,7 +60,15 @@ suite("CursorOverlayRenderer", () => {
 
   setup(() => {
     setDecorationsSpy = sinon.spy();
-    createDecorationTypeStub = sinon.stub(vscode.window as any, "createTextEditorDecorationType");
+    const windowWithDecorationType = vscode.window as unknown as {
+      createTextEditorDecorationType: (
+        options: vscode.DecorationRenderOptions
+      ) => vscode.TextEditorDecorationType;
+    };
+    createDecorationTypeStub = sinon.stub(
+      windowWithDecorationType,
+      "createTextEditorDecorationType"
+    );
     createDecorationTypeStub.callsFake(() => {
       return { dispose: () => undefined } as vscode.TextEditorDecorationType;
     });

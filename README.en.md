@@ -111,20 +111,20 @@ The repository already includes `.vscode/launch.json` and `.vscode/tasks.json` s
 
 ## Settings
 
-| Setting                                        | Default  | Notes                                                                                                |
-| ---------------------------------------------- | -------- | ---------------------------------------------------------------------------------------------------- |
-| `cursorImeHud.overlay.enabled`                 | `true`   | Enables the caret-adjacent HUD.                                                                      |
-| `cursorImeHud.overlay.labelPreset`             | `custom` | Label preset: `custom` uses custom labels, `zh-en` shows `中` / `英`, and `en-zh` shows `ZH` / `EN`. |
-| `cursorImeHud.overlay.cnLabel`                 | `中`     | Custom label used for Chinese input mode when `labelPreset` is `custom`.                             |
-| `cursorImeHud.overlay.enLabel`                 | `英`     | Custom label used for English input mode when `labelPreset` is `custom`.                             |
+| Setting                                        | Default   | Notes                                                                                                |
+| ---------------------------------------------- | --------- | ---------------------------------------------------------------------------------------------------- |
+| `cursorImeHud.overlay.enabled`                 | `true`    | Enables the caret-adjacent HUD.                                                                      |
+| `cursorImeHud.overlay.labelPreset`             | `custom`  | Label preset: `custom` uses custom labels, `zh-en` shows `中` / `英`, and `en-zh` shows `ZH` / `EN`. |
+| `cursorImeHud.overlay.cnLabel`                 | `中`      | Custom label used for Chinese input mode when `labelPreset` is `custom`.                             |
+| `cursorImeHud.overlay.enLabel`                 | `英`      | Custom label used for English input mode when `labelPreset` is `custom`.                             |
 | `cursorImeHud.overlay.cnColor`                 | `#4FA6FF` | Text color for the Chinese-mode label (`中` / `ZH`, or the custom Chinese label).                    |
 | `cursorImeHud.overlay.enColor`                 | `#FF6B6B` | Text color for the English-mode label (`英` / `EN`, or the custom English label).                    |
-| `cursorImeHud.overlay.opacity`                 | `0.78`   | Text opacity for the overlay label.                                                                  |
-| `cursorImeHud.overlay.mode`                    | `text`   | `text+icon` is reserved for future work and currently behaves the same as `text`.                    |
-| `cursorImeHud.statusBar.enabled`               | `true`   | Shows the current state in the status bar.                                                           |
-| `cursorImeHud.overlay.hideWhenEditorUnfocused` | `true`   | Hides the overlay when the VS Code window loses focus.                                               |
-| `cursorImeHud.overlay.offsetX`                 | `6`      | Horizontal offset for the overlay.                                                                   |
-| `cursorImeHud.overlay.offsetY`                 | `20`     | Vertical offset for the overlay, configurable up to `30`.                                            |
+| `cursorImeHud.overlay.opacity`                 | `0.78`    | Text opacity for the overlay label.                                                                  |
+| `cursorImeHud.overlay.mode`                    | `text`    | `text+icon` is reserved for future work and currently behaves the same as `text`.                    |
+| `cursorImeHud.statusBar.enabled`               | `true`    | Shows the current state in the status bar.                                                           |
+| `cursorImeHud.overlay.hideWhenEditorUnfocused` | `true`    | Hides the overlay when the VS Code window loses focus.                                               |
+| `cursorImeHud.overlay.offsetX`                 | `6`       | Horizontal offset for the overlay.                                                                   |
+| `cursorImeHud.overlay.offsetY`                 | `20`      | Vertical offset for the overlay, configurable up to `30`.                                            |
 
 > The VS Code/Cursor Settings UI and command titles follow the editor display language automatically: Simplified Chinese uses Chinese strings, while English and unsupported locales fall back to English. Setting IDs such as `cursorImeHud.overlay.enabled` remain stable.
 
