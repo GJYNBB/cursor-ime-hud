@@ -119,6 +119,7 @@ suite("CursorOverlayRenderer", () => {
       const textDecoration =
         (attachment as vscode.ThemableDecorationAttachmentRenderOptions).textDecoration ?? "";
       assert.ok(textDecoration.includes("position: absolute"));
+      assert.ok(textDecoration.includes("transform: translate(6px, 20px)"));
       assert.ok(textDecoration.includes("pointer-events: none"));
       assert.ok(textDecoration.includes("white-space: nowrap"));
       assert.ok(textDecoration.includes("opacity: 0.78"));
@@ -132,6 +133,31 @@ suite("CursorOverlayRenderer", () => {
     assert.equal(rendered.length, 1);
     assert.equal(rendered[0].renderOptions?.after?.contentText, "中");
     assert.equal(rendered[0].renderOptions?.after?.color, "#4FA6FF");
+  });
+
+  test("applies offsets with transform instead of attachment margin", () => {
+    const renderer = new CursorOverlayRenderer(new PositionStrategy());
+    const editor = buildEditor();
+    const placement = {
+      attachment: "after" as const,
+      range: new vscode.Range(0, 0, 0, 0)
+    };
+
+    renderer.render({
+      editor,
+      label: "中",
+      settings: buildSettings({ offsetX: 3, offsetY: 12 }),
+      placement,
+      state: "cn"
+    });
+
+    const afterOptions = createDecorationTypeStub.secondCall
+      .args[0] as vscode.DecorationRenderOptions;
+    const attachment = afterOptions.after as vscode.ThemableDecorationAttachmentRenderOptions;
+    const textDecoration = attachment.textDecoration ?? "";
+
+    assert.ok(textDecoration.includes("transform: translate(3px, 12px)"));
+    assert.equal(attachment.margin, undefined);
   });
 
   test("uses the configured background mask opacity", () => {

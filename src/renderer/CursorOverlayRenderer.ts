@@ -155,12 +155,13 @@ export class CursorOverlayRenderer implements OverlayRenderer {
     this.beforeDecorationType?.dispose();
     this.afterDecorationType?.dispose();
 
-    const topMargin = settings.offsetY;
+    const offsetX = settings.offsetX;
+    const offsetY = settings.offsetY;
 
     const sharedAttachmentStyles: vscode.ThemableDecorationAttachmentRenderOptions = {
       color: "#F7FAFC",
       fontWeight: "600",
-      textDecoration: `none; font-size: 0.85em; line-height: 1; position: absolute; z-index: 20; pointer-events: none; white-space: nowrap; opacity: ${settings.opacity.toFixed(2)};${settings.backgroundEnabled ? " padding: 0 2px; border-radius: 3px;" : ""}`,
+      textDecoration: `none; font-size: 0.85em; line-height: 1; position: absolute; z-index: 20; pointer-events: none; white-space: nowrap; opacity: ${settings.opacity.toFixed(2)}; transform: translate(${offsetX}px, ${offsetY}px);${settings.backgroundEnabled ? " padding: 0 2px; border-radius: 3px;" : ""}`,
       ...(settings.backgroundEnabled
         ? {
             backgroundColor: `rgba(17, 24, 39, ${settings.backgroundOpacity.toFixed(2)})`,
@@ -171,18 +172,12 @@ export class CursorOverlayRenderer implements OverlayRenderer {
 
     this.beforeDecorationType = vscode.window.createTextEditorDecorationType({
       rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
-      before: {
-        ...sharedAttachmentStyles,
-        margin: `${topMargin}px ${settings.offsetX}px 0 0`
-      }
+      before: sharedAttachmentStyles
     });
 
     this.afterDecorationType = vscode.window.createTextEditorDecorationType({
       rangeBehavior: vscode.DecorationRangeBehavior.ClosedClosed,
-      after: {
-        ...sharedAttachmentStyles,
-        margin: `${topMargin}px 0 0 ${settings.offsetX}px`
-      }
+      after: sharedAttachmentStyles
     });
 
     this.styleCacheKey = nextCacheKey;
