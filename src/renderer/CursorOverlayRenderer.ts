@@ -9,6 +9,9 @@ import {
   TextContentProvider
 } from "./contracts";
 
+const DEFAULT_EDITOR_FONT_SIZE_PX = 14;
+const HUD_FONT_SCALE = 0.85;
+
 // Re-export so existing imports of `OverlayRenderer` from this module
 // continue to work after the interface was lifted to `./contracts`.
 export type { OverlayRenderer } from "./contracts";
@@ -155,13 +158,13 @@ export class CursorOverlayRenderer implements OverlayRenderer {
     this.beforeDecorationType?.dispose();
     this.afterDecorationType?.dispose();
 
-    const offsetX = settings.offsetX;
-    const offsetY = settings.offsetY;
+    const offsetX = this.toHudEm(settings.offsetX);
+    const offsetY = this.toHudEm(settings.offsetY);
 
     const sharedAttachmentStyles: vscode.ThemableDecorationAttachmentRenderOptions = {
       color: "#F7FAFC",
       fontWeight: "600",
-      textDecoration: `none; font-size: 0.85em; line-height: 1; position: absolute; z-index: 20; pointer-events: none; white-space: nowrap; opacity: ${settings.opacity.toFixed(2)}; transform: translate(${offsetX}px, ${offsetY}px);${settings.backgroundEnabled ? " padding: 0 2px; border-radius: 3px;" : ""}`,
+      textDecoration: `none; font-size: ${HUD_FONT_SCALE}em; line-height: 1; position: absolute; z-index: 20; pointer-events: none; white-space: nowrap; opacity: ${settings.opacity.toFixed(2)}; transform: translate(${offsetX}, ${offsetY});${settings.backgroundEnabled ? " padding: 0 2px; border-radius: 3px;" : ""}`,
       ...(settings.backgroundEnabled
         ? {
             backgroundColor: `rgba(17, 24, 39, ${settings.backgroundOpacity.toFixed(2)})`,
@@ -181,6 +184,11 @@ export class CursorOverlayRenderer implements OverlayRenderer {
     });
 
     this.styleCacheKey = nextCacheKey;
+  }
+
+  private toHudEm(offsetPxAtDefaultZoom: number): string {
+    const offsetEm = offsetPxAtDefaultZoom / (DEFAULT_EDITOR_FONT_SIZE_PX * HUD_FONT_SCALE);
+    return `${offsetEm.toFixed(4)}em`;
   }
 
   /**

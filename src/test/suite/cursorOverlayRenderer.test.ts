@@ -119,7 +119,7 @@ suite("CursorOverlayRenderer", () => {
       const textDecoration =
         (attachment as vscode.ThemableDecorationAttachmentRenderOptions).textDecoration ?? "";
       assert.ok(textDecoration.includes("position: absolute"));
-      assert.ok(textDecoration.includes("transform: translate(6px, 20px)"));
+      assert.ok(textDecoration.includes("transform: translate(0.5042em, 1.6807em)"));
       assert.ok(textDecoration.includes("pointer-events: none"));
       assert.ok(textDecoration.includes("white-space: nowrap"));
       assert.ok(textDecoration.includes("opacity: 0.78"));
@@ -156,7 +156,8 @@ suite("CursorOverlayRenderer", () => {
     const attachment = afterOptions.after as vscode.ThemableDecorationAttachmentRenderOptions;
     const textDecoration = attachment.textDecoration ?? "";
 
-    assert.ok(textDecoration.includes("transform: translate(3px, 12px)"));
+    assert.ok(textDecoration.includes("transform: translate(0.2521em, 1.0084em)"));
+    assert.ok(!textDecoration.includes("translate(3px, 12px)"));
     assert.equal(attachment.margin, undefined);
   });
 
