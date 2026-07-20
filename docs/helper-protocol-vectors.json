@@ -1,0 +1,149 @@
+{
+  "schemaVersion": 1,
+  "cases": [
+    {
+      "id": "hello-valid",
+      "kind": "hello",
+      "record": {
+        "type": "hello",
+        "version": 1,
+        "capabilities": ["state", "log", 7]
+      },
+      "expected": {
+        "version": 1,
+        "capabilities": ["state", "log"]
+      }
+    },
+    {
+      "id": "hello-invalid-version-type",
+      "kind": "hello",
+      "record": {
+        "type": "hello",
+        "version": "1",
+        "capabilities": []
+      },
+      "expected": null
+    },
+    {
+      "id": "hello-invalid-fractional-version",
+      "kind": "hello",
+      "record": {
+        "type": "hello",
+        "version": 1.5,
+        "capabilities": []
+      },
+      "expected": null
+    },
+    {
+      "id": "hello-invalid-out-of-range-version",
+      "kind": "hello",
+      "record": {
+        "type": "hello",
+        "version": 2147483648,
+        "capabilities": []
+      },
+      "expected": null
+    },
+    {
+      "id": "state-valid-full",
+      "kind": "state",
+      "record": {
+        "type": "state",
+        "state": "cn",
+        "timestamp": "2026-06-05T08:00:00.000Z",
+        "imeName": "Microsoft Pinyin",
+        "isOpen": true,
+        "layoutHex": "0804",
+        "threadId": 1234,
+        "hwnd": "0x1",
+        "reason": "refresh",
+        "confidence": 0.94,
+        "rawStateAvailable": true
+      },
+      "expected": {
+        "state": "cn",
+        "timestamp": "2026-06-05T08:00:00.000Z",
+        "imeName": "Microsoft Pinyin",
+        "isOpen": true,
+        "layoutHex": "0804",
+        "threadId": 1234,
+        "hwnd": "0x1",
+        "reason": "refresh",
+        "confidence": 0.94,
+        "rawStateAvailable": true
+      }
+    },
+    {
+      "id": "state-valid-unknown-minimal",
+      "kind": "state",
+      "record": {
+        "type": "state",
+        "state": "unknown",
+        "timestamp": "2026-06-05T08:00:01.000Z"
+      },
+      "expected": {
+        "state": "unknown",
+        "timestamp": "2026-06-05T08:00:01.000Z"
+      }
+    },
+    {
+      "id": "state-invalid-value",
+      "kind": "state",
+      "record": {
+        "type": "state",
+        "state": "jp"
+      },
+      "expected": null
+    },
+    {
+      "id": "state-missing-state",
+      "kind": "state",
+      "record": {
+        "type": "state"
+      },
+      "expected": null
+    },
+    {
+      "id": "log-valid-warn",
+      "kind": "log",
+      "record": {
+        "type": "log",
+        "level": "warn",
+        "message": "test warning",
+        "timestamp": "2026-06-05T08:00:02.000Z",
+        "source": "native-helper"
+      },
+      "expected": {
+        "level": "warn",
+        "message": "test warning",
+        "timestamp": "2026-06-05T08:00:02.000Z",
+        "source": "native-helper"
+      }
+    },
+    {
+      "id": "log-unknown-level-coerces-to-info",
+      "kind": "log",
+      "record": {
+        "type": "log",
+        "level": "trace",
+        "message": "verbose",
+        "timestamp": "2026-06-05T08:00:03.000Z"
+      },
+      "expected": {
+        "level": "info",
+        "message": "verbose",
+        "timestamp": "2026-06-05T08:00:03.000Z",
+        "source": "native-helper"
+      }
+    },
+    {
+      "id": "log-missing-message",
+      "kind": "log",
+      "record": {
+        "type": "log",
+        "level": "warn"
+      },
+      "expected": null
+    }
+  ]
+}

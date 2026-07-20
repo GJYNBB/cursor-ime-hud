@@ -1,0 +1,10 @@
+node_modules/
+out/
+.vscode-test/
+*.vsix
+coverage/
+dist/
+dist-ci-test/
+resources/bin/
+native/ime-watcher/target/
+.secrets/

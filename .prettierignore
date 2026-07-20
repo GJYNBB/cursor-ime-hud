@@ -1,0 +1,10 @@
+jetbrains/.intellijPlatform
+jetbrains/build
+.claude
+.vscode-test
+coverage
+out
+resources/bin
+work
+dist
+dist-ci-test

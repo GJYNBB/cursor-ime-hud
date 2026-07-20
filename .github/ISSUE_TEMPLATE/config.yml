@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 支持与故障排查
+    url: https://github.com/GJYNBB/cursor-ime-hud/blob/main/SUPPORT.md
+    about: 查看支持的平台、诊断信息要求和故障排查指南。
+  - name: 安全策略
+    url: https://github.com/GJYNBB/cursor-ime-hud/blob/main/SECURITY.md
+    about: 私密报告漏洞，不要在公开 issue 中发布漏洞利用细节。

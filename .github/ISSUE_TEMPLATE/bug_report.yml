@@ -1,0 +1,118 @@
+name: 缺陷报告
+description: 报告一个可复现的 Cursor IME HUD 问题
+title: "[缺陷]: "
+labels: [bug]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        感谢你报告问题。请先运行 **Cursor IME HUD：显示诊断信息（Show Diagnostics）**，并填写下面的环境信息。
+
+        如果涉及安全问题，请不要公开发布漏洞利用细节，改为遵循 [SECURITY.md](../../SECURITY.md) 中的流程。
+  - type: dropdown
+    id: app
+    attributes:
+      label: 使用的编辑器或 IDE
+      options:
+        - VS Code
+        - Cursor
+        - JetBrains IDE
+        - 其他兼容 VS Code 的编辑器
+    validations:
+      required: true
+  - type: input
+    id: editor-version
+    attributes:
+      label: 编辑器或 IDE 版本
+      description: "请从帮助菜单、About Visual Studio Code / Cursor 或 JetBrains 的 About 中复制版本。"
+      placeholder: "例如：VS Code 1.107.0、Cursor 1.x 或 IntelliJ IDEA 2026.1"
+    validations:
+      required: true
+  - type: input
+    id: extension-version
+    attributes:
+      label: Cursor IME HUD 扩展或插件版本
+      placeholder: "例如：1.0.9"
+    validations:
+      required: true
+  - type: dropdown
+    id: install-source
+    attributes:
+      label: 安装来源
+      options:
+        - VS Code Marketplace
+        - JetBrains Marketplace
+        - GitHub Release VSIX
+        - GitHub Release JetBrains ZIP
+        - 本地源码构建
+        - 其他
+    validations:
+      required: true
+  - type: input
+    id: os-version
+    attributes:
+      label: 操作系统版本和架构
+      placeholder: "例如：Windows 11 24H2 x64、macOS 15 arm64 或 Ubuntu 24.04 x64"
+    validations:
+      required: true
+  - type: input
+    id: ime
+    attributes:
+      label: 输入法、输入源或后端名称
+      placeholder: "例如：微软拼音 / 中文、Fcitx5 + 拼音、macOS 简体拼音"
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤
+      description: 请描述能够稳定触发问题的最小步骤。
+      placeholder: |
+        1. 打开……
+        2. 将输入法切换为……
+        3. 将光标移动到……
+        4. 观察……
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 预期行为
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: 实际行为
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: 诊断信息输出
+      description: "粘贴 **Cursor IME HUD：显示诊断信息（Show Diagnostics）** 的输出；必要时请遮盖私人路径或窗口标题。"
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: output-channel
+    attributes:
+      label: 输出通道或日志
+      description: 粘贴 **Cursor IME HUD** 输出通道中的相关内容，并遮盖敏感信息。
+      render: text
+    validations:
+      required: false
+  - type: checkboxes
+    id: helper-files
+    attributes:
+      label: Native helper 文件
+      description: 如果问题来自源码构建，请确认当前平台的 helper 及相邻 `.sha256` 文件已由 `npm run build:helper` 生成。
+      options:
+        - label: 我已确认当前平台的 native helper 文件存在且校验文件存在
+  - type: textarea
+    id: media
+    attributes:
+      label: 截图或 GIF
+      description: 可选。HUD 位置或显示问题附上截图会很有帮助；请勿包含敏感内容。
+    validations:
+      required: false

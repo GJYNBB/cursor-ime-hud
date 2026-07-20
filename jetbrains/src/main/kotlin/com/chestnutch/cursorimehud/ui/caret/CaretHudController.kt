@@ -1,0 +1,456 @@
+package com.chestnutch.cursorimehud.ui.caret
+
+import com.chestnutch.cursorimehud.service.ImeHudService
+import com.chestnutch.cursorimehud.settings.CursorImeHudSettings
+import com.chestnutch.cursorimehud.settings.CursorImeHudSettingsListener
+import com.intellij.codeInsight.intention.preview.IntentionPreviewUtils
+import com.intellij.openapi.Disposable
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.components.Service
+import com.intellij.openapi.components.service
+import com.intellij.openapi.editor.Document
+import com.intellij.openapi.editor.Editor
+import com.intellij.openapi.editor.EditorFactory
+import com.intellij.openapi.editor.FoldRegion
+import com.intellij.openapi.editor.event.CaretEvent
+import com.intellij.openapi.editor.event.CaretListener
+import com.intellij.openapi.editor.event.DocumentEvent
+import com.intellij.openapi.editor.event.DocumentListener
+import com.intellij.openapi.editor.event.EditorFactoryEvent
+import com.intellij.openapi.editor.event.EditorFactoryListener
+import com.intellij.openapi.editor.event.SelectionEvent
+import com.intellij.openapi.editor.event.SelectionListener
+import com.intellij.openapi.editor.event.VisibleAreaEvent
+import com.intellij.openapi.editor.event.VisibleAreaListener
+import com.intellij.openapi.editor.ex.FoldingListener
+import com.intellij.openapi.editor.ex.FoldingModelEx
+import com.intellij.openapi.editor.ex.util.EditorUtil
+import com.intellij.openapi.fileEditor.FileEditorManager
+import com.intellij.openapi.fileEditor.FileEditorManagerEvent
+import com.intellij.openapi.fileEditor.FileEditorManagerListener
+import com.intellij.openapi.project.Project
+import com.intellij.openapi.util.Disposer
+import com.intellij.openapi.wm.IdeFocusManager
+import com.intellij.util.Alarm
+import java.awt.AWTEvent
+import java.awt.Component
+import java.awt.KeyboardFocusManager
+import java.awt.Toolkit
+import java.awt.event.AWTEventListener
+import java.awt.event.MouseWheelEvent
+import java.beans.PropertyChangeEvent
+import java.beans.PropertyChangeListener
+import java.util.IdentityHashMap
+import javax.swing.SwingUtilities
+
+@Service(Service.Level.PROJECT)
+class CaretHudController(private val project: Project) : Disposable, ImeHudService.Listener {
+  private val service = project.service<ImeHudService>()
+  private val settings = service<CursorImeHudSettings>()
+  private val renderer = CaretHudRenderer()
+  private val renderAlarm = Alarm(Alarm.ThreadToUse.SWING_THREAD, this)
+  private val graceAlarm = Alarm(Alarm.ThreadToUse.SWING_THREAD, this)
+  private val ctrlWheelZoomAlarm = Alarm(Alarm.ThreadToUse.SWING_THREAD, this)
+  private val focusListener = PropertyChangeListener { event: PropertyChangeEvent ->
+    if (event.propertyName == "focusOwner") {
+      scheduleRender()
+    }
+  }
+  private val ctrlWheelZoomListener = AWTEventListener { event: AWTEvent ->
+    if (event is MouseWheelEvent && event.isControlDown) {
+      scheduleCtrlWheelZoomRender(event)
+    }
+  }
+  @Volatile
+  private var renderScheduled = false
+  @Volatile
+  private var metricRenderScheduled = false
+  @Volatile
+  private var ctrlWheelZoomTracking = false
+  @Volatile
+  private var lastCtrlWheelZoomEventMs = 0L
+  @Volatile
+  private var ctrlWheelZoomTargetEditor: Editor? = null
+  @Volatile
+  private var documentRenderScheduled = false
+  @Volatile
+  private var pendingChangedDocument: Document? = null
+  private var started = false
+  private var hudStarted = false
+  private var caretHudConsumerAcquired = false
+  private var ctrlWheelZoomListenerRegistered = false
+  private val foldingListenerDisposables = IdentityHashMap<Editor, Disposable>()
+
+  private companion object {
+    const val CTRL_WHEEL_ZOOM_FRAME_MS = 16
+    const val CTRL_WHEEL_ZOOM_QUIET_MS = 100L
+    const val SERVICE_CONSUMER_ID = "caret-hud"
+  }
+
+  fun start() {
+    if (started || project.isDisposed) return
+    started = true
+
+    ApplicationManager.getApplication().messageBus.connect(this).subscribe(
+      CursorImeHudSettingsListener.TOPIC,
+      object : CursorImeHudSettingsListener {
+        override fun settingsChanged() {
+          if (settings.state.caretHudEnabled) {
+            val wasHudStarted = hudStarted
+            startHud()
+            ensureServiceConsumer()
+            ensureCtrlWheelListener()
+            if (wasHudStarted) {
+              scheduleRender(immediate = true)
+            }
+          } else {
+            renderAlarm.cancelAllRequests()
+            graceAlarm.cancelAllRequests()
+            ctrlWheelZoomAlarm.cancelAllRequests()
+            renderScheduled = false
+            metricRenderScheduled = false
+            ctrlWheelZoomTracking = false
+            lastCtrlWheelZoomEventMs = 0L
+            ctrlWheelZoomTargetEditor = null
+            documentRenderScheduled = false
+            pendingChangedDocument = null
+            removeCtrlWheelListener()
+            releaseServiceConsumer()
+            renderer.hide()
+          }
+        }
+      }
+    )
+
+    if (settings.state.caretHudEnabled) {
+      startHud()
+    }
+  }
+
+  override fun onImeHudChanged() {
+    if (settings.state.caretHudEnabled) {
+      scheduleRender(immediate = true)
+    }
+  }
+
+  override fun dispose() {
+    renderAlarm.cancelAllRequests()
+    graceAlarm.cancelAllRequests()
+    ctrlWheelZoomAlarm.cancelAllRequests()
+    renderScheduled = false
+    metricRenderScheduled = false
+    ctrlWheelZoomTracking = false
+    lastCtrlWheelZoomEventMs = 0L
+    ctrlWheelZoomTargetEditor = null
+    documentRenderScheduled = false
+    pendingChangedDocument = null
+    if (ctrlWheelZoomListenerRegistered) {
+      Toolkit.getDefaultToolkit().removeAWTEventListener(ctrlWheelZoomListener)
+      ctrlWheelZoomListenerRegistered = false
+    }
+    KeyboardFocusManager.getCurrentKeyboardFocusManager().removePropertyChangeListener("focusOwner", focusListener)
+    service.removeListener(this)
+    releaseServiceConsumer()
+    foldingListenerDisposables.values.toList().forEach(Disposer::dispose)
+    foldingListenerDisposables.clear()
+    renderer.hide()
+  }
+
+  private fun startHud() {
+    if (hudStarted || project.isDisposed) return
+    hudStarted = true
+
+    service.addListener(this)
+    ensureServiceConsumer()
+
+    val editorFactory = EditorFactory.getInstance()
+    editorFactory.eventMulticaster.addCaretListener(object : CaretListener {
+      override fun caretPositionChanged(event: CaretEvent) {
+        if (event.editor.project == project) {
+          scheduleEditorRender()
+        }
+      }
+    }, this)
+    editorFactory.eventMulticaster.addVisibleAreaListener(object : VisibleAreaListener {
+      override fun visibleAreaChanged(event: VisibleAreaEvent) {
+        if (CaretHudEventScheduling.shouldScheduleVisibleAreaRender(
+            caretHudEnabled = settings.state.caretHudEnabled,
+            editorBelongsToProject = event.editor.project == project,
+            hudShowingForEditor = renderer.isShowingFor(event.editor),
+            viewportMetricsChanged = CaretHudEventScheduling.viewportMetricsChanged(
+              event.oldRectangle,
+              event.newRectangle
+            )
+          )
+        ) {
+          if (renderer.isShowingFor(event.editor)) {
+            scheduleMetricRender()
+          } else {
+            scheduleRender()
+          }
+        }
+      }
+    }, this)
+    editorFactory.eventMulticaster.addSelectionListener(object : SelectionListener {
+      override fun selectionChanged(event: SelectionEvent) {
+        if (event.editor.project == project) {
+          scheduleEditorRender()
+        }
+      }
+    }, this)
+    editorFactory.eventMulticaster.addDocumentListener(object : DocumentListener {
+      override fun documentChanged(event: DocumentEvent) {
+        scheduleDocumentRender(event.document)
+      }
+    }, this)
+    editorFactory.addEditorFactoryListener(object : EditorFactoryListener {
+      override fun editorCreated(event: EditorFactoryEvent) {
+        registerFoldingListener(event.editor)
+      }
+
+      override fun editorReleased(event: EditorFactoryEvent) {
+        foldingListenerDisposables.remove(event.editor)?.let(Disposer::dispose)
+        renderer.hideFor(event.editor)
+      }
+    }, this)
+    editorFactory.allEditors.forEach(::registerFoldingListener)
+
+    project.messageBus.connect(this).subscribe(
+      FileEditorManagerListener.FILE_EDITOR_MANAGER,
+      object : FileEditorManagerListener {
+        override fun selectionChanged(event: FileEditorManagerEvent) {
+          scheduleRender(immediate = true)
+        }
+      }
+    )
+
+    KeyboardFocusManager.getCurrentKeyboardFocusManager().addPropertyChangeListener("focusOwner", focusListener)
+    ensureCtrlWheelListener()
+    scheduleRender(immediate = true)
+  }
+
+  private fun scheduleEditorRender() {
+    if (!CaretHudEventScheduling.shouldScheduleEditorRender(settings.state.caretHudEnabled)) return
+    scheduleRender()
+  }
+
+  private fun registerFoldingListener(editor: Editor) {
+    if (editor.project != project || editor.isDisposed) return
+    if (foldingListenerDisposables.containsKey(editor)) return
+    val foldingModel = editor.foldingModel as? FoldingModelEx ?: return
+    val listenerDisposable = Disposer.newDisposable("Cursor IME HUD folding listener")
+    foldingListenerDisposables[editor] = listenerDisposable
+    Disposer.register(listenerDisposable) {
+      foldingListenerDisposables.remove(editor)
+    }
+    foldingModel.addListener(
+      object : FoldingListener {
+        override fun onFoldRegionStateChange(region: FoldRegion) {
+          scheduleFoldingRender(editor)
+        }
+
+        override fun onFoldProcessingEnd() {
+          scheduleFoldingRender(editor)
+        }
+      },
+      listenerDisposable
+    )
+    EditorUtil.disposeWithEditor(editor, listenerDisposable)
+  }
+
+  private fun scheduleFoldingRender(editor: Editor) {
+    if (CaretHudEventScheduling.shouldScheduleFoldingRender(
+        caretHudEnabled = settings.state.caretHudEnabled,
+        editorBelongsToProject = editor.project == project
+      )
+    ) {
+      scheduleRender()
+    }
+  }
+
+  private fun ensureServiceConsumer() {
+    if (caretHudConsumerAcquired) return
+    caretHudConsumerAcquired = true
+    service.acquireConsumer(SERVICE_CONSUMER_ID)
+  }
+
+  private fun releaseServiceConsumer() {
+    if (!caretHudConsumerAcquired) return
+    caretHudConsumerAcquired = false
+    service.releaseConsumer(SERVICE_CONSUMER_ID)
+  }
+
+  private fun scheduleDocumentRender(changedDocument: Document) {
+    // Preview documents are temporary; scheduling UI work violates the preview's no-side-effect contract.
+    if (CaretHudEventScheduling.shouldSkipDocumentRenderDuringIntentionPreview(
+        IntentionPreviewUtils.isIntentionPreviewActive()
+      )
+    ) {
+      return
+    }
+    if (project.isDisposed || !settings.state.caretHudEnabled) return
+    pendingChangedDocument = changedDocument
+    if (documentRenderScheduled) return
+
+    documentRenderScheduled = true
+    ApplicationManager.getApplication().invokeLater {
+      val document = pendingChangedDocument
+      pendingChangedDocument = null
+      documentRenderScheduled = false
+      if (project.isDisposed || !settings.state.caretHudEnabled) return@invokeLater
+      if (activeEditor()?.document == document) {
+        scheduleRender()
+      }
+    }
+  }
+
+  private fun scheduleCtrlWheelZoomRender(event: MouseWheelEvent) {
+    if (!event.isControlDown) return
+    val source = event.component ?: return
+    val editor = editorForComponent(source) ?: return
+    if (CaretHudEventScheduling.shouldScheduleCtrlWheelZoomRender(
+        caretHudEnabled = settings.state.caretHudEnabled,
+        editorBelongsToProject = editor.project == project,
+        ctrlDown = true
+      )
+    ) {
+      markCtrlWheelZoomActive(editor)
+    }
+  }
+
+  private fun markCtrlWheelZoomActive(editor: Editor) {
+    ctrlWheelZoomTargetEditor = editor
+    lastCtrlWheelZoomEventMs = System.currentTimeMillis()
+    if (ctrlWheelZoomTracking) return
+
+    ctrlWheelZoomTracking = true
+    ctrlWheelZoomAlarm.addRequest({ runCtrlWheelZoomTracking() }, 0)
+  }
+
+  private fun runCtrlWheelZoomTracking() {
+    if (project.isDisposed || !settings.state.caretHudEnabled) {
+      clearCtrlWheelZoomTracking()
+      return
+    }
+
+    val editor = ctrlWheelZoomTargetEditor?.takeIf { !it.isDisposed } ?: run {
+      clearCtrlWheelZoomTracking()
+      return
+    }
+
+    renderNow(editor)
+
+    val quietMs = System.currentTimeMillis() - lastCtrlWheelZoomEventMs
+    if (quietMs >= CTRL_WHEEL_ZOOM_QUIET_MS) {
+      clearCtrlWheelZoomTracking()
+      return
+    }
+
+    ctrlWheelZoomAlarm.addRequest({ runCtrlWheelZoomTracking() }, CTRL_WHEEL_ZOOM_FRAME_MS)
+  }
+
+  private fun clearCtrlWheelZoomTracking() {
+    ctrlWheelZoomTracking = false
+    lastCtrlWheelZoomEventMs = 0L
+    ctrlWheelZoomTargetEditor = null
+  }
+
+  private fun scheduleMetricRender() {
+    if (project.isDisposed || !settings.state.caretHudEnabled || metricRenderScheduled) return
+
+    metricRenderScheduled = true
+    renderAlarm.addRequest(
+      {
+        try {
+          renderNow()
+        } finally {
+          metricRenderScheduled = false
+        }
+      },
+      50
+    )
+  }
+
+  private fun scheduleRender(immediate: Boolean = false) {
+    if (project.isDisposed) return
+    if (immediate) {
+      renderAlarm.cancelAllRequests()
+      renderScheduled = false
+      metricRenderScheduled = false
+    } else if (renderScheduled) {
+      return
+    }
+
+    renderScheduled = true
+    renderAlarm.addRequest(
+      {
+        try {
+          renderNow()
+        } finally {
+          renderScheduled = false
+        }
+      },
+      if (immediate) 0 else 16
+    )
+  }
+
+  private fun renderNow(editorOverride: Editor? = null) {
+    if (project.isDisposed) {
+      renderer.hide()
+      return
+    }
+
+    val editor = editorOverride?.takeIf { !it.isDisposed } ?: activeEditor()
+    val displayState = service.displayState()
+    scheduleGraceExpiry(displayState.graceExpiresAtMillis)
+    val state = CaretHudVisibility.resolve(
+      displayState = displayState,
+      settings = settings.state,
+      editorAvailable = editor != null && !editor.isDisposed,
+      editorFocused = editor?.let { isEditorFocused(it) } ?: false
+    )
+
+    if (!state.visible || editor == null || state.label == null || state.snapshot == null) {
+      renderer.hide()
+      return
+    }
+
+    renderer.show(editor, state.label, state.snapshot.state, settings.state)
+  }
+
+  private fun scheduleGraceExpiry(graceExpiresAtMillis: Long?) {
+    graceAlarm.cancelAllRequests()
+    if (graceExpiresAtMillis == null) return
+    val delayMs = (graceExpiresAtMillis - System.currentTimeMillis()).coerceAtLeast(1L).toInt()
+    graceAlarm.addRequest({ service.notifyGracePeriodExpired() }, delayMs)
+  }
+
+  private fun ensureCtrlWheelListener() {
+    if (ctrlWheelZoomListenerRegistered) return
+    Toolkit.getDefaultToolkit().addAWTEventListener(ctrlWheelZoomListener, AWTEvent.MOUSE_WHEEL_EVENT_MASK)
+    ctrlWheelZoomListenerRegistered = true
+  }
+
+  private fun removeCtrlWheelListener() {
+    if (!ctrlWheelZoomListenerRegistered) return
+    Toolkit.getDefaultToolkit().removeAWTEventListener(ctrlWheelZoomListener)
+    ctrlWheelZoomListenerRegistered = false
+  }
+
+  private fun editorForComponent(source: Component): Editor? {
+    return EditorFactory.getInstance().allEditors.firstOrNull { editor ->
+      editor.project == project &&
+        !editor.isDisposed &&
+        CaretHudEventScheduling.isComponentInsideEditor(source, editor.component, editor.contentComponent)
+    }
+  }
+
+  private fun activeEditor(): Editor? = FileEditorManager.getInstance(project).selectedTextEditor
+
+  private fun isEditorFocused(editor: Editor): Boolean {
+    val focusOwner = IdeFocusManager.getInstance(project).focusOwner
+      ?: KeyboardFocusManager.getCurrentKeyboardFocusManager().focusOwner
+      ?: return false
+    return focusOwner === editor.contentComponent || SwingUtilities.isDescendingFrom(focusOwner, editor.contentComponent)
+  }
+}

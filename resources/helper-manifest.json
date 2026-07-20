@@ -1,0 +1,95 @@
+{
+  "version": 1,
+  "helpers": [
+    {
+      "targetKey": "win32-x64",
+      "platform": "win32",
+      "arch": "x64",
+      "platformKey": "win-x64",
+      "cargoTarget": "x86_64-pc-windows-msvc",
+      "binaryName": "ImeWatcher.exe",
+      "resourceBinaryName": "ImeWatcher.exe",
+      "backendName": "ime-watcher",
+      "resourcePath": "resources/bin/win32-x64/ImeWatcher.exe",
+      "sha256Path": "resources/bin/win32-x64/ImeWatcher.exe.sha256"
+    },
+    {
+      "targetKey": "win32-arm64",
+      "platform": "win32",
+      "arch": "arm64",
+      "platformKey": "win-arm64",
+      "cargoTarget": "aarch64-pc-windows-msvc",
+      "binaryName": "ImeWatcher.exe",
+      "resourceBinaryName": "ImeWatcher.exe",
+      "backendName": "ime-watcher",
+      "resourcePath": "resources/bin/win32-arm64/ImeWatcher.exe",
+      "sha256Path": "resources/bin/win32-arm64/ImeWatcher.exe.sha256"
+    },
+    {
+      "targetKey": "darwin-x64",
+      "platform": "darwin",
+      "arch": "x64",
+      "platformKey": "darwin-x64",
+      "cargoTarget": "x86_64-apple-darwin",
+      "binaryName": "ImeWatcher",
+      "resourceBinaryName": "ImeWatcher",
+      "backendName": "ime-watcher",
+      "resourcePath": "resources/bin/darwin-x64/ImeWatcher",
+      "sha256Path": "resources/bin/darwin-x64/ImeWatcher.sha256"
+    },
+    {
+      "targetKey": "darwin-arm64",
+      "platform": "darwin",
+      "arch": "arm64",
+      "platformKey": "darwin-arm64",
+      "cargoTarget": "aarch64-apple-darwin",
+      "binaryName": "ImeWatcher",
+      "resourceBinaryName": "ImeWatcher",
+      "backendName": "ime-watcher",
+      "resourcePath": "resources/bin/darwin-arm64/ImeWatcher",
+      "sha256Path": "resources/bin/darwin-arm64/ImeWatcher.sha256"
+    },
+    {
+      "targetKey": "linux-x64",
+      "platform": "linux",
+      "arch": "x64",
+      "platformKey": "linux-x64",
+      "cargoTarget": "x86_64-unknown-linux-gnu",
+      "binaryName": "ImeWatcher",
+      "resourceBinaryName": "ImeWatcher",
+      "backendName": "ime-watcher",
+      "resourcePath": "resources/bin/linux-x64/ImeWatcher",
+      "sha256Path": "resources/bin/linux-x64/ImeWatcher.sha256"
+    },
+    {
+      "targetKey": "linux-arm64",
+      "platform": "linux",
+      "arch": "arm64",
+      "platformKey": "linux-arm64",
+      "cargoTarget": "aarch64-unknown-linux-gnu",
+      "binaryName": "ImeWatcher",
+      "resourceBinaryName": "ImeWatcher",
+      "backendName": "ime-watcher",
+      "resourcePath": "resources/bin/linux-arm64/ImeWatcher",
+      "sha256Path": "resources/bin/linux-arm64/ImeWatcher.sha256",
+      "cargoEnv": {
+        "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER": "aarch64-linux-gnu-gcc"
+      }
+    },
+    {
+      "targetKey": "linux-armhf",
+      "platform": "linux",
+      "arch": "armhf",
+      "platformKey": "linux-armhf",
+      "cargoTarget": "armv7-unknown-linux-gnueabihf",
+      "binaryName": "ImeWatcher",
+      "resourceBinaryName": "ImeWatcher",
+      "backendName": "ime-watcher",
+      "resourcePath": "resources/bin/linux-armhf/ImeWatcher",
+      "sha256Path": "resources/bin/linux-armhf/ImeWatcher.sha256",
+      "cargoEnv": {
+        "CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER": "arm-linux-gnueabihf-gcc"
+      }
+    }
+  ]
+}

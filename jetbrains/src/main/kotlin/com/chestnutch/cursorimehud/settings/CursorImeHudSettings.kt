@@ -1,0 +1,47 @@
+package com.chestnutch.cursorimehud.settings
+
+import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.components.PersistentStateComponent
+import com.intellij.openapi.components.Service
+import com.intellij.openapi.components.State
+import com.intellij.openapi.components.Storage
+
+@Service(Service.Level.APP)
+@State(name = "CursorImeHudSettings", storages = [Storage("cursorImeHud.xml")])
+class CursorImeHudSettings : PersistentStateComponent<CursorImeHudSettings.State> {
+  data class State(
+    var statusBarEnabled: Boolean = true,
+    var caretHudEnabled: Boolean = true,
+    var labelPreset: String = "zh-en",
+    var cnColor: String = CursorImeHudColors.DEFAULT_CN_COLOR,
+    var enColor: String = CursorImeHudColors.DEFAULT_EN_COLOR,
+    var opacity: Double = 0.78,
+    var offsetX: Int = 6,
+    var offsetY: Int = 20,
+    var hideWhenEditorUnfocused: Boolean = true
+  )
+
+  private var state = State()
+
+  override fun getState(): State = state
+
+  override fun loadState(state: State) {
+    this.state = state
+  }
+
+  fun update(mutator: (State) -> Unit) {
+    mutator(state)
+  }
+
+  fun publishChanged() {
+    val application = ApplicationManager.getApplication()
+    val publish = Runnable {
+      application.messageBus.syncPublisher(CursorImeHudSettingsListener.TOPIC).settingsChanged()
+    }
+    if (application.isDispatchThread) {
+      publish.run()
+    } else {
+      application.invokeLater(publish)
+    }
+  }
+}

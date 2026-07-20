@@ -1,0 +1,386 @@
+name: JetBrains Plugin Package
+
+on:
+  push:
+    branches:
+      - main
+    tags:
+      - "v*"
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: jetbrains-package-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build-helpers:
+    name: Build helper (${{ matrix.target }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: win32-x64
+            os: windows-latest
+            allow-skip: "0"
+          - target: win32-arm64
+            os: windows-latest
+            allow-skip: "1"
+          - target: darwin-x64
+            os: macos-latest
+            allow-skip: "1"
+          - target: darwin-arm64
+            os: macos-latest
+            allow-skip: "0"
+          - target: linux-x64
+            os: ubuntu-latest
+            allow-skip: "0"
+          - target: linux-arm64
+            os: ubuntu-latest
+            allow-skip: "1"
+          - target: linux-armhf
+            os: ubuntu-latest
+            allow-skip: "1"
+    env:
+      CURSOR_IME_HELPER_TARGET: ${{ matrix.target }}
+      CURSOR_IME_HELPER_ALLOW_SKIP: ${{ matrix.allow-skip }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          persist-credentials: false
+
+      - name: Setup Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Setup Rust toolchain
+        run: |
+          rustup default stable
+          rustc --version
+          cargo --version
+
+      - name: Install Linux cross toolchain
+        if: startsWith(matrix.target, 'linux-arm')
+        run: |
+          set -euo pipefail
+          export DEBIAN_FRONTEND=noninteractive
+          timeout 8m sudo apt-get update -o Acquire::Retries=3
+          if [ "${{ matrix.target }}" = "linux-arm64" ]; then
+            timeout 8m sudo apt-get install -y gcc-aarch64-linux-gnu
+          else
+            timeout 8m sudo apt-get install -y gcc-arm-linux-gnueabihf
+          fi
+
+      - name: Cache Rust target directory
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6
+        with:
+          path: native/ime-watcher/target
+          key: ${{ runner.os }}-${{ matrix.target }}-cargo-target-${{ hashFiles('native/ime-watcher/Cargo.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.target }}-cargo-target-
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run helper unit tests
+        run: npm run test:helper:unit
+
+      - name: Build native helper
+        run: npm run build:helper
+
+      - name: Sign native helper when credentials are available
+        if: startsWith(github.ref, 'refs/tags/') && (startsWith(matrix.target, 'win32-') || startsWith(matrix.target, 'darwin-'))
+        env:
+          WINDOWS_SIGNING_CERTIFICATE_BASE64: ${{ secrets.WINDOWS_SIGNING_CERTIFICATE_BASE64 }}
+          WINDOWS_SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_SIGNING_CERTIFICATE_PASSWORD }}
+          WINDOWS_SIGNING_TIMESTAMP_URL: ${{ secrets.WINDOWS_SIGNING_TIMESTAMP_URL }}
+          WINDOWS_SIGNTOOL_PATH: ${{ secrets.WINDOWS_SIGNTOOL_PATH }}
+          MACOS_SIGNING_CERTIFICATE_BASE64: ${{ secrets.MACOS_SIGNING_CERTIFICATE_BASE64 }}
+          MACOS_SIGNING_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_SIGNING_CERTIFICATE_PASSWORD }}
+          MACOS_SIGNING_IDENTITY: ${{ secrets.MACOS_SIGNING_IDENTITY }}
+        run: node scripts/sign-native-helper.js
+
+      - name: Smoke test helper
+        run: npm run test:helper
+
+      - name: Stage helper artifact
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require('node:fs');
+          const path = require('node:path');
+          const { selectedHelper } = require('./scripts/helper-platforms');
+          const helper = selectedHelper();
+          if (!helper) process.exit(1);
+          const files = [helper.resourcePath, helper.sha256Path];
+          for (const file of files) {
+            const target = path.join('helper-artifact', file.replace(/^resources\/bin\//, ''));
+            fs.mkdirSync(path.dirname(target), { recursive: true });
+            fs.copyFileSync(file, target);
+          }
+          NODE
+
+      - name: Upload helper resources
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: helper-${{ matrix.target }}
+          path: helper-artifact/**
+          if-no-files-found: error
+          retention-days: 7
+
+  package:
+    name: Package JetBrains plugin (ubuntu)
+    runs-on: ubuntu-latest
+    needs: build-helpers
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          persist-credentials: false
+
+      - name: Download helper resources
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          pattern: helper-*
+          path: resources/bin
+          merge-multiple: true
+
+      - name: Setup Java
+        uses: actions/setup-java@0f481fcb613427c0f801b606911222b5b6f3083a # v5
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Setup Node
+        uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e # v6
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Restore helper execute bits
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const { allHelpers } = require('./scripts/helper-platforms');
+          for (const helper of allHelpers().filter((entry) => entry.platform !== 'win32')) {
+            fs.chmodSync(helper.resourcePath, 0o755);
+          }
+          NODE
+
+      - name: Setup Rust toolchain
+        run: |
+          rustup default stable
+          rustc --version
+          cargo --version
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Verify release versions
+        if: startsWith(github.ref, 'refs/tags/')
+        shell: bash
+        run: |
+          node <<'NODE'
+          const fs = require('node:fs');
+          const pkg = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          const lock = JSON.parse(fs.readFileSync('package-lock.json', 'utf8'));
+          const gradle = fs.readFileSync('jetbrains/gradle.properties', 'utf8');
+          const pluginXml = fs.readFileSync('jetbrains/src/main/resources/META-INF/plugin.xml', 'utf8');
+          const pluginVersion = gradle.match(/^pluginVersion=(.+)$/m)?.[1]?.trim();
+          const xmlVersion = pluginXml.match(/<version>([^<]+)<\/version>/)?.[1]?.trim();
+          const expectedTag = `v${pkg.version}`;
+          if (process.env.GITHUB_REF_NAME !== expectedTag) throw new Error(`Tag '${process.env.GITHUB_REF_NAME}' does not match '${expectedTag}'.`);
+          if (lock.version !== pkg.version || lock.packages?.['']?.version !== pkg.version) throw new Error('package-lock.json does not match package.json.');
+          if (pluginVersion !== pkg.version || xmlVersion !== pkg.version) throw new Error('JetBrains plugin versions do not match package.json.');
+          NODE
+
+      - name: Verify assembled helper resources
+        run: npm run verify:helper-resources -- --all
+
+      - name: Test JetBrains plugin
+        working-directory: jetbrains
+        run: ./gradlew --no-daemon test
+
+      - name: Build JetBrains plugin
+        working-directory: jetbrains
+        run: ./gradlew --no-daemon buildPlugin -PverifyAllNativeHelpers=true
+
+      - name: Sign JetBrains plugin when credentials are available
+        if: startsWith(github.ref, 'refs/tags/')
+        working-directory: jetbrains
+        shell: bash
+        env:
+          CERTIFICATE_CHAIN: ${{ secrets.CERTIFICATE_CHAIN }}
+          PRIVATE_KEY: ${{ secrets.PRIVATE_KEY }}
+          PRIVATE_KEY_PASSWORD: ${{ secrets.PRIVATE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          # PRIVATE_KEY_PASSWORD may be empty when the PEM is not passphrase-protected.
+          # CERTIFICATE_CHAIN + PRIVATE_KEY must both be present to enable signing.
+          if [ -z "${CERTIFICATE_CHAIN}" ] && [ -z "${PRIVATE_KEY}" ] && [ -z "${PRIVATE_KEY_PASSWORD}" ]; then
+            echo "::notice::JetBrains signing credentials are not configured; publishing an unsigned ZIP."
+            exit 0
+          fi
+          if [ -z "${CERTIFICATE_CHAIN}" ] || [ -z "${PRIVATE_KEY}" ]; then
+            echo "JetBrains signing requires CERTIFICATE_CHAIN and PRIVATE_KEY together (PRIVATE_KEY_PASSWORD may be empty for unencrypted keys)." >&2
+            exit 1
+          fi
+
+          ./gradlew --no-daemon signPlugin -PverifyAllNativeHelpers=true
+
+      - name: Stage final JetBrains ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          signed=(jetbrains/build/distributions/*-signed.zip)
+          unsigned=(jetbrains/build/distributions/*.zip)
+          candidates=("${unsigned[@]}")
+          if [ "${#signed[@]}" -gt 0 ]; then
+            candidates=("${signed[@]}")
+          fi
+          if [ "${#candidates[@]}" -ne 1 ]; then
+            echo "Expected exactly one final JetBrains plugin ZIP, found ${#candidates[@]}." >&2
+            exit 1
+          fi
+
+          version="$(node -p "require('./package.json').version")"
+          mkdir -p jetbrains/build/release
+          cp "${candidates[0]}" "jetbrains/build/release/cursor-ime-hud-jetbrains-${version}.zip"
+
+      - name: Verify JetBrains plugin package
+        working-directory: jetbrains
+        env:
+          ORG_GRADLE_PROJECT_verifyAllNativeHelpers: "true"
+        run: |
+          set -euo pipefail
+          zip="$(find build/release -maxdepth 1 -name '*.zip' | head -n 1)"
+          if [ -z "$zip" ]; then
+            echo "JetBrains plugin ZIP was not produced." >&2
+            exit 1
+          fi
+
+          inspect_dir="${RUNNER_TEMP}/cursor-ime-hud-jetbrains"
+          rm -rf "$inspect_dir"
+          mkdir -p "$inspect_dir"
+          unzip -q "$zip" -d "$inspect_dir"
+
+          jar_path=""
+          while IFS= read -r jar; do
+            if jar tf "$jar" | grep -qx "META-INF/plugin.xml"; then
+              if [ -n "$jar_path" ]; then
+                echo "Expected exactly one main plugin JAR containing META-INF/plugin.xml." >&2
+                exit 1
+              fi
+              jar_path="$jar"
+            fi
+          done < <(find "$inspect_dir" -name '*.jar')
+
+          if [ -z "$jar_path" ]; then
+            echo "No main plugin JAR containing META-INF/plugin.xml found." >&2
+            exit 1
+          fi
+
+          entries="$(jar tf "$jar_path")"
+          node <<'NODE' > /tmp/cursor-ime-hud-jetbrains-entries.txt
+          const { allHelpers } = require('../scripts/helper-platforms');
+          console.log('META-INF/plugin.xml');
+          console.log('META-INF/pluginIcon.svg');
+          console.log('META-INF/pluginIcon_dark.svg');
+          console.log('helper-manifest.json');
+          for (const helper of allHelpers()) {
+            console.log(helper.resourcePath.replace(/^resources\//, ''));
+            console.log(helper.sha256Path.replace(/^resources\//, ''));
+          }
+          NODE
+          while IFS= read -r entry; do
+            if ! grep -qx "$entry" <<<"$entries"; then
+              echo "Main plugin JAR is missing required entry '$entry'." >&2
+              exit 1
+            fi
+          done < /tmp/cursor-ime-hud-jetbrains-entries.txt
+
+          echo "Verified main plugin JAR: $jar_path"
+          echo "Verified JetBrains plugin artifact: $zip"
+
+      - name: Generate CycloneDX SBOM
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="$(node -p "require('./package.json').version")"
+          node scripts/generate-sbom.js \
+            --output "jetbrains/build/release/cursor-ime-hud-${version}-jetbrains.cdx.json" \
+            --artifact-glob "jetbrains/build/release/*.zip"
+
+      - name: Upload JetBrains plugin artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: cursor-ime-hud-jetbrains-${{ github.event_name == 'pull_request' && format('pr-{0}', github.event.pull_request.number) || format('run-{0}', github.run_id) }}
+          path: |
+            jetbrains/build/release/*.zip
+            jetbrains/build/release/*.cdx.json
+          if-no-files-found: error
+          retention-days: 30
+
+  publish:
+    name: Publish JetBrains release asset
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    needs: package
+    permissions:
+      contents: write
+      actions: read
+      id-token: write
+      attestations: write
+    steps:
+      - name: Download packaged JetBrains artifact
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: cursor-ime-hud-jetbrains-run-${{ github.run_id }}
+          path: publish-artifacts
+
+      - name: Flatten release subjects
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p publish-subjects
+          find publish-artifacts -type f \( -name '*.zip' -o -name '*.cdx.json' \) -exec cp {} publish-subjects/ \;
+          count=$(find publish-subjects -maxdepth 1 -type f | wc -l)
+          if [ "$count" -ne 2 ]; then
+            echo "Expected one JetBrains ZIP and one SBOM; found $count subjects." >&2
+            find publish-artifacts -type f -print >&2
+            exit 1
+          fi
+
+      - name: Attest JetBrains build provenance
+        uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4
+        with:
+          subject-path: publish-subjects/*
+
+      - name: Attach JetBrains ZIP to GitHub Release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          tag="${GITHUB_REF_NAME}"
+          if ! gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release create "$tag" --repo "$GITHUB_REPOSITORY" --title "$tag" --generate-notes || gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null
+          fi
+          gh release upload "$tag" publish-subjects/* --clobber --repo "$GITHUB_REPOSITORY"

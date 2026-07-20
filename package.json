@@ -1,0 +1,242 @@
+{
+  "name": "cursor-ime-hud",
+  "displayName": "%extension.displayName%",
+  "description": "%extension.description%",
+  "version": "0.1.0",
+  "publisher": "chestnut-ch",
+  "license": "MIT",
+  "icon": "resources/icon.png",
+  "galleryBanner": {
+    "color": "#1e1e1e",
+    "theme": "dark"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/GJYNBB/cursor-ime-hud.git"
+  },
+  "homepage": "https://github.com/GJYNBB/cursor-ime-hud#readme",
+  "bugs": {
+    "url": "https://github.com/GJYNBB/cursor-ime-hud/issues"
+  },
+  "files": [
+    "out/*.js",
+    "out/commands/**/*.js",
+    "out/controller/**/*.js",
+    "out/detector/**/*.js",
+    "out/model/**/*.js",
+    "out/presenters/**/*.js",
+    "out/renderer/**/*.js",
+    "out/services/**/*.js",
+    "resources/icon.png",
+    "resources/helper-manifest.json",
+    "resources/bin/**/*",
+    "resources/screenshots/**/*",
+    "package.nls*.json",
+    "README.md",
+    "README.en.md",
+    "README.zh-CN.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "ARCHITECTURE.md",
+    "CONTRIBUTING.md",
+    "docs/helper-protocol.md",
+    "docs/helper-lifecycle.md",
+    "docs/helper-protocol-vectors.json",
+    "SECURITY.md",
+    "SUPPORT.md",
+    "CODE_OF_CONDUCT.md"
+  ],
+  "engines": {
+    "node": ">=24.0.0",
+    "vscode": "^1.107.0"
+  },
+  "categories": [
+    "Other",
+    "Visualization"
+  ],
+  "keywords": [
+    "ime",
+    "input method",
+    "cursor",
+    "hud",
+    "windows",
+    "macos",
+    "linux",
+    "wechat input",
+    "输入法",
+    "中文输入法",
+    "输入法状态",
+    "光标提示",
+    "中英文切换"
+  ],
+  "extensionKind": [
+    "ui"
+  ],
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": true
+    },
+    "virtualWorkspaces": {
+      "supported": true
+    }
+  },
+  "activationEvents": [
+    "onStartupFinished"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "cursorImeHud.toggleOverlay",
+        "title": "%commands.toggleOverlay.title%",
+        "category": "%commands.category%"
+      },
+      {
+        "command": "cursorImeHud.refreshImeState",
+        "title": "%commands.refreshImeState.title%",
+        "category": "%commands.category%"
+      },
+      {
+        "command": "cursorImeHud.showDiagnostics",
+        "title": "%commands.showDiagnostics.title%",
+        "category": "%commands.category%"
+      },
+      {
+        "command": "cursorImeHud.showStatusBarMenu",
+        "title": "%commands.showStatusBarMenu.title%",
+        "category": "%commands.category%"
+      }
+    ],
+    "configuration": {
+      "title": "%configuration.title%",
+      "properties": {
+        "cursorImeHud.overlay.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "%configuration.overlay.enabled.description%"
+        },
+        "cursorImeHud.overlay.labelPreset": {
+          "type": "string",
+          "enum": [
+            "zh-en",
+            "en-zh"
+          ],
+          "enumDescriptions": [
+            "%configuration.overlay.labelPreset.enum.zhEn%",
+            "%configuration.overlay.labelPreset.enum.enZh%"
+          ],
+          "default": "zh-en",
+          "description": "%configuration.overlay.labelPreset.description%"
+        },
+        "cursorImeHud.overlay.cnColor": {
+          "type": "string",
+          "default": "#FF5252",
+          "description": "%configuration.overlay.cnColor.description%"
+        },
+        "cursorImeHud.overlay.enColor": {
+          "type": "string",
+          "default": "#1E90FF",
+          "description": "%configuration.overlay.enColor.description%"
+        },
+        "cursorImeHud.overlay.backgroundEnabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "%configuration.overlay.backgroundEnabled.description%"
+        },
+        "cursorImeHud.overlay.backgroundOpacity": {
+          "type": "number",
+          "default": 0.72,
+          "minimum": 0,
+          "maximum": 1,
+          "description": "%configuration.overlay.backgroundOpacity.description%"
+        },
+        "cursorImeHud.overlay.opacity": {
+          "type": "number",
+          "default": 0.78,
+          "minimum": 0.15,
+          "maximum": 1,
+          "description": "%configuration.overlay.opacity.description%"
+        },
+        "cursorImeHud.overlay.mode": {
+          "type": "string",
+          "enum": [
+            "text",
+            "text+icon"
+          ],
+          "default": "text+icon",
+          "markdownDescription": "%configuration.overlay.mode.markdownDescription%"
+        },
+        "cursorImeHud.statusBar.enabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "%configuration.statusBar.enabled.description%"
+        },
+        "cursorImeHud.overlay.hideWhenEditorUnfocused": {
+          "type": "boolean",
+          "default": true,
+          "description": "%configuration.overlay.hideWhenEditorUnfocused.description%"
+        },
+        "cursorImeHud.overlay.offsetX": {
+          "type": "number",
+          "default": 6,
+          "minimum": -50,
+          "maximum": 50,
+          "description": "%configuration.overlay.offsetX.description%"
+        },
+        "cursorImeHud.overlay.offsetY": {
+          "type": "number",
+          "default": 20,
+          "minimum": -50,
+          "maximum": 50,
+          "description": "%configuration.overlay.offsetY.description%"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "clean": "powershell -ExecutionPolicy Bypass -File ./scripts/clean.ps1",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "build:helper": "node ./scripts/build-helper.js",
+    "test:extension": "node ./scripts/run-extension-tests.js",
+    "test:helper": "node ./scripts/assert-helper-once.js",
+    "test:helper:unit": "cargo test --manifest-path ./native/ime-watcher/Cargo.toml",
+    "test:unit": "npm run compile && npm run test:extension",
+    "test:integration": "node ./scripts/run-integration-tests.js",
+    "test": "npm run test:unit && npm run test:integration",
+    "hash:helper": "node ./scripts/hash-helper.js",
+    "verify:helper-resources": "node ./scripts/verify-helper-resources.js",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "coverage": "c8 --check-coverage --lines 80 --functions 85 --branches 75 --statements 80 --reporter=text --reporter=lcov --reporter=json-summary npm run test:extension && node ./scripts/check-core-coverage.js",
+    "vscode:prepublish": "node ./scripts/check-publisher.js && node ./scripts/verify-helper-resources.js --all && npm run compile",
+    "package:vsix": "node ./scripts/verify-helper-resources.js --all && npx @vscode/vsce package",
+    "package:vsix:target": "node ./scripts/package-vsix.js",
+    "package:vsix:targets": "node ./scripts/package-vsix.js --all",
+    "verify:vsix": "node ./scripts/verify-vsix.js",
+    "prepublishOnly": "node ./scripts/check-publisher.js"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^25.6.0",
+    "@types/sinon": "^17.0.4",
+    "@types/vscode": "1.107.0",
+    "@typescript-eslint/eslint-plugin": "^8.60.1",
+    "@typescript-eslint/parser": "^8.60.1",
+    "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^3.9.2",
+    "c8": "^10.1.3",
+    "eslint": "^9.39.4",
+    "eslint-config-prettier": "^9.1.2",
+    "mocha": "^11.7.6",
+    "prettier": "^3.8.3",
+    "sinon": "^19.0.5",
+    "typescript": "^6.0.3"
+  },
+  "overrides": {
+    "serialize-javascript": "^7.0.5",
+    "diff": "^8.0.3"
+  }
+}

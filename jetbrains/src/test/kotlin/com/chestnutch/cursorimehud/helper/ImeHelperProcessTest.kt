@@ -1,0 +1,285 @@
+package com.chestnutch.cursorimehud.helper
+
+import com.chestnutch.cursorimehud.model.HelperLifecycleState
+import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.io.InputStream
+import java.io.OutputStream
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertFalse
+import kotlin.test.assertTrue
+
+class ImeHelperProcessTest {
+  @Test
+  fun stopCancelsPendingRestartWhenNoProcessIsActive() {
+    val helper = ImeHelperProcess()
+    helper.setPrivateField("shouldRestartOnExit", true)
+    helper.setPrivateField("lifecycleState", HelperLifecycleState.FAILED)
+
+    helper.stop()
+
+    assertFalse(helper.getPrivateField<Boolean>("shouldRestartOnExit"))
+    assertEquals(HelperLifecycleState.IDLE, helper.getPrivateField("lifecycleState"))
+  }
+
+  @Test
+  fun scheduleRestartHonorsMaxAttempts() {
+    val helper = ImeHelperProcess()
+    helper.setPrivateField("shouldRestartOnExit", true)
+    helper.setPrivateField("restartCount", 10)
+
+    helper.invokePrivate("scheduleRestartIfNeeded")
+
+    assertEquals(10, helper.getPrivateField("restartCount"))
+  }
+
+  @Test
+  fun redactedErrorHandlesPathsWithSpaces() {
+    val helper = ImeHelperProcess()
+
+    val redacted = helper.invokePrivate<String>(
+      "redactedError",
+      Exception::class.java,
+      IllegalStateException(
+        "spawn C:\\Users\\Jane Doe\\helper.exe and C:\\Program Files\\Foo\\bar.exe and /Users/Jane Doe/helper failed"
+      )
+    )
+
+    assertFalse(redacted.contains("Jane Doe"))
+    assertFalse(redacted.contains("Doe\\helper.exe"))
+    assertFalse(redacted.contains("Program Files"))
+    assertFalse(redacted.contains("Files\\Foo"))
+    assertFalse(redacted.contains("Foo\\bar.exe"))
+    assertFalse(redacted.contains("Doe/helper"))
+    assertTrue(redacted.contains("<path>"))
+  }
+
+  @Test
+  fun acceptStartedChildKeepsLifecycleStartingUntilFirstSnapshot() {
+    val helper = ImeHelperProcess()
+    val process = FakeProcess()
+    helper.setPrivateField("lifecycleState", HelperLifecycleState.STARTING)
+    helper.setPrivateField("startEpoch", 3L)
+    helper.setPrivateField("restartCount", 10)
+    helper.setPrivateField("lastError", "previous failure")
+    helper.setPrivateField("shouldRestartOnExit", false)
+
+    val accepted = helper.invokePrivate<Boolean>(
+      "acceptStartedChild",
+      arrayOf(Process::class.java, Long::class.javaPrimitiveType!!),
+      arrayOf(process, 3L)
+    )
+
+    assertTrue(accepted)
+    assertEquals(HelperLifecycleState.STARTING, helper.getPrivateField("lifecycleState"))
+    assertEquals(10, helper.getPrivateField("restartCount"))
+    assertEquals(null, helper.getPrivateField<String?>("lastError"))
+    assertEquals(true, helper.getPrivateField("shouldRestartOnExit"))
+    assertEquals(process, helper.getPrivateField("process"))
+  }
+
+  @Test
+  fun stableRunningChildResetsRestartCountAfterPriorFailures() {
+    val helper = ImeHelperProcess()
+    val process = FakeProcess(alive = true)
+    helper.setPrivateField("process", process)
+    helper.setPrivateField("lifecycleState", HelperLifecycleState.RUNNING)
+    helper.setPrivateField("restartCount", 10)
+
+    val reset = helper.invokePrivate<Boolean>("resetRestartBudgetIfStillRunning", Process::class.java, process)
+
+    assertTrue(reset)
+    assertEquals(0, helper.getPrivateField("restartCount"))
+  }
+
+  @Test
+  fun deadActiveChildDoesNotResetRestartCount() {
+    val helper = ImeHelperProcess()
+    val process = FakeProcess(alive = false)
+    helper.setPrivateField("process", process)
+    helper.setPrivateField("lifecycleState", HelperLifecycleState.RUNNING)
+    helper.setPrivateField("restartCount", 7)
+
+    val reset = helper.invokePrivate<Boolean>("resetRestartBudgetIfStillRunning", Process::class.java, process)
+
+    assertFalse(reset)
+    assertEquals(7, helper.getPrivateField("restartCount"))
+  }
+
+  @Test
+  fun exitedChildDoesNotResetRestartCount() {
+    val helper = ImeHelperProcess()
+    val activeProcess = FakeProcess(alive = true)
+    helper.setPrivateField("process", activeProcess)
+    helper.setPrivateField("lifecycleState", HelperLifecycleState.RUNNING)
+    helper.setPrivateField("restartCount", 7)
+
+    val reset = helper.invokePrivate<Boolean>("resetRestartBudgetIfStillRunning", Process::class.java, FakeProcess())
+
+    assertFalse(reset)
+    assertEquals(7, helper.getPrivateField("restartCount"))
+  }
+
+  @Test
+  fun discardedStartedChildDoesNotResetRestartCount() {
+    val helper = ImeHelperProcess()
+    helper.setPrivateField("lifecycleState", HelperLifecycleState.IDLE)
+    helper.setPrivateField("startEpoch", 1L)
+    helper.setPrivateField("restartCount", 7)
+
+    val accepted = helper.invokePrivate<Boolean>(
+      "acceptStartedChild",
+      arrayOf(Process::class.java, Long::class.javaPrimitiveType!!),
+      arrayOf(FakeProcess(), 1L)
+    )
+
+    assertFalse(accepted)
+    assertEquals(HelperLifecycleState.IDLE, helper.getPrivateField("lifecycleState"))
+    assertEquals(7, helper.getPrivateField("restartCount"))
+    assertEquals(null, helper.getPrivateField<Process?>("process"))
+  }
+
+  @Test
+  fun startWhileStoppingSetsPendingStart() {
+    val helper = ImeHelperProcess()
+    helper.setPrivateField("lifecycleState", HelperLifecycleState.STOPPING)
+    helper.setPrivateField("pendingStart", false)
+
+    helper.start()
+
+    assertTrue(helper.getPrivateField("pendingStart"))
+    assertEquals(HelperLifecycleState.STOPPING, helper.getPrivateField("lifecycleState"))
+  }
+
+  @Test
+  fun refreshWhileStoppingSetsPendingStartAndClearsCircuit() {
+    val helper = ImeHelperProcess()
+    helper.setPrivateField("lifecycleState", HelperLifecycleState.STOPPING)
+    helper.setPrivateField("circuitOpen", true)
+    helper.setPrivateField("restartCount", 10)
+    helper.setPrivateField("pendingStart", false)
+
+    helper.refresh()
+
+    assertTrue(helper.getPrivateField("pendingStart"))
+    assertEquals(HelperLifecycleState.STOPPING, helper.getPrivateField("lifecycleState"))
+    assertFalse(helper.getPrivateField("circuitOpen"))
+    assertEquals(0, helper.getPrivateField("restartCount"))
+  }
+
+  @Test
+  fun finishStopWithPendingStartConsumesFlagAndAttemptsStart() {
+    val helper = ImeHelperProcess()
+    helper.setPrivateField("lifecycleState", HelperLifecycleState.IDLE)
+    helper.setPrivateField("pendingStart", true)
+    helper.setPrivateField("shouldRestartOnExit", true)
+
+    try {
+      helper.invokePrivate("finishStopTransition")
+    } catch (_: Throwable) {
+      // Unit tests may lack ApplicationManager; pendingStart is cleared before start().
+    }
+
+    assertFalse(helper.getPrivateField("pendingStart"))
+  }
+
+  @Test
+  fun secondStopWhileStoppingDoesNotClearPendingStart() {
+    val helper = ImeHelperProcess()
+    helper.setPrivateField("lifecycleState", HelperLifecycleState.STOPPING)
+    helper.setPrivateField("pendingStart", true)
+    helper.setPrivateField("startEpoch", 4L)
+
+    helper.stop()
+
+    assertTrue(helper.getPrivateField("pendingStart"))
+    assertEquals(HelperLifecycleState.STOPPING, helper.getPrivateField("lifecycleState"))
+    assertEquals(4L, helper.getPrivateField("startEpoch"))
+  }
+
+  @Test
+  fun acceptStartedChildRejectsStaleEpoch() {
+    val helper = ImeHelperProcess()
+    helper.setPrivateField("lifecycleState", HelperLifecycleState.STARTING)
+    helper.setPrivateField("startEpoch", 5L)
+
+    val accepted = helper.invokePrivate<Boolean>(
+      "acceptStartedChild",
+      arrayOf(Process::class.java, Long::class.javaPrimitiveType!!),
+      arrayOf(FakeProcess(), 4L)
+    )
+
+    assertFalse(accepted)
+    assertEquals(null, helper.getPrivateField<Process?>("process"))
+    assertEquals(HelperLifecycleState.STARTING, helper.getPrivateField("lifecycleState"))
+  }
+
+  @Test
+  fun stopWhileStartingInvalidatesInFlightAccept() {
+    val helper = ImeHelperProcess()
+    helper.setPrivateField("lifecycleState", HelperLifecycleState.STARTING)
+    helper.setPrivateField("startEpoch", 2L)
+    helper.setPrivateField("process", null)
+    helper.setPrivateField("shouldRestartOnExit", true)
+
+    helper.stop()
+
+    assertEquals(HelperLifecycleState.IDLE, helper.getPrivateField("lifecycleState"))
+    assertTrue(helper.getPrivateField<Long>("startEpoch") > 2L)
+    assertFalse(helper.getPrivateField("pendingStart"))
+
+    val accepted = helper.invokePrivate<Boolean>(
+      "acceptStartedChild",
+      arrayOf(Process::class.java, Long::class.javaPrimitiveType!!),
+      arrayOf(FakeProcess(), 2L)
+    )
+    assertFalse(accepted)
+    assertEquals(null, helper.getPrivateField<Process?>("process"))
+  }
+
+  private fun Any.setPrivateField(name: String, value: Any?) {
+    val field = javaClass.getDeclaredField(name)
+    field.isAccessible = true
+    field.set(this, value)
+  }
+
+  @Suppress("UNCHECKED_CAST")
+  private fun <T> Any.getPrivateField(name: String): T {
+    val field = javaClass.getDeclaredField(name)
+    field.isAccessible = true
+    return field.get(this) as T
+  }
+
+  private fun Any.invokePrivate(name: String) {
+    val method = javaClass.getDeclaredMethod(name)
+    method.isAccessible = true
+    method.invoke(this)
+  }
+
+  @Suppress("UNCHECKED_CAST")
+  private fun <T> Any.invokePrivate(name: String, parameterType: Class<*>, argument: Any): T {
+    val method = javaClass.getDeclaredMethod(name, parameterType)
+    method.isAccessible = true
+    return method.invoke(this, argument) as T
+  }
+
+  @Suppress("UNCHECKED_CAST")
+  private fun <T> Any.invokePrivate(name: String, parameterTypes: Array<Class<*>>, arguments: Array<Any>): T {
+    val method = javaClass.getDeclaredMethod(name, *parameterTypes)
+    method.isAccessible = true
+    return method.invoke(this, *arguments) as T
+  }
+
+  private class FakeProcess(private val alive: Boolean = false) : Process() {
+    private val output = ByteArrayOutputStream()
+
+    override fun getOutputStream(): OutputStream = output
+    override fun getInputStream(): InputStream = ByteArrayInputStream(ByteArray(0))
+    override fun getErrorStream(): InputStream = ByteArrayInputStream(ByteArray(0))
+    override fun waitFor(): Int = 0
+    override fun exitValue(): Int = if (alive) throw IllegalThreadStateException("still running") else 0
+    override fun destroy() = Unit
+    override fun isAlive(): Boolean = alive
+  }
+}
