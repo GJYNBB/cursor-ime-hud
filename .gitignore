@@ -8,3 +8,6 @@ dist-ci-test/
 resources/bin/
 native/ime-watcher/target/
 .secrets/
+
+# Editor local settings
+.vscode/
