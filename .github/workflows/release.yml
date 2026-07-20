@@ -312,6 +312,15 @@ jobs:
             exit 1
           fi
 
+      - name: Build release notes
+        id: notes
+        shell: bash
+        run: |
+          set -euo pipefail
+          version="${GITHUB_REF_NAME#v}"
+          sed "s/{{VERSION}}/${version}/g" docs/release-notes-template.md > release-notes.md
+          echo "Wrote release notes for version ${version}"
+
       - name: Attest VSIX build provenance
         uses: actions/attest-build-provenance@0f67c3f4856b2e3261c31976d6725780e5e4c373 # v4
         with:
@@ -325,6 +334,8 @@ jobs:
           set -euo pipefail
           tag="${GITHUB_REF_NAME}"
           if ! gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release create "$tag" --repo "$GITHUB_REPOSITORY" --title "$tag" --generate-notes || gh release view "$tag" --repo "$GITHUB_REPOSITORY" >/dev/null
+            gh release create "$tag" --repo "$GITHUB_REPOSITORY" --title "$tag" --latest --notes-file release-notes.md
+          else
+            gh release edit "$tag" --repo "$GITHUB_REPOSITORY" --latest --notes-file release-notes.md
           fi
           gh release upload "$tag" publish-subjects/* --clobber --repo "$GITHUB_REPOSITORY"
