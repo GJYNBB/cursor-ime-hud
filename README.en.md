@@ -162,6 +162,8 @@ cursor-ime-hud/
 
 JetBrains-specific notes: [jetbrains/README.md](jetbrains/README.md).
 
+- [SignPath Code Signing Policy](docs/SIGNPATH_CODE_SIGNING_POLICY.md)
+
 ## Development
 
 Requires Node.js 24+, npm 11+, Rust stable; MSVC on Windows, Xcode CLT on macOS; JDK 21 for JetBrains.
