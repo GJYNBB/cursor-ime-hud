@@ -162,6 +162,10 @@ cursor-ime-hud/
 
 JetBrains 插件单独说明见 [jetbrains/README.md](jetbrains/README.md)。
 
+- [SignPath 代码签名政策](docs/SIGNPATH_CODE_SIGNING_POLICY.md)
+
+- [SignPath 代码签名政策](docs/SIGNPATH_CODE_SIGNING_POLICY.md)
+
 ## 本地开发
 
 需要：Node.js 24+、npm 11+、Rust stable；构建 Windows helper 需 MSVC，macOS 需 Xcode CLT；JetBrains 开发需 JDK 21。
