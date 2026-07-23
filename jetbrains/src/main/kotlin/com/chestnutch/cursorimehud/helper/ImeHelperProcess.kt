@@ -267,13 +267,9 @@ class ImeHelperProcess {
     val currentProcess = process
     val currentStdin = stdin
     if (currentProcess != null && currentProcess.isAlive && currentStdin != null) {
-      try {
-        currentStdin.write(HelperProtocol.refreshCommand())
-        currentStdin.flush()
-        return
-      } catch (error: Exception) {
-        emitLog("warn", "向输入法助手发送刷新命令失败：${error.message}")
-      }
+      // write/flush may block if the helper hangs; never hold the instance lock.
+      writeRefreshCommandAsync(currentStdin)
+      return
     }
 
     // If the helper has already exited, start() creates a fresh child now
@@ -282,6 +278,23 @@ class ImeHelperProcess {
       process = null
       stdin = null
       start()
+    }
+  }
+
+  private fun writeRefreshCommandAsync(writer: BufferedWriter) {
+    val task = Runnable {
+      try {
+        writer.write(HelperProtocol.refreshCommand())
+        writer.flush()
+      } catch (error: Exception) {
+        emitLog("warn", "向输入法助手发送刷新命令失败：${error.message}")
+      }
+    }
+    val application = ApplicationManager.getApplication()
+    if (application == null) {
+      task.run()
+    } else {
+      application.executeOnPooledThread(task)
     }
   }
 
@@ -421,17 +434,24 @@ class ImeHelperProcess {
     val target = File(dir, descriptor.fileName)
     input.use { source -> target.outputStream().use { source.copyTo(it) } }
     target.setExecutable(true)
-    helperFile = target
-    expectedSha256 = hashText
+    synchronized(this) {
+      helperFile = target
+      expectedSha256 = hashText
+    }
     return target
   }
 
   private fun verifySha256(file: File, descriptor: HelperResourceDescriptor) {
-    val expected = expectedSha256 ?: throw IllegalStateException("缺少输入法助手的预期 SHA-256。")
+    val expected = synchronized(this) {
+      expectedSha256 ?: throw IllegalStateException("缺少输入法助手的预期 SHA-256。")
+    }
     val actual = sha256(file)
-    actualSha256 = actual
-    hashMatches = actual.equals(expected, ignoreCase = true)
-    if (hashMatches != true) {
+    val matches = actual.equals(expected, ignoreCase = true)
+    synchronized(this) {
+      actualSha256 = actual
+      hashMatches = matches
+    }
+    if (!matches) {
       throw IllegalStateException("${descriptor.fileName} SHA-256 不匹配：expected=$expected actual=$actual")
     }
   }

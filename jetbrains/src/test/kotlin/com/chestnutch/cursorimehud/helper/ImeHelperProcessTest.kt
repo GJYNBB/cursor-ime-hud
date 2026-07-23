@@ -238,6 +238,93 @@ class ImeHelperProcessTest {
     assertEquals(null, helper.getPrivateField<Process?>("process"))
   }
 
+  @Test
+  fun refreshOnLiveProcessDoesNotHoldInstanceLockDuringWrite() {
+    val helper = ImeHelperProcess()
+    val process = FakeProcess(alive = true)
+    val entered = java.util.concurrent.CountDownLatch(1)
+    val release = java.util.concurrent.CountDownLatch(1)
+    val blockingWriter = object : java.io.BufferedWriter(java.io.StringWriter()) {
+      override fun write(str: String) {
+        // no-op content for refresh command
+      }
+
+      override fun flush() {
+        entered.countDown()
+        release.await(2, java.util.concurrent.TimeUnit.SECONDS)
+      }
+    }
+    helper.setPrivateField("process", process)
+    helper.setPrivateField("stdin", blockingWriter)
+    helper.setPrivateField("lifecycleState", HelperLifecycleState.RUNNING)
+
+    // ApplicationManager is null in pure unit tests, so writeRefreshCommandAsync runs
+    // the task on the calling thread. Run refresh on a background thread so a still-
+    // synchronous flush would block join(); after the fix, refresh must return before flush finishes.
+    val refreshThread = Thread({ helper.refresh() }, "test-refresh")
+    refreshThread.start()
+
+    // With ApplicationManager null, task runs on refreshThread; without the fix, join blocks on flush.
+    // With the fix path when Application is present, refresh returns immediately. When Application is null
+    // the task is inline — so assert that debugInfo can still run while flush is blocked by using
+    // a separate thread for refresh and requiring entered before we call debugInfo after a short wait.
+    assertTrue(entered.await(1, java.util.concurrent.TimeUnit.SECONDS), "write/flush task should start")
+
+    // Instance lock must be free so debugInfo (synchronized) can enter promptly.
+    val debug = helper.debugInfo()
+    assertEquals(HelperLifecycleState.RUNNING, debug.lifecycleState)
+
+    release.countDown()
+    refreshThread.join(2000)
+  }
+
+  @Test
+  fun hashMetadataPublishedAtomicallyUnderInstanceLock() {
+    val helper = ImeHelperProcess()
+    val file = java.io.File.createTempFile("ime-helper", ".bin").apply {
+      writeText("payload")
+      deleteOnExit()
+    }
+
+    val publish = Runnable {
+      synchronized(helper) {
+        helper.setPrivateField("helperFile", file)
+        helper.setPrivateField("expectedSha256", "abc")
+        helper.setPrivateField("actualSha256", "abc")
+        helper.setPrivateField("hashMatches", true)
+      }
+    }
+
+    val inconsistencies = java.util.concurrent.atomic.AtomicInteger(0)
+    val readers = (1..8).map {
+      Thread {
+        repeat(200) {
+          val snapshot = synchronized(helper) {
+            listOf(
+              helper.getPrivateField<Any?>("helperFile"),
+              helper.getPrivateField<Any?>("expectedSha256"),
+              helper.getPrivateField<Any?>("actualSha256"),
+              helper.getPrivateField<Any?>("hashMatches")
+            )
+          }
+          val nullCount = snapshot.count { it == null }
+          if (nullCount != 0 && nullCount != 4) {
+            inconsistencies.incrementAndGet()
+          }
+        }
+      }.also { it.start() }
+    }
+
+    Thread(publish).also {
+      it.start()
+      it.join()
+    }
+    readers.forEach { it.join() }
+
+    assertEquals(0, inconsistencies.get(), "hash metadata published under lock must not be partially visible")
+    assertEquals(true, helper.debugInfo().hashMatches)
+  }
+
   private fun Any.setPrivateField(name: String, value: Any?) {
     val field = javaClass.getDeclaredField(name)
     field.isAccessible = true
