@@ -13,6 +13,7 @@ import com.intellij.openapi.Disposable
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.application.ApplicationManager
 import java.time.Instant
 import java.util.concurrent.CopyOnWriteArrayList
 
@@ -187,15 +188,17 @@ class ImeHudService(private val project: Project) : Disposable, ImeHelperProcess
   }
 
   override fun onSnapshot(snapshot: ImeSnapshot) {
-    val previousState = latestSnapshot.state
-    latestSnapshot = snapshot
-    if (snapshot.state != ImeState.UNKNOWN) {
-      lastStableSnapshot = snapshot
-      unknownObservedAtMillis = null
-    } else if (previousState != ImeState.UNKNOWN) {
-      unknownObservedAtMillis = System.currentTimeMillis()
+    ApplicationManager.getApplication().runWriteAction {
+      val previousState = latestSnapshot.state
+      latestSnapshot = snapshot
+      if (snapshot.state != ImeState.UNKNOWN) {
+        lastStableSnapshot = snapshot
+        unknownObservedAtMillis = null
+      } else if (previousState != ImeState.UNKNOWN) {
+        unknownObservedAtMillis = System.currentTimeMillis()
+      }
+      fireChanged()
     }
-    fireChanged()
   }
 
   override fun onLog(entry: DetectorLogEntry) {
@@ -221,7 +224,9 @@ class ImeHudService(private val project: Project) : Disposable, ImeHelperProcess
   }
 
   private fun fireChanged() {
-    listeners.forEach { it.onImeHudChanged() }
+    ApplicationManager.getApplication().invokeLater {
+      listeners.forEach { it.onImeHudChanged() }
+    }
   }
 
   private fun notAvailableText(): String = CursorImeHudBundle.message("diagnostics.notAvailable")
