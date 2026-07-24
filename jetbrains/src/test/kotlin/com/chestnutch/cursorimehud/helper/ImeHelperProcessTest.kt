@@ -295,7 +295,7 @@ class ImeHelperProcessTest {
     helper.setPrivateField("lifecycleState", HelperLifecycleState.STARTING)
 
     val failThread = Thread(
-      { helper.invokePrivate("failStartingChildIfStillWaiting", Process::class.java, process) },
+      { helper.invokePrivate<Unit>("failStartingChildIfStillWaiting", Process::class.java, process) },
       "test-fail-starting"
     )
     failThread.start()
@@ -328,7 +328,7 @@ class ImeHelperProcessTest {
 
     val failThread = Thread(
       {
-        helper.invokePrivate(
+        helper.invokePrivate<Unit>(
           "failActiveChild",
           arrayOf(Process::class.java, String::class.java, Exception::class.java),
           arrayOf(process, "stdout", IllegalStateException("stream broke"))
@@ -360,7 +360,7 @@ class ImeHelperProcessTest {
     helper.setPrivateField("process", newProcess)
     helper.setPrivateField("lifecycleState", HelperLifecycleState.STARTING)
 
-    helper.invokePrivate("waitForExit", Process::class.java, exited)
+    helper.invokePrivate<Unit>("waitForExit", Process::class.java, exited)
 
     assertEquals(HelperLifecycleState.STARTING, helper.getPrivateField("lifecycleState"))
     assertEquals(newProcess, helper.getPrivateField("process"))
@@ -375,7 +375,7 @@ class ImeHelperProcessTest {
     helper.setPrivateField("lifecycleState", HelperLifecycleState.RUNNING)
     helper.setPrivateField("shouldRestartOnExit", false)
 
-    helper.invokePrivate("waitForExit", Process::class.java, exited)
+    helper.invokePrivate<Unit>("waitForExit", Process::class.java, exited)
 
     assertEquals(HelperLifecycleState.FAILED, helper.getPrivateField("lifecycleState"))
     assertEquals(null, helper.getPrivateField<Process?>("process"))
