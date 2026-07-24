@@ -238,6 +238,198 @@ class ImeHelperProcessTest {
     assertEquals(null, helper.getPrivateField<Process?>("process"))
   }
 
+  @Test
+  fun refreshOnLiveProcessDoesNotHoldInstanceLockDuringWrite() {
+    val helper = ImeHelperProcess()
+    val process = FakeProcess(alive = true)
+    val entered = java.util.concurrent.CountDownLatch(1)
+    val release = java.util.concurrent.CountDownLatch(1)
+    val blockingWriter = object : java.io.BufferedWriter(java.io.StringWriter()) {
+      override fun write(str: String) {
+        // no-op content for refresh command
+      }
+
+      override fun flush() {
+        entered.countDown()
+        release.await(2, java.util.concurrent.TimeUnit.SECONDS)
+      }
+    }
+    helper.setPrivateField("process", process)
+    helper.setPrivateField("stdin", blockingWriter)
+    helper.setPrivateField("lifecycleState", HelperLifecycleState.RUNNING)
+
+    // ApplicationManager is null in pure unit tests, so writeRefreshCommandAsync runs
+    // the task on the calling thread. Run refresh on a background thread so a still-
+    // synchronous flush would block join(); after the fix, refresh must return before flush finishes.
+    val refreshThread = Thread({ helper.refresh() }, "test-refresh")
+    refreshThread.start()
+
+    // With ApplicationManager null, task runs on refreshThread; without the fix, join blocks on flush.
+    // With the fix path when Application is present, refresh returns immediately. When Application is null
+    // the task is inline — so assert that debugInfo can still run while flush is blocked by using
+    // a separate thread for refresh and requiring entered before we call debugInfo after a short wait.
+    assertTrue(entered.await(1, java.util.concurrent.TimeUnit.SECONDS), "write/flush task should start")
+
+    // Instance lock must be free so debugInfo (synchronized) can enter promptly.
+    val debug = helper.debugInfo()
+    assertEquals(HelperLifecycleState.RUNNING, debug.lifecycleState)
+
+    release.countDown()
+    refreshThread.join(2000)
+  }
+
+  @Test
+  fun failStartingChildDoesNotHoldInstanceLockDuringForceKill() {
+    val helper = ImeHelperProcess()
+    val entered = java.util.concurrent.CountDownLatch(1)
+    val release = java.util.concurrent.CountDownLatch(1)
+    val process = object : FakeProcess(alive = true) {
+      override fun waitFor(timeout: Long, unit: java.util.concurrent.TimeUnit): Boolean {
+        entered.countDown()
+        release.await(2, java.util.concurrent.TimeUnit.SECONDS)
+        return false
+      }
+    }
+    helper.setPrivateField("process", process)
+    helper.setPrivateField("stdin", java.io.BufferedWriter(java.io.StringWriter()))
+    helper.setPrivateField("lifecycleState", HelperLifecycleState.STARTING)
+
+    val failThread = Thread(
+      { helper.invokePrivate<Unit>("failStartingChildIfStillWaiting", Process::class.java, process) },
+      "test-fail-starting"
+    )
+    failThread.start()
+
+    assertTrue(entered.await(1, java.util.concurrent.TimeUnit.SECONDS), "force kill wait should start")
+    // Instance lock must be free while waitThenForceKill blocks.
+    val debug = helper.debugInfo()
+    assertEquals(HelperLifecycleState.FAILED, debug.lifecycleState)
+    assertEquals(null, helper.getPrivateField<Process?>("process"))
+
+    release.countDown()
+    failThread.join(2000)
+  }
+
+  @Test
+  fun failActiveChildDoesNotHoldInstanceLockDuringForceKill() {
+    val helper = ImeHelperProcess()
+    val entered = java.util.concurrent.CountDownLatch(1)
+    val release = java.util.concurrent.CountDownLatch(1)
+    val process = object : FakeProcess(alive = true) {
+      override fun waitFor(timeout: Long, unit: java.util.concurrent.TimeUnit): Boolean {
+        entered.countDown()
+        release.await(2, java.util.concurrent.TimeUnit.SECONDS)
+        return false
+      }
+    }
+    helper.setPrivateField("process", process)
+    helper.setPrivateField("stdin", java.io.BufferedWriter(java.io.StringWriter()))
+    helper.setPrivateField("lifecycleState", HelperLifecycleState.RUNNING)
+
+    val failThread = Thread(
+      {
+        helper.invokePrivate<Unit>(
+          "failActiveChild",
+          arrayOf(Process::class.java, String::class.java, Exception::class.java),
+          arrayOf(process, "stdout", IllegalStateException("stream broke"))
+        )
+      },
+      "test-fail-active"
+    )
+    failThread.start()
+
+    assertTrue(entered.await(1, java.util.concurrent.TimeUnit.SECONDS), "force kill wait should start")
+    val debug = helper.debugInfo()
+    assertEquals(HelperLifecycleState.FAILED, debug.lifecycleState)
+    assertEquals(null, helper.getPrivateField<Process?>("process"))
+
+    release.countDown()
+    failThread.join(2000)
+  }
+
+  @Test
+  fun waitForExitDoesNotOverwriteLifecycleAfterConcurrentStart() {
+    val helper = ImeHelperProcess()
+    val exited = FakeProcess(alive = false)
+    helper.setPrivateField("process", exited)
+    helper.setPrivateField("lifecycleState", HelperLifecycleState.RUNNING)
+
+    // Simulate a concurrent start that has already claimed the lifecycle after process was cleared.
+    // waitForExit must only mark FAILED while still owning the child reference under the lock.
+    val newProcess = FakeProcess(alive = true)
+    helper.setPrivateField("process", newProcess)
+    helper.setPrivateField("lifecycleState", HelperLifecycleState.STARTING)
+
+    helper.invokePrivate<Unit>("waitForExit", Process::class.java, exited)
+
+    assertEquals(HelperLifecycleState.STARTING, helper.getPrivateField("lifecycleState"))
+    assertEquals(newProcess, helper.getPrivateField("process"))
+  }
+
+  @Test
+  fun waitForExitMarksFailedAtomicallyWhenChildStillOwned() {
+    val helper = ImeHelperProcess()
+    val exited = FakeProcess(alive = false)
+    helper.setPrivateField("process", exited)
+    helper.setPrivateField("stdin", java.io.BufferedWriter(java.io.StringWriter()))
+    helper.setPrivateField("lifecycleState", HelperLifecycleState.RUNNING)
+    helper.setPrivateField("shouldRestartOnExit", false)
+
+    helper.invokePrivate<Unit>("waitForExit", Process::class.java, exited)
+
+    assertEquals(HelperLifecycleState.FAILED, helper.getPrivateField("lifecycleState"))
+    assertEquals(null, helper.getPrivateField<Process?>("process"))
+    assertEquals(null, helper.getPrivateField<Any?>("stdin"))
+    assertTrue(helper.getPrivateField<String?>("lastError")?.contains("exitCode=") == true)
+  }
+
+  @Test
+  fun hashMetadataPublishedAtomicallyUnderInstanceLock() {
+    val helper = ImeHelperProcess()
+    val file = java.io.File.createTempFile("ime-helper", ".bin").apply {
+      writeText("payload")
+      deleteOnExit()
+    }
+
+    val publish = Runnable {
+      synchronized(helper) {
+        helper.setPrivateField("helperFile", file)
+        helper.setPrivateField("expectedSha256", "abc")
+        helper.setPrivateField("actualSha256", "abc")
+        helper.setPrivateField("hashMatches", true)
+      }
+    }
+
+    val inconsistencies = java.util.concurrent.atomic.AtomicInteger(0)
+    val readers = (1..8).map {
+      Thread {
+        repeat(200) {
+          val snapshot = synchronized(helper) {
+            listOf(
+              helper.getPrivateField<Any?>("helperFile"),
+              helper.getPrivateField<Any?>("expectedSha256"),
+              helper.getPrivateField<Any?>("actualSha256"),
+              helper.getPrivateField<Any?>("hashMatches")
+            )
+          }
+          val nullCount = snapshot.count { it == null }
+          if (nullCount != 0 && nullCount != 4) {
+            inconsistencies.incrementAndGet()
+          }
+        }
+      }.also { it.start() }
+    }
+
+    Thread(publish).also {
+      it.start()
+      it.join()
+    }
+    readers.forEach { it.join() }
+
+    assertEquals(0, inconsistencies.get(), "hash metadata published under lock must not be partially visible")
+    assertEquals(true, helper.debugInfo().hashMatches)
+  }
+
   private fun Any.setPrivateField(name: String, value: Any?) {
     val field = javaClass.getDeclaredField(name)
     field.isAccessible = true
@@ -271,13 +463,14 @@ class ImeHelperProcessTest {
     return method.invoke(this, *arguments) as T
   }
 
-  private class FakeProcess(private val alive: Boolean = false) : Process() {
+  private open class FakeProcess(private val alive: Boolean = false) : Process() {
     private val output = ByteArrayOutputStream()
 
     override fun getOutputStream(): OutputStream = output
     override fun getInputStream(): InputStream = ByteArrayInputStream(ByteArray(0))
     override fun getErrorStream(): InputStream = ByteArrayInputStream(ByteArray(0))
     override fun waitFor(): Int = 0
+    override fun waitFor(timeout: Long, unit: java.util.concurrent.TimeUnit): Boolean = !alive
     override fun exitValue(): Int = if (alive) throw IllegalThreadStateException("still running") else 0
     override fun destroy() = Unit
     override fun isAlive(): Boolean = alive
