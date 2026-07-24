@@ -8,15 +8,15 @@
 
 在扩展面板选择「从 VSIX 安装…」，按你的系统选择：
 
-| 系统 | 文件 |
-| --- | --- |
-| Windows（x64，大多数电脑） | `cursor-ime-hud-{{VERSION}}-win32-x64.vsix` |
-| Windows（ARM64，如 Surface 等） | `cursor-ime-hud-{{VERSION}}-win32-arm64.vsix` |
-| macOS（Intel 芯片） | `cursor-ime-hud-{{VERSION}}-darwin-x64.vsix` |
-| macOS（Apple Silicon，M 系列） | `cursor-ime-hud-{{VERSION}}-darwin-arm64.vsix` |
-| Linux（x64） | `cursor-ime-hud-{{VERSION}}-linux-x64.vsix` |
-| Linux（ARM64，如树莓派 4/5、部分笔记本） | `cursor-ime-hud-{{VERSION}}-linux-arm64.vsix` |
-| Linux（ARM 32 位，如树莓派 2/3） | `cursor-ime-hud-{{VERSION}}-linux-armhf.vsix` |
+| 系统                                     | 文件                                           |
+| ---------------------------------------- | ---------------------------------------------- |
+| Windows（x64，大多数电脑）               | `cursor-ime-hud-{{VERSION}}-win32-x64.vsix`    |
+| Windows（ARM64，如 Surface 等）          | `cursor-ime-hud-{{VERSION}}-win32-arm64.vsix`  |
+| macOS（Intel 芯片）                      | `cursor-ime-hud-{{VERSION}}-darwin-x64.vsix`   |
+| macOS（Apple Silicon，M 系列）           | `cursor-ime-hud-{{VERSION}}-darwin-arm64.vsix` |
+| Linux（x64）                             | `cursor-ime-hud-{{VERSION}}-linux-x64.vsix`    |
+| Linux（ARM64，如树莓派 4/5、部分笔记本） | `cursor-ime-hud-{{VERSION}}-linux-arm64.vsix`  |
+| Linux（ARM 32 位，如树莓派 2/3）         | `cursor-ime-hud-{{VERSION}}-linux-armhf.vsix`  |
 
 不确定系统架构时，可直接使用通用离线包 `cursor-ime-hud-{{VERSION}}.vsix`（体积较大，但适用于上述所有平台）。
 
