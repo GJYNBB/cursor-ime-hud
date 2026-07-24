@@ -203,28 +203,27 @@ class ImeHelperProcess {
     }
   }
 
-  @Synchronized
   private fun failStartingChildIfStillWaiting(child: Process) {
-    if (disposed.get() || process !== child || lifecycleState != HelperLifecycleState.STARTING) {
-      return
-    }
+    data class FailSnapshot(val writer: BufferedWriter?, val errorMessage: String)
 
-    lifecycleState = HelperLifecycleState.FAILED
-    startupTimeoutTask = null
-    lastError = "ImeWatcher 未在 ${STARTUP_TIMEOUT_MS} 毫秒内产生启动快照。"
-    emitLog("error", lastError ?: "ImeWatcher 启动超时。")
-    emitSnapshot(ImeSnapshot(state = ImeState.UNKNOWN, reason = "helper-startup-timeout", confidence = 0.0, rawStateAvailable = false))
-    emitDebug()
-    try {
-      stdin?.close()
-    } catch (_: Exception) {
-    }
-    child.destroy()
-    waitThenForceKill(child)
-    if (process === child) {
+    val snapshot = synchronized(this) {
+      if (disposed.get() || process !== child || lifecycleState != HelperLifecycleState.STARTING) {
+        return
+      }
+      lifecycleState = HelperLifecycleState.FAILED
+      startupTimeoutTask = null
+      val errorMessage = "ImeWatcher 未在 ${STARTUP_TIMEOUT_MS} 毫秒内产生启动快照。"
+      lastError = errorMessage
+      val writer = stdin
       process = null
       stdin = null
+      FailSnapshot(writer, errorMessage)
     }
+
+    emitLog("error", snapshot.errorMessage)
+    emitSnapshot(ImeSnapshot(state = ImeState.UNKNOWN, reason = "helper-startup-timeout", confidence = 0.0, rawStateAvailable = false))
+    emitDebug()
+    forceKillChildAsync(child, snapshot.writer)
     scheduleRestartIfNeeded()
   }
 
@@ -532,51 +531,78 @@ class ImeHelperProcess {
 
   private fun waitForExit(child: Process) {
     val code = child.waitFor()
-    val wasActive = synchronized(this) {
-      if (process === child) {
-        cancelStartupTimeout()
-        cancelStabilityReset()
-        process = null
-        stdin = null
-        true
-      } else {
-        false
+    val exitError = synchronized(this) {
+      if (process !== child) {
+        return
       }
-    }
-
-    if (!wasActive) return
-
-    if (!disposed.get() && lifecycleState != HelperLifecycleState.FAILED) {
-      lifecycleState = HelperLifecycleState.FAILED
-      lastError = "ImeWatcher 已退出：exitCode=$code"
-      emitLog("warn", lastError ?: "ImeWatcher 已退出。")
-      emitSnapshot(ImeSnapshot(state = ImeState.UNKNOWN, reason = "helper-exited", confidence = 0.0, rawStateAvailable = false))
-      emitDebug()
-      scheduleRestartIfNeeded()
-    }
-  }
-
-  @Synchronized
-  private fun failActiveChild(child: Process, stream: String, error: Exception) {
-    if (disposed.get() || process !== child) return
-    cancelStartupTimeout()
-    cancelStabilityReset()
-    lifecycleState = HelperLifecycleState.FAILED
-    lastError = redactedError(error)
-    emitLog("error", "ImeWatcher $stream 处理失败：$lastError")
-    emitSnapshot(ImeSnapshot(state = ImeState.UNKNOWN, reason = "helper-$stream-stream-failed", confidence = 0.0, rawStateAvailable = false))
-    emitDebug()
-    try {
-      stdin?.close()
-    } catch (_: Exception) {
-    }
-    child.destroy()
-    waitThenForceKill(child)
-    if (process === child) {
+      cancelStartupTimeout()
+      cancelStabilityReset()
       process = null
       stdin = null
-    }
+      if (disposed.get() || lifecycleState == HelperLifecycleState.FAILED) {
+        null
+      } else {
+        lifecycleState = HelperLifecycleState.FAILED
+        val message = "ImeWatcher 已退出：exitCode=$code"
+        lastError = message
+        message
+      }
+    } ?: return
+
+    emitLog("warn", exitError)
+    emitSnapshot(ImeSnapshot(state = ImeState.UNKNOWN, reason = "helper-exited", confidence = 0.0, rawStateAvailable = false))
+    emitDebug()
     scheduleRestartIfNeeded()
+  }
+
+  private fun failActiveChild(child: Process, stream: String, error: Exception) {
+    data class FailSnapshot(val writer: BufferedWriter?, val redacted: String)
+
+    val snapshot = synchronized(this) {
+      if (disposed.get() || process !== child) {
+        return
+      }
+      cancelStartupTimeout()
+      cancelStabilityReset()
+      lifecycleState = HelperLifecycleState.FAILED
+      val redacted = redactedError(error)
+      lastError = redacted
+      val writer = stdin
+      process = null
+      stdin = null
+      FailSnapshot(writer, redacted)
+    }
+
+    emitLog("error", "ImeWatcher $stream 处理失败：${snapshot.redacted}")
+    emitSnapshot(ImeSnapshot(state = ImeState.UNKNOWN, reason = "helper-$stream-stream-failed", confidence = 0.0, rawStateAvailable = false))
+    emitDebug()
+    forceKillChildAsync(child, snapshot.writer)
+    scheduleRestartIfNeeded()
+  }
+
+  /**
+   * Close stdin and force-kill [child] off the instance lock.
+   * Blocking wait/taskkill must never run while holding @Synchronized.
+   */
+  private fun forceKillChildAsync(child: Process, writer: BufferedWriter?) {
+    val task = Runnable {
+      try {
+        writer?.close()
+      } catch (_: Exception) {
+      }
+      try {
+        child.destroy()
+      } catch (_: Exception) {
+      }
+      waitThenForceKill(child)
+    }
+    val application = ApplicationManager.getApplication()
+    if (application == null) {
+      // Unit tests: still leave the instance lock free while kill waits.
+      Thread(task, "cursor-ime-hud-helper-kill").apply { isDaemon = true }.start()
+    } else {
+      application.executeOnPooledThread(task)
+    }
   }
 
   @Synchronized
