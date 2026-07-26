@@ -17,15 +17,8 @@ if (!Array.isArray(manifest.helpers)) {
 
 const HELPERS = Object.fromEntries(manifest.helpers.map((helper) => [helper.targetKey, helper]));
 
-function normalizeArch(platform = process.platform, arch = process.arch) {
-  if (platform === "linux" && arch === "arm") {
-    return "armhf";
-  }
-  return arch;
-}
-
 function hostKey(platform = process.platform, arch = process.arch) {
-  return `${platform}-${normalizeArch(platform, arch)}`;
+  return `${platform}-${arch}`;
 }
 
 function helperForTarget(targetKey = process.env.CURSOR_IME_HELPER_TARGET) {
@@ -47,7 +40,14 @@ function selectedHelper(platform = process.platform, arch = process.arch) {
 }
 
 function canRunOnHost(helper, platform = process.platform, arch = process.arch) {
-  return helper.platform === platform && helper.arch === normalizeArch(platform, arch);
+  if (helper.platform !== platform) {
+    return false;
+  }
+  // macOS ARM hosts execute x64 helpers directly through Rosetta 2.
+  if (platform === "darwin" && arch === "arm64" && helper.arch === "x64") {
+    return true;
+  }
+  return helper.arch === arch;
 }
 
 function resourceDir(repoRoot, helper) {

@@ -75,21 +75,6 @@
       "cargoEnv": {
         "CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER": "aarch64-linux-gnu-gcc"
       }
-    },
-    {
-      "targetKey": "linux-armhf",
-      "platform": "linux",
-      "arch": "armhf",
-      "platformKey": "linux-armhf",
-      "cargoTarget": "armv7-unknown-linux-gnueabihf",
-      "binaryName": "ImeWatcher",
-      "resourceBinaryName": "ImeWatcher",
-      "backendName": "ime-watcher",
-      "resourcePath": "resources/bin/linux-armhf/ImeWatcher",
-      "sha256Path": "resources/bin/linux-armhf/ImeWatcher.sha256",
-      "cargoEnv": {
-        "CARGO_TARGET_ARMV7_UNKNOWN_LINUX_GNUEABIHF_LINKER": "arm-linux-gnueabihf-gcc"
-      }
     }
   ]
 }

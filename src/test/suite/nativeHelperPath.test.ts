@@ -74,17 +74,16 @@ suite("nativeHelperPath", () => {
     assert.equal(resolution.platformKey, "linux-arm64");
   });
 
-  test("resolves Linux ARM hard-float helper paths", () => {
+  test("reports Linux 32-bit ARM as unavailable since the armhf helper was dropped", () => {
     const resolution = resolveNativeHelper({
       platform: "linux",
       arch: "arm",
       asAbsolutePath
     });
 
-    assert.equal(resolution.helperPath, "/extension/resources/bin/linux-armhf/ImeWatcher");
-    assert.equal(resolution.relativePath, "resources/bin/linux-armhf/ImeWatcher");
-    assert.equal(resolution.backendName, "ime-watcher");
-    assert.equal(resolution.platformKey, "linux-armhf");
+    assert.equal(resolution.helperPath, undefined);
+    assert.ok("reason" in resolution);
+    assert.match(resolution.reason, /linux\/arm/);
   });
 
   test("manifest declares resolvable helper resources and sha256 sidecars", () => {

@@ -7,10 +7,15 @@ const path = require("node:path");
 const { canRunOnHost, resourcePath, selectedHelper } = require("./helper-platforms");
 
 const repoRoot = path.resolve(__dirname, "..");
+const requestedTarget = process.env.CURSOR_IME_HELPER_TARGET;
 const helper = selectedHelper();
 const timeoutMs = Number.parseInt(process.env.CURSOR_IME_HELPER_TEST_TIMEOUT_MS ?? "8000", 10);
 
 if (!helper) {
+  if (requestedTarget) {
+    console.error(`[fail] Unknown helper target '${requestedTarget}'.`);
+    process.exit(1);
+  }
   console.log(
     `[skip] assert-helper-once has no helper target for ${process.platform}/${process.arch}`
   );
@@ -18,12 +23,9 @@ if (!helper) {
 }
 
 if (!canRunOnHost(helper)) {
-  const message = `${helper.targetKey} helper cannot be executed on ${process.platform}/${process.arch}`;
-  if (process.env.CURSOR_IME_HELPER_ALLOW_SKIP === "1") {
-    console.log(`[skip] ${message}`);
-    process.exit(0);
-  }
-  console.error(`[fail] ${message}`);
+  console.error(
+    `[fail] ${helper.targetKey} helper cannot be executed on ${process.platform}/${process.arch}`
+  );
   process.exit(1);
 }
 

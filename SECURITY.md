@@ -78,8 +78,6 @@ resources/bin/linux-x64/ImeWatcher
 resources/bin/linux-x64/ImeWatcher.sha256
 resources/bin/linux-arm64/ImeWatcher
 resources/bin/linux-arm64/ImeWatcher.sha256
-resources/bin/linux-armhf/ImeWatcher
-resources/bin/linux-armhf/ImeWatcher.sha256
 ```
 
 运行时，每个客户端都会依据相邻的 `.sha256` 文件校验所选 helper，校验通过后才会执行。该机制用于发现打包或本地替换错误，并不能代替操作系统代码签名或终端安全防护。如果哈希缺失或不匹配，客户端会禁用 native helper，并回退为 `unknown` 状态的诊断信息。

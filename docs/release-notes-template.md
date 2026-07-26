@@ -16,7 +16,6 @@
 | macOS（Apple Silicon，M 系列）           | `cursor-ime-hud-{{VERSION}}-darwin-arm64.vsix` |
 | Linux（x64）                             | `cursor-ime-hud-{{VERSION}}-linux-x64.vsix`    |
 | Linux（ARM64，如树莓派 4/5、部分笔记本） | `cursor-ime-hud-{{VERSION}}-linux-arm64.vsix`  |
-| Linux（ARM 32 位，如树莓派 2/3）         | `cursor-ime-hud-{{VERSION}}-linux-armhf.vsix`  |
 
 不确定系统架构时，可直接使用通用离线包 `cursor-ime-hud-{{VERSION}}.vsix`（体积较大，但适用于上述所有平台）。
 

@@ -13,6 +13,9 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   lint:
     name: Lint (ubuntu)
@@ -110,28 +113,20 @@ jobs:
         include:
           - target: win32-x64
             os: windows-latest
-            allow-skip: "0"
           - target: win32-arm64
-            os: windows-latest
-            allow-skip: "1"
+            os: windows-11-arm
+          # darwin-x64 cross-compiles on the ARM runner; the smoke test
+          # executes the x64 binary directly through Rosetta 2.
           - target: darwin-x64
             os: macos-latest
-            allow-skip: "1"
           - target: darwin-arm64
             os: macos-latest
-            allow-skip: "0"
           - target: linux-x64
             os: ubuntu-latest
-            allow-skip: "0"
           - target: linux-arm64
-            os: ubuntu-latest
-            allow-skip: "1"
-          - target: linux-armhf
-            os: ubuntu-latest
-            allow-skip: "1"
+            os: ubuntu-24.04-arm
     env:
       CURSOR_IME_HELPER_TARGET: ${{ matrix.target }}
-      CURSOR_IME_HELPER_ALLOW_SKIP: ${{ matrix.allow-skip }}
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
@@ -146,22 +141,15 @@ jobs:
           cache-dependency-path: package-lock.json
 
       - name: Setup Rust toolchain
+        shell: bash
         run: |
-          rustup default stable
+          # Some ARM runner images ship Rust without rustup; the version
+          # checks below still fail hard when the toolchain is missing.
+          if command -v rustup >/dev/null 2>&1; then
+            rustup default stable
+          fi
           rustc --version
           cargo --version
-
-      - name: Install Linux cross toolchain
-        if: startsWith(matrix.target, 'linux-arm')
-        run: |
-          set -euo pipefail
-          export DEBIAN_FRONTEND=noninteractive
-          timeout 8m sudo apt-get update -o Acquire::Retries=3
-          if [ "${{ matrix.target }}" = "linux-arm64" ]; then
-            timeout 8m sudo apt-get install -y gcc-aarch64-linux-gnu
-          else
-            timeout 8m sudo apt-get install -y gcc-arm-linux-gnueabihf
-          fi
 
       - name: Cache Rust target directory
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6

@@ -1,0 +1,122 @@
+name: Release Assets Audit
+
+# Verifies that every published v* GitHub Release carries the complete asset
+# set: the universal VSIX, one VSIX per helper target from the manifest, the
+# JetBrains ZIP, and both CycloneDX SBOM files. Any missing asset fails the run.
+on:
+  release:
+    types: [published]
+  schedule:
+    # Weekly sweep so assets removed after publication are still caught.
+    - cron: "0 3 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    name: Audit release assets
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+        with:
+          persist-credentials: false
+
+      - name: Audit release assets
+        shell: bash
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const { allHelpers } = require('./scripts/helper-platforms');
+
+          const token = process.env.GITHUB_TOKEN;
+          const repo = process.env.GITHUB_REPOSITORY;
+
+          // Known exemptions from the full asset audit, keyed by tag.
+          const exemptions = new Map([
+            ['v0.1.1', 'superseded by 0.1.2, no artifacts']
+          ]);
+
+          function expectedAssets(version) {
+            const names = [`cursor-ime-hud-${version}.vsix`];
+            for (const helper of allHelpers()) {
+              names.push(`cursor-ime-hud-${version}-${helper.targetKey}.vsix`);
+            }
+            names.push(`cursor-ime-hud-jetbrains-${version}.zip`);
+            names.push(`cursor-ime-hud-${version}-vsix.cdx.json`);
+            names.push(`cursor-ime-hud-${version}-jetbrains.cdx.json`);
+            return names;
+          }
+
+          async function fetchReleases() {
+            const releases = [];
+            for (let page = 1; ; page += 1) {
+              const response = await fetch(
+                `https://api.github.com/repos/${repo}/releases?per_page=100&page=${page}`,
+                {
+                  headers: {
+                    Accept: 'application/vnd.github+json',
+                    Authorization: `Bearer ${token}`,
+                    'X-GitHub-Api-Version': '2022-11-28'
+                  }
+                }
+              );
+              if (!response.ok) {
+                throw new Error(`GitHub API returned ${response.status} while listing releases.`);
+              }
+              const batch = await response.json();
+              releases.push(...batch);
+              if (batch.length < 100) {
+                return releases;
+              }
+            }
+          }
+
+          async function main() {
+            const failures = [];
+            let audited = 0;
+            for (const release of await fetchReleases()) {
+              if (release.draft || !/^v\d+\.\d+\.\d+$/.test(release.tag_name)) {
+                continue;
+              }
+              if (exemptions.has(release.tag_name)) {
+                console.log(`[exempt] ${release.tag_name}: ${exemptions.get(release.tag_name)}`);
+                continue;
+              }
+              audited += 1;
+              const present = new Set(release.assets.map((asset) => asset.name));
+              const missing = expectedAssets(release.tag_name.slice(1)).filter(
+                (name) => !present.has(name)
+              );
+              if (missing.length > 0) {
+                failures.push({ tag: release.tag_name, missing });
+                continue;
+              }
+              console.log(`[ok] ${release.tag_name}: all expected assets present`);
+            }
+
+            if (audited === 0 && failures.length === 0) {
+              console.log('No non-exempt v* releases found to audit.');
+              return;
+            }
+            for (const failure of failures) {
+              console.error(`[fail] ${failure.tag} is missing release assets:`);
+              for (const name of failure.missing) {
+                console.error(`  - ${name}`);
+              }
+            }
+            if (failures.length > 0) {
+              process.exit(1);
+            }
+          }
+
+          main().catch((error) => {
+            console.error(error);
+            process.exit(1);
+          });
+          NODE

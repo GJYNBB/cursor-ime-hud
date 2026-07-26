@@ -67,22 +67,12 @@ function loadHelperManifest(manifestPath = DEFAULT_MANIFEST_PATH): HelperManifes
   return cachedManifest;
 }
 
-function normalizeArch(platform: NodeJS.Platform, arch: NodeJS.Architecture): string {
-  if (platform === "linux" && arch === "arm") {
-    return "armhf";
-  }
-  return arch;
-}
-
 function manifestHelperForHost(
   manifest: HelperManifest,
   platform: NodeJS.Platform,
   arch: NodeJS.Architecture
 ): HelperManifestEntry | undefined {
-  const normalizedArch = normalizeArch(platform, arch);
-  return manifest.helpers.find(
-    (helper) => helper.platform === platform && helper.arch === normalizedArch
-  );
+  return manifest.helpers.find((helper) => helper.platform === platform && helper.arch === arch);
 }
 
 export function helperManifestEntries(manifestPath?: string): HelperManifestEntry[] {
