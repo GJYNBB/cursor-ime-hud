@@ -43,7 +43,13 @@ suite("helperProtocol", () => {
         } else {
           assert.ok(actual, vector.id);
           for (const [key, expected] of Object.entries(vector.expected)) {
-            assert.deepEqual(actual?.[key as keyof typeof actual], expected, vector.id);
+            // A null expectation encodes "the parser drops this field"
+            // (e.g. a wrongly typed optional field coerces to undefined).
+            if (expected === null) {
+              assert.strictEqual(actual?.[key as keyof typeof actual], undefined, vector.id);
+            } else {
+              assert.deepEqual(actual?.[key as keyof typeof actual], expected, vector.id);
+            }
           }
         }
         continue;
@@ -100,6 +106,23 @@ suite("helperProtocol", () => {
       parseSnapshotLine(
         JSON.stringify({ type: "state", state: "unknown", rawStateAvailable: "false" })
       )?.rawStateAvailable,
+      undefined
+    );
+  });
+
+  test("preserves only boolean conversion mode availability", () => {
+    assert.equal(
+      parseSnapshotLine(JSON.stringify({ type: "state", state: "en", conversionNative: false }))
+        ?.conversionNative,
+      false
+    );
+    assert.equal(
+      parseSnapshotLine(JSON.stringify({ type: "state", state: "cn" }))?.conversionNative,
+      undefined
+    );
+    assert.equal(
+      parseSnapshotLine(JSON.stringify({ type: "state", state: "cn", conversionNative: 1 }))
+        ?.conversionNative,
       undefined
     );
   });

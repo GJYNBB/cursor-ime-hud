@@ -87,6 +87,7 @@ pub(crate) fn probe_current_state() -> ProbeSnapshot {
             state: classification.state,
             ime_name,
             is_open: None,
+            conversion_native: None,
             layout_hex: None,
             thread_id: None,
             hwnd: None,

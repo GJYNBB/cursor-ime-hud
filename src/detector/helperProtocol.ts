@@ -58,6 +58,8 @@ export function parseSnapshotLine(line: string): ImeSnapshot | undefined {
     source: "native-helper",
     imeName: typeof parsed.imeName === "string" ? parsed.imeName : undefined,
     isOpen: typeof parsed.isOpen === "boolean" ? parsed.isOpen : undefined,
+    conversionNative:
+      typeof parsed.conversionNative === "boolean" ? parsed.conversionNative : undefined,
     layoutHex: typeof parsed.layoutHex === "string" ? parsed.layoutHex : undefined,
     threadId: typeof parsed.threadId === "number" ? parsed.threadId : undefined,
     hwnd: typeof parsed.hwnd === "string" ? parsed.hwnd : undefined,

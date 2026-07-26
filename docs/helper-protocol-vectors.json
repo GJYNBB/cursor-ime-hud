@@ -57,7 +57,7 @@
         "threadId": 1234,
         "hwnd": "0x1",
         "reason": "refresh",
-        "confidence": 0.94,
+        "confidence": 1.0,
         "rawStateAvailable": true
       },
       "expected": {
@@ -69,8 +69,79 @@
         "threadId": 1234,
         "hwnd": "0x1",
         "reason": "refresh",
-        "confidence": 0.94,
+        "confidence": 1.0,
         "rawStateAvailable": true
+      }
+    },
+    {
+      "id": "state-valid-conversion-native-true",
+      "kind": "state",
+      "record": {
+        "type": "state",
+        "state": "cn",
+        "timestamp": "2026-06-05T08:00:04.000Z",
+        "imeName": "Sogou Pinyin",
+        "isOpen": true,
+        "conversionNative": true,
+        "layoutHex": "0804",
+        "reason": "confirmed-open-chinese-layout",
+        "confidence": 1.0,
+        "rawStateAvailable": true
+      },
+      "expected": {
+        "state": "cn",
+        "timestamp": "2026-06-05T08:00:04.000Z",
+        "imeName": "Sogou Pinyin",
+        "isOpen": true,
+        "conversionNative": true,
+        "layoutHex": "0804",
+        "reason": "confirmed-open-chinese-layout",
+        "confidence": 1.0,
+        "rawStateAvailable": true
+      }
+    },
+    {
+      "id": "state-valid-conversion-native-false",
+      "kind": "state",
+      "record": {
+        "type": "state",
+        "state": "en",
+        "timestamp": "2026-06-05T08:00:05.000Z",
+        "imeName": "Sogou Pinyin",
+        "isOpen": true,
+        "conversionNative": false,
+        "layoutHex": "0804",
+        "reason": "confirmed-open-chinese-layout-ascii-conversion",
+        "confidence": 1.0,
+        "rawStateAvailable": true
+      },
+      "expected": {
+        "state": "en",
+        "timestamp": "2026-06-05T08:00:05.000Z",
+        "imeName": "Sogou Pinyin",
+        "isOpen": true,
+        "conversionNative": false,
+        "layoutHex": "0804",
+        "reason": "confirmed-open-chinese-layout-ascii-conversion",
+        "confidence": 1.0,
+        "rawStateAvailable": true
+      }
+    },
+    {
+      "id": "state-conversion-native-string-coerces-to-absent",
+      "kind": "state",
+      "record": {
+        "type": "state",
+        "state": "cn",
+        "timestamp": "2026-06-05T08:00:06.000Z",
+        "isOpen": true,
+        "conversionNative": "true"
+      },
+      "expected": {
+        "state": "cn",
+        "timestamp": "2026-06-05T08:00:06.000Z",
+        "isOpen": true,
+        "conversionNative": null
       }
     },
     {

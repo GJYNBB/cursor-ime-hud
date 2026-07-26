@@ -56,7 +56,7 @@
 | -------- | --------------------------------------------------- |
 | 编辑器   | VS Code `^1.107.0`、Cursor、JetBrains IDE `2026.1+` |
 | 系统     | Windows 10/11、macOS、Linux                         |
-| 架构     | x64 / arm64（Linux 另含 armhf）                     |
+| 架构     | x64 / arm64                                         |
 | 输入法   | 主要面向中文 IME；无法可靠识别时显示未知状态        |
 | 多光标   | 仅主光标                                            |
 | 自动切换 | **不支持**，也不会主动切换输入法                    |
@@ -71,7 +71,7 @@
 | VS Code / Cursor（通用离线包） | `cursor-ime-hud-<version>.vsix`            |
 | JetBrains                      | `cursor-ime-hud-jetbrains-<version>.zip`   |
 
-平台后缀示例：`win32-x64`、`win32-arm64`、`darwin-x64`、`darwin-arm64`、`linux-x64`、`linux-arm64`、`linux-armhf`。
+平台后缀示例：`win32-x64`、`win32-arm64`、`darwin-x64`、`darwin-arm64`、`linux-x64`、`linux-arm64`。
 
 ### VS Code / Cursor
 
@@ -196,6 +196,8 @@ npm run package:vsix:target -- --target win32-x64 --out-dir dist/vsix
 | 状态栏一直 `?`  | 当前窗口可能不是有效 IME 上下文，或 helper 未能读取状态；先运行「刷新输入法状态」 |
 | helper 启动失败 | 确认安装的是与本机架构匹配的官方包；不要单独替换 helper 或 `.sha256`              |
 | Linux 检测异常  | 确认会话中可用 Fcitx / IBus / XKB 等后端；诊断信息中会标明当前后端                |
+
+各输入法在各平台上「能检测什么、检测不了什么」及对应置信度，见 [docs/ime-compatibility.md](docs/ime-compatibility.md)。
 
 提交 issue 时请附上：IDE 版本、系统与架构、输入法名称、诊断输出（可打码路径），以及是否可稳定复现。
 

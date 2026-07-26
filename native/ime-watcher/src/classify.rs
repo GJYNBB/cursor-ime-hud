@@ -42,6 +42,7 @@ pub(crate) fn classify_macos_input_source(
     }
 }
 
+#[cfg_attr(not(target_os = "linux"), allow(dead_code))]
 pub(crate) fn classify_linux_engine(provider: &str, raw: &str, confidence: f64) -> Classification {
     let text = raw.to_lowercase();
     if is_chinese_source(&text) {

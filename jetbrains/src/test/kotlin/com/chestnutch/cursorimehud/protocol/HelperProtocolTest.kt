@@ -57,6 +57,12 @@ class HelperProtocolTest {
             expectedObject.get("timestamp")?.let { assertEquals(it.asString, actual.timestamp, id) }
             expectedObject.get("imeName")?.let { assertEquals(it.asString, actual.imeName, id) }
             expectedObject.get("isOpen")?.let { assertEquals(it.asBoolean, actual.isOpen, id) }
+            // A JSON null expectation encodes "the parser drops this field"
+            // (e.g. a wrongly typed optional field coerces to null).
+            expectedObject.get("conversionNative")?.let {
+              if (it.isJsonNull) assertNull(actual.conversionNative, id)
+              else assertEquals(it.asBoolean, actual.conversionNative, id)
+            }
             expectedObject.get("layoutHex")?.let { assertEquals(it.asString, actual.layoutHex, id) }
             expectedObject.get("threadId")?.let { assertEquals(it.asLong, actual.threadId, id) }
             expectedObject.get("hwnd")?.let { assertEquals(it.asString, actual.hwnd, id) }

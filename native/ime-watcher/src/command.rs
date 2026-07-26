@@ -311,9 +311,112 @@ impl<'a> JsonParser<'a> {
     }
 }
 
+// Test-only full JSON reader built on the production `JsonParser` tokenizer,
+// so emitter-consistency tests exercise the same parsing code the helper ships.
+#[cfg(test)]
+pub(crate) mod test_support {
+    use super::JsonParser;
+
+    #[derive(Clone, Debug, PartialEq)]
+    pub(crate) enum JsonValue {
+        Null,
+        Bool(bool),
+        Number(f64),
+        String(String),
+        Array(Vec<JsonValue>),
+        Object(Vec<(String, JsonValue)>),
+    }
+
+    impl JsonValue {
+        pub(crate) fn get(&self, key: &str) -> Option<&JsonValue> {
+            match self {
+                JsonValue::Object(members) => members
+                    .iter()
+                    .find(|(member_key, _)| member_key == key)
+                    .map(|(_, value)| value),
+                _ => None,
+            }
+        }
+    }
+
+    pub(crate) fn parse_json_value(input: &str) -> Result<JsonValue, String> {
+        let mut parser = JsonParser::new(input);
+        let value = parse_value(&mut parser)?;
+        parser.skip_trailing_whitespace()?;
+        Ok(value)
+    }
+
+    fn parse_value(parser: &mut JsonParser) -> Result<JsonValue, String> {
+        parser.skip_whitespace();
+        match parser.peek_byte() {
+            Some(b'\"') => parser.parse_string().map(JsonValue::String),
+            Some(b'{') => parse_object(parser),
+            Some(b'[') => parse_array(parser),
+            Some(b't') => parser.expect_literal("true").map(|()| JsonValue::Bool(true)),
+            Some(b'f') => parser.expect_literal("false").map(|()| JsonValue::Bool(false)),
+            Some(b'n') => parser.expect_literal("null").map(|()| JsonValue::Null),
+            Some(b'-' | b'0'..=b'9') => {
+                let start = parser.position;
+                parser.skip_number()?;
+                parser.input[start..parser.position]
+                    .parse::<f64>()
+                    .map(JsonValue::Number)
+                    .map_err(|error| format!("invalid JSON number: {error}"))
+            }
+            Some(_) => Err("unexpected JSON value".to_string()),
+            None => Err("unexpected end of JSON value".to_string()),
+        }
+    }
+
+    fn parse_object(parser: &mut JsonParser) -> Result<JsonValue, String> {
+        parser.expect_byte(b'{')?;
+        parser.skip_whitespace();
+        let mut members = Vec::new();
+        if parser.consume_byte(b'}') {
+            return Ok(JsonValue::Object(members));
+        }
+
+        loop {
+            let key = parser.parse_string()?;
+            parser.skip_whitespace();
+            parser.expect_byte(b':')?;
+            let value = parse_value(parser)?;
+            members.push((key, value));
+            parser.skip_whitespace();
+            if parser.consume_byte(b',') {
+                parser.skip_whitespace();
+                continue;
+            }
+            parser.expect_byte(b'}')?;
+            return Ok(JsonValue::Object(members));
+        }
+    }
+
+    fn parse_array(parser: &mut JsonParser) -> Result<JsonValue, String> {
+        parser.expect_byte(b'[')?;
+        parser.skip_whitespace();
+        let mut items = Vec::new();
+        if parser.consume_byte(b']') {
+            return Ok(JsonValue::Array(items));
+        }
+
+        loop {
+            items.push(parse_value(parser)?);
+            parser.skip_whitespace();
+            if parser.consume_byte(b',') {
+                parser.skip_whitespace();
+                continue;
+            }
+            parser.expect_byte(b']')?;
+            return Ok(JsonValue::Array(items));
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::is_refresh_command;
+    use super::test_support::{parse_json_value, JsonValue};
 
     #[test]
     fn parses_refresh_command() {
@@ -325,5 +428,25 @@ mod tests {
     #[test]
     fn rejects_invalid_json_command() {
         assert!(is_refresh_command("not json").is_err());
+    }
+
+    #[test]
+    fn test_support_reader_parses_full_json_documents() {
+        let value = parse_json_value(r#"{"a":[1,true,null,"x"],"b":{"c":-2.5}}"#).unwrap();
+        assert_eq!(
+            value.get("a"),
+            Some(&JsonValue::Array(vec![
+                JsonValue::Number(1.0),
+                JsonValue::Bool(true),
+                JsonValue::Null,
+                JsonValue::String("x".to_string()),
+            ]))
+        );
+        assert_eq!(
+            value.get("b").and_then(|nested| nested.get("c")),
+            Some(&JsonValue::Number(-2.5))
+        );
+        assert!(parse_json_value("{").is_err());
+        assert!(parse_json_value("{}extra").is_err());
     }
 }

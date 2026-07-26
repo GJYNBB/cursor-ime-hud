@@ -36,6 +36,7 @@ object HelperProtocol {
       timestamp = record.stringOrNull("timestamp") ?: Instant.now().toString(),
       imeName = record.stringOrNull("imeName"),
       isOpen = record.booleanOrNull("isOpen"),
+      conversionNative = record.booleanOrNull("conversionNative"),
       layoutHex = record.stringOrNull("layoutHex"),
       threadId = record.numberOrNull("threadId")?.toLong(),
       hwnd = record.stringOrNull("hwnd"),

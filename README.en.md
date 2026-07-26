@@ -56,7 +56,7 @@ You mean to type English. A string of pinyin appears instead.
 | ------------ | ------------------------------------------------------- |
 | Editors      | VS Code `^1.107.0`, Cursor, JetBrains IDEs `2026.1+`    |
 | OS           | Windows 10/11, macOS, Linux                             |
-| Arch         | x64 / arm64 (Linux also armhf)                          |
+| Arch         | x64 / arm64                                             |
 | IME scope    | Primarily Chinese IMEs; reports unknown when unreliable |
 | Multi-cursor | Primary caret only                                      |
 | Auto-switch  | **Not supported** and never performed                   |
@@ -71,7 +71,7 @@ Download from [GitHub Releases](https://github.com/GJYNBB/cursor-ime-hud/release
 | VS Code / Cursor (universal offline) | `cursor-ime-hud-<version>.vsix`            |
 | JetBrains                            | `cursor-ime-hud-jetbrains-<version>.zip`   |
 
-Platform suffixes: `win32-x64`, `win32-arm64`, `darwin-x64`, `darwin-arm64`, `linux-x64`, `linux-arm64`, `linux-armhf`.
+Platform suffixes: `win32-x64`, `win32-arm64`, `darwin-x64`, `darwin-arm64`, `linux-x64`, `linux-arm64`.
 
 ### VS Code / Cursor
 
@@ -194,6 +194,8 @@ Contribution guide and architecture:
 | Status bar stuck on `?` | Window may not be a valid IME context, or helper cannot read state; try Refresh IME State         |
 | Helper fails to start   | Install the official package for your arch; do not replace the helper or `.sha256` by hand        |
 | Linux detection issues  | Ensure Fcitx / IBus / XKB (etc.) is available in the session; diagnostics show the active backend |
+
+See [docs/ime-compatibility.md](docs/ime-compatibility.md) (Chinese) for what each IME/platform combination can and cannot detect, and the confidence attached to each signal.
 
 When filing an issue, include IDE version, OS/arch, IME name, diagnostics (paths redacted), and whether it reproduces reliably.
 

@@ -22,6 +22,12 @@ data class ImeSnapshot(
   val timestamp: String = Instant.now().toString(),
   val imeName: String? = null,
   val isOpen: Boolean? = null,
+  /**
+   * Windows only: whether the IME conversion mode has the IME_CMODE_NATIVE
+   * bit set. Sogou/WeChat/QQ toggle this bit (not isOpen) for their internal
+   * Shift Chinese/English switch.
+   */
+  val conversionNative: Boolean? = null,
   val layoutHex: String? = null,
   val threadId: Long? = null,
   val hwnd: String? = null,

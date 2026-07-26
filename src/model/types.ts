@@ -29,6 +29,13 @@ export interface ImeSnapshot {
   timestamp: string;
   source: DetectorSource;
   isOpen?: boolean;
+  /**
+   * Windows only: whether the IME conversion mode has the IME_CMODE_NATIVE
+   * bit set. Sogou/WeChat/QQ toggle this bit (not isOpen) for their internal
+   * Shift Chinese/English switch. Undefined when the platform or IME does
+   * not expose a conversion mode.
+   */
+  conversionNative?: boolean;
   layoutHex?: string;
   threadId?: number;
   hwnd?: string;
