@@ -82,9 +82,9 @@ jobs:
           const repo = process.env.GITHUB_REPOSITORY;
 
           // Known exemptions from the full asset audit, keyed by tag.
-          const exemptions = new Map([
-            ['v0.1.1', 'superseded by 0.1.2, no artifacts']
-          ]);
+          // (The artifact-less v0.1.1 release and its tag were deleted on
+          // 2026-07-26, so no exemption is currently required.)
+          const exemptions = new Map([]);
 
           function expectedAssets(version) {
             const names = [`cursor-ime-hud-${version}.vsix`];

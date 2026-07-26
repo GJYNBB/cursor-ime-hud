@@ -19,6 +19,7 @@
 
 - 尝试修复 IntelliJ 插件的 EDT threading violation（以 `runWriteAction` 包裹写操作）。
 - 注意：该版本的 tag 因版本号未 bump 被发布流水线拦截，对应 GitHub Release 未附带任何构建产物。上述修复实际由 0.1.2 交付。
+- 该无产物的 Release 与 tag 已于 2026-07-26 删除，此条目仅作历史记录保留。
 
 ## [0.1.0] - 2026-07-19
 
@@ -30,6 +31,6 @@
 - Helper 生命周期：30 秒稳定窗口、5 分钟滚动失败预算、指数退避与熔断；熔断后可手动刷新恢复。
 - 隐私优先：不读文件、不读剪贴板、不记录按键、不修改系统输入法状态。
 
-[0.1.2]: https://github.com/GJYNBB/cursor-ime-hud/compare/v0.1.1...v0.1.2
-[0.1.1]: https://github.com/GJYNBB/cursor-ime-hud/compare/v0.1.0...v0.1.1
+[0.1.2]: https://github.com/GJYNBB/cursor-ime-hud/compare/v0.1.0...v0.1.2
+[0.1.1]: https://github.com/GJYNBB/cursor-ime-hud/blob/main/CHANGELOG.md
 [0.1.0]: https://github.com/GJYNBB/cursor-ime-hud/releases/tag/v0.1.0
