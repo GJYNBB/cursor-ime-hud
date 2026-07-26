@@ -1,16 +1,5 @@
 import * as vscode from "vscode";
-
-/**
- * Where a decoration should be attached and which character range it
- * covers. The renderer treats the range as a zero-width caret anchor and
- * paints the HUD attachment after that anchor.
- */
-export interface OverlayPlacement {
-  /** Document range the decoration is anchored to. */
-  range: vscode.Range;
-  /** Side of the range the decoration renders on. */
-  attachment: "before" | "after";
-}
+import { OverlayPlacement } from "../contracts/overlay";
 
 /**
  * Decides where the HUD chip should appear relative to the cursor.

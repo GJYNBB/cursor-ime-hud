@@ -1,23 +1,20 @@
 import * as vscode from "vscode";
 import { CursorImeHudSettings, ImeState } from "../model/types";
-import { OverlayPlacement, PositionStrategy } from "./PositionStrategy";
 import {
   ContentProvider,
   OverlayContent,
-  OverlayRenderInput,
+  OverlayPlacement,
   OverlayRenderer,
-  TextContentProvider
-} from "./contracts";
+  OverlayRenderInput
+} from "../contracts/overlay";
+import { PositionStrategy } from "./PositionStrategy";
+import { TextContentProvider } from "./TextContentProvider";
 
 const DEFAULT_EDITOR_FONT_SIZE_PX = 14;
 const HUD_FONT_SCALE = 0.85;
 const ICON_TILE_SIZE_EM = 1.34;
 const ICON_TILE_HORIZONTAL_PADDING_EM = 0.16;
 const ICON_TILE_RADIUS_EM = 0.26;
-
-// Re-export so existing imports of `OverlayRenderer` from this module
-// continue to work after the interface was lifted to `./contracts`.
-export type { OverlayRenderer } from "./contracts";
 
 /**
  * Default concrete `OverlayRenderer` used by the HUD. Maintains two

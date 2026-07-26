@@ -3,21 +3,20 @@ import { resolveHudDisplayState, UNKNOWN_GRACE_PERIOD_MS } from "./HudState";
 import { EditorHost, VSCodeEditorHost } from "./EditorHost";
 import { ImeDetector } from "../detector/ImeDetector";
 import { CursorImeHudSettings, HudDisplayReason, ImeSnapshot } from "../model/types";
-import { StatusBarPresenterContract } from "../presenters/StatusBarPresenter";
+import { OverlayPlacement, OverlayRenderer } from "../contracts/overlay";
+import { StatusBarPresenterContract } from "../contracts/statusBar";
 import {
   buildSettingsMenuItems,
   buildStatusBarMenuItems,
   SettingsMenuItem,
   StatusBarMenuItem
-} from "../presenters/statusBarMenu";
+} from "./statusBarMenu";
 import { DiagnosticsProvider, SettingsReader } from "./ports";
 import {
   createOverlayRenderState,
   overlayRenderStateEquals,
   OverlayRenderState
-} from "../renderer/OverlayRenderState";
-import { OverlayRenderer } from "../renderer/contracts";
-import { OverlayPlacement } from "../renderer/PositionStrategy";
+} from "./OverlayRenderState";
 
 // ~one 60fps frame; debounce to coalesce burst events (selection changes,
 // visible-range changes) into a single render per frame.
@@ -660,6 +659,8 @@ export class HudController implements vscode.Disposable {
       source: snapshot.source,
       reason: this.summarizeReason(snapshot.reason),
       confidence: snapshot.confidence,
+      isOpen: snapshot.isOpen,
+      conversionNative: snapshot.conversionNative,
       rawStateAvailable: snapshot.rawStateAvailable,
       imeNameAvailable: snapshot.imeName !== undefined,
       layoutHexAvailable: snapshot.layoutHex !== undefined,

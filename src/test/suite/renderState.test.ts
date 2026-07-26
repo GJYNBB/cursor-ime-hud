@@ -4,7 +4,7 @@ import {
   createOverlayRenderState,
   getOverlayPlacementKey,
   overlayRenderStateEquals
-} from "../../renderer/OverlayRenderState";
+} from "../../controller/OverlayRenderState";
 
 suite("OverlayRenderState", () => {
   test("treats identical render states as equal", () => {

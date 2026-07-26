@@ -5,8 +5,7 @@ import { HudController } from "../../controller/HudController";
 import { UNKNOWN_GRACE_PERIOD_MS } from "../../controller/HudState";
 import { ImeDetector } from "../../detector/ImeDetector";
 import { DetectorLogEntry, ImeSnapshot } from "../../model/types";
-import { OverlayRenderer } from "../../renderer/CursorOverlayRenderer";
-import { OverlayPlacement } from "../../renderer/PositionStrategy";
+import { OverlayPlacement, OverlayRenderer } from "../../contracts/overlay";
 
 class TestDetector implements ImeDetector {
   private readonly snapshotEmitter = new vscode.EventEmitter<ImeSnapshot>();

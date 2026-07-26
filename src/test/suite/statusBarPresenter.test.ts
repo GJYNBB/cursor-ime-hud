@@ -1,13 +1,13 @@
 import * as assert from "node:assert";
 import * as vscode from "vscode";
+import { StatusBarRenderInput } from "../../contracts/statusBar";
 import {
   buildStatusBarText,
   buildStatusBarTooltip,
   formatDetectedStateForUi,
-  StatusBarPresenter,
-  StatusBarRenderInput
+  StatusBarPresenter
 } from "../../presenters/StatusBarPresenter";
-import { buildSettingsMenuItems, buildStatusBarMenuItems } from "../../presenters/statusBarMenu";
+import { buildSettingsMenuItems, buildStatusBarMenuItems } from "../../controller/statusBarMenu";
 import { CursorImeHudSettings } from "../../model/types";
 
 class FakeStatusBarItem implements vscode.StatusBarItem {

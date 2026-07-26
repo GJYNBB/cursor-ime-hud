@@ -10,12 +10,29 @@ Cursor IME HUD 当前支持：
 - VS Code `^1.107.0`
 - 通过 VS Code 扩展安装方式尽力兼容 Cursor
 - JetBrains IDE 2026.1+
-- 随包提供以下平台的 Rust native helper：`win-x64`、`win-arm64`、`darwin-x64`、`darwin-arm64`、`linux-x64`、`linux-arm64` 和 `linux-armhf`
+- 随包提供以下平台的 Rust native helper：`win-x64`、`win-arm64`、`darwin-x64`、`darwin-arm64`、`linux-x64` 和 `linux-arm64`
 - 识别中文输入法 / 输入源；后端无法可靠判断时使用 `unknown`
 
-macOS 通过公开的输入源 API 进行检测。Linux 检测依赖桌面环境中可用的 Fcitx / Fcitx5、IBus 或键盘布局回退机制。当前版本不能准确识别日语、韩语及其他非中文输入法。
+macOS 通过公开的输入源 API 进行检测。Linux 检测依赖桌面环境中可用的 Fcitx / Fcitx5、IBus 或键盘布局回退机制。其中 IBus 路径仅报告静态的输入法引擎名称：引擎内部的中 / 英子模式切换对外不可见，HUD 无法跟随该切换更新。当前版本不能准确识别日语、韩语及其他非中文输入法。各平台输入法的详细兼容情况见 [docs/ime-compatibility.md](docs/ime-compatibility.md)。
 
 以上支持范围适用于当前随包提供的 Rust native helper。早期 classic / .NET helper 软件包仅作为历史版本保留，不属于当前支持的实现。
+
+## 平台支持层级
+
+| 层级   | 平台                                                   | 验证方式                        |
+| ------ | ------------------------------------------------------ | ------------------------------- |
+| Tier 1 | `win32-x64`、`darwin-arm64`、`darwin-x64`、`linux-x64` | CI 在原生 runner 上执行完整测试 |
+| Tier 2 | `win32-arm64`、`linux-arm64`                           | CI 在 ARM runner 上执行冒烟验证 |
+| 已移除 | `linux-armhf`                                          | 自 0.1.2 起不再随包提供，见下文 |
+
+`linux-armhf` 自 0.1.2 起移除：该目标无法在 CI 中执行验证（只能交叉编译、不能运行），且用户面极小。需要 32 位 ARM 支持的用户可继续使用 0.1.1 及更早版本。
+
+## JetBrains 插件维护模式
+
+JetBrains 插件目前处于维护模式：
+
+- 继续接受 bug 修复，CI 保持绿色。
+- 新功能暂缓，待 VS Code / Cursor 端验证出用户留存后再评估恢复。
 
 ## 获取帮助
 
@@ -59,8 +76,6 @@ resources/bin/linux-x64/ImeWatcher
 resources/bin/linux-x64/ImeWatcher.sha256
 resources/bin/linux-arm64/ImeWatcher
 resources/bin/linux-arm64/ImeWatcher.sha256
-resources/bin/linux-armhf/ImeWatcher
-resources/bin/linux-armhf/ImeWatcher.sha256
 ```
 
 `npm run build:helper` 只构建当前主机对应的 helper；发布工作流会在各平台的原生 runner 上构建全部受支持的 helper，再汇总为发布产物。

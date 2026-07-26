@@ -54,6 +54,133 @@ module.exports = [
       "no-var": "error"
     }
   },
+  // Layer gates. Encodes the dependency rules from ARCHITECTURE.md as
+  // per-directory `no-restricted-imports` blocks: lower layers must not
+  // import from higher layers, and `contracts/` may not import any
+  // implementation layer. Test code (`src/test/**`) is intentionally
+  // exempt — tests may reach into any layer.
+  {
+    files: ["src/model/**/*.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["../*"],
+              message: "model/ must not import from any other project layer."
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    files: ["src/contracts/**/*.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["../*", "!../model"],
+              message: "contracts/ may only import from model/ — never an implementation layer."
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    files: ["src/detector/**/*.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["../*", "!../model"],
+              message: "detector/ may only import from model/ and the standard library."
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    files: ["src/services/**/*.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            // Two-step carve-out: gitignore-style negation cannot re-include
+            // a file whose parent directory is excluded, so un-exclude the
+            // controller directory first and then restrict its contents.
+            {
+              group: ["../*", "!../model", "!../controller"],
+              message:
+                "services/ may only import from model/ and the port interfaces in controller/ports."
+            },
+            {
+              group: ["../controller/*", "!../controller/ports"],
+              message:
+                "services/ may only import from model/ and the port interfaces in controller/ports."
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    files: ["src/controller/**/*.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["../*", "!../model", "!../detector", "!../services", "!../contracts"],
+              message:
+                "controller/ may only import from model/, detector/, services/, and contracts/."
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    files: ["src/renderer/**/*.ts", "src/presenters/**/*.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["../*", "!../model", "!../contracts"],
+              message: "renderer/ and presenters/ may only import from model/ and contracts/."
+            }
+          ]
+        }
+      ]
+    }
+  },
+  {
+    files: ["src/commands/**/*.ts"],
+    rules: {
+      "no-restricted-imports": [
+        "error",
+        {
+          patterns: [
+            {
+              group: ["../extension"],
+              message: "commands/ must not import extension.ts directly."
+            }
+          ]
+        }
+      ]
+    }
+  },
   {
     // The composition root, scripts, and config files use a different
     // module flavor. Lint them with the same parser but without the

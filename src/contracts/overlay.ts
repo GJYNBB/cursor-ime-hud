@@ -1,6 +1,17 @@
 import * as vscode from "vscode";
 import { CursorImeHudSettings, ImeState } from "../model/types";
-import { OverlayPlacement } from "./PositionStrategy";
+
+/**
+ * Where a decoration should be attached and which character range it
+ * covers. The renderer treats the range as a zero-width caret anchor and
+ * paints the HUD attachment after that anchor.
+ */
+export interface OverlayPlacement {
+  /** Document range the decoration is anchored to. */
+  range: vscode.Range;
+  /** Side of the range the decoration renders on. */
+  attachment: "before" | "after";
+}
 
 /**
  * The payload that a `ContentProvider` produces for a given overlay render.
@@ -45,22 +56,6 @@ export interface ContentProvider {
    * heuristics) can read the attachment side without an extra call.
    */
   resolveContent(input: OverlayRenderInput, label: string): OverlayContent;
-}
-
-/**
- * Default content provider. Mirrors the historical text-only HUD: returns the
- * supplied `label` as `contentText` and does not touch margins or tooltips.
- * New modes should compose with (or replace) this provider rather than
- * editing `CursorOverlayRenderer`.
- */
-export class TextContentProvider implements ContentProvider {
-  public resolveContent(input: OverlayRenderInput, label: string): OverlayContent {
-    if (input.settings.overlayMode === "text+icon" && input.state === "unknown") {
-      return { contentText: "" };
-    }
-
-    return { contentText: label };
-  }
 }
 
 /**

@@ -1,5 +1,5 @@
 import { ImeState } from "../model/types";
-import { OverlayPlacement } from "./PositionStrategy";
+import { OverlayPlacement } from "../contracts/overlay";
 
 /**
  * Compact value-object that describes everything that can change about the
