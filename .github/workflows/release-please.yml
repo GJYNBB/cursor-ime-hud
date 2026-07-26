@@ -14,6 +14,8 @@ concurrency:
 permissions:
   contents: write
   pull-requests: write
+  # Required so the dispatch step below may start the packaging workflows.
+  actions: write
 
 jobs:
   release-please:
@@ -21,7 +23,23 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Run release-please
+        id: release
         uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+
+      # Tags created with the default GITHUB_TOKEN never start `push: tags`
+      # workflows (GitHub suppresses events caused by that token), but
+      # workflow_dispatch events are explicitly exempt from the suppression.
+      # Dispatch both packaging pipelines against the freshly created tag so
+      # every release-please release still produces its full asset set.
+      - name: Trigger packaging pipelines for the new tag
+        if: steps.release.outputs.releases_created == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG_NAME: ${{ steps.release.outputs.tag_name }}
+        run: |
+          set -euo pipefail
+          gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref "$TAG_NAME"
+          gh workflow run jetbrains-package.yml --repo "$GITHUB_REPOSITORY" --ref "$TAG_NAME"

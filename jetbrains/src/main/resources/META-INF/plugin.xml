@@ -30,12 +30,13 @@
   <extensions defaultExtensionNs="com.intellij">
     <postStartupActivity implementation="com.chestnutch.cursorimehud.ui.caret.CaretHudStartupActivity"/>
     <statusBarWidgetFactory id="CursorImeHudStatusBar" implementation="com.chestnutch.cursorimehud.ui.ImeStatusBarWidgetFactory"/>
-    <applicationConfigurable instance="com.chestnutch.cursorimehud.settings.CursorImeHudConfigurable" id="cursorImeHud" displayName="Cursor IME HUD（输入法状态提示）"/>
+    <applicationConfigurable instance="com.chestnutch.cursorimehud.settings.CursorImeHudConfigurable" id="cursorImeHud" key="settings.displayName" bundle="messages.CursorImeHudBundle"/>
   </extensions>
 
-  <actions>
-    <action id="CursorImeHud.RefreshImeState" class="com.chestnutch.cursorimehud.action.RefreshImeStateAction" text="Cursor IME HUD：刷新输入法状态" description="立即刷新当前输入法状态"/>
-    <action id="CursorImeHud.ToggleCaretHud" class="com.chestnutch.cursorimehud.action.ToggleCaretHudAction" text="Cursor IME HUD：开关光标旁提示" description="开启或关闭光标旁输入法状态提示"/>
-    <action id="CursorImeHud.ShowDiagnostics" class="com.chestnutch.cursorimehud.action.ShowDiagnosticsAction" text="Cursor IME HUD：显示诊断信息" description="显示 Cursor IME HUD 诊断信息"/>
+  <!-- Action text/description resolve to action.<id>.text / action.<id>.description in the bundle. -->
+  <actions resource-bundle="messages.CursorImeHudBundle">
+    <action id="CursorImeHud.RefreshImeState" class="com.chestnutch.cursorimehud.action.RefreshImeStateAction"/>
+    <action id="CursorImeHud.ToggleCaretHud" class="com.chestnutch.cursorimehud.action.ToggleCaretHudAction"/>
+    <action id="CursorImeHud.ShowDiagnostics" class="com.chestnutch.cursorimehud.action.ShowDiagnosticsAction"/>
   </actions>
 </idea-plugin>

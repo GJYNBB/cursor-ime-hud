@@ -22,6 +22,8 @@ helper 通过 IMM32 读取前台窗口的两个信号：
 
 非中文布局：open=false 上报 `en`（1.0 / 0.85）；open=true 视为冲突上报 `unknown`（0.25）。
 
+**回退路径的固有歧义：** `ImmGetContext` 拿不到输入上下文时会回退到默认 IME 窗口（`WM_IME_CONTROL`）。该路径只有消息发送本身失败（超时/出错）才会触发 0.6 降级；如果 IME 窗口应答了 `IMC_GETOPENSTATUS` 但没有实现 `IMC_GETCONVERSIONMODE`（`DefWindowProc` 返回 0），返回值与真实的「英文转换模式」（NATIVE 位 =0）无法区分，此时会以 0.85 置信度上报 `en` 而非诚实降级。该 API 层面无法消除此歧义，需靠真机实测覆盖（见下方清单第 5 项）。
+
 **检测不了的：** 不走 IMM32 的输入法（例如仅走 TSF 的第三方输入法）可能读不到 conversion mode，此时按上表降级为 0.6 的 `cn`。
 
 ### macOS
@@ -58,11 +60,14 @@ helper 通过 TIS（Text Input Sources）读取当前输入源标识/名称/语�
 
 以下组合需要在真实设备上逐项验证「HUD 状态与实际输入状态一致」，每项覆盖两种切换方式：
 
-| #   | 输入法     | 平台    | Shift 内部切换 | Ctrl+Space 开关 IME |
-| --- | ---------- | ------- | -------------- | ------------------- |
-| 1   | 微软拼音   | Windows | 待验证         | 待验证              |
-| 2   | 搜狗拼音   | Windows | 待验证         | 待验证              |
-| 3   | 微信输入法 | Windows | 待验证         | 待验证              |
-| 4   | QQ 输入法  | Windows | 待验证         | 待验证              |
+| #   | 输入法               | 平台    | Shift 内部切换 | Ctrl+Space 开关 IME |
+| --- | -------------------- | ------- | -------------- | ------------------- |
+| 1   | 微软拼音             | Windows | 待验证         | 待验证              |
+| 2   | 搜狗拼音             | Windows | 待验证         | 待验证              |
+| 3   | 微信输入法           | Windows | 待验证         | 待验证              |
+| 4   | QQ 输入法            | Windows | 待验证         | 待验证              |
+| 5   | 上述四种（回退路径） | Windows | 待验证         | 待验证              |
+
+第 5 项针对 `ImmGetContext` 为空、走默认 IME 窗口回退的场景（`reason` 前缀为 `default-ime-window-<hwnd>-after-null-context-`）：需确认四大输入法在该路径下 conversion 查询的返回值与实际中英状态一致，尤其注意「未实现 `IMC_GETCONVERSIONMODE` 被当作英文模式」的歧义（见上文）。
 
 验证时请运行「显示诊断信息」并记录 `reason`、`confidence`、`isOpen`、`conversionNative` 四个字段；若发现 conversion mode 读取失败（reason 带 `-conversion-unavailable`），请在 issue 中附上输入法版本。

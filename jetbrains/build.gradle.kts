@@ -8,10 +8,9 @@ plugins {
 }
 
 group = "com.chestnutch"
-// pluginVersion carries an inline " # x-release-please-version" marker for the
-// release-please generic updater; properties files have no inline comments, so
-// strip it here.
-version = providers.gradleProperty("pluginVersion").get().substringBefore('#').trim()
+// pluginVersion sits between x-release-please block markers in
+// gradle.properties, so the property value itself stays a clean version string.
+version = providers.gradleProperty("pluginVersion").get().trim()
 
 kotlin {
   jvmToolchain(21)

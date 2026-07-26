@@ -29,9 +29,9 @@ class ImeHelperAppService : Disposable, ImeHelperProcess.Listener {
   }
 
   private val listeners = CopyOnWriteArrayList<Listener>()
-  private val helperConsumers = mutableSetOf<String>()
   private val logs = ArrayDeque<DetectorLogEntry>()
   private val helper = ImeHelperProcess()
+  private val helperConsumers = HelperConsumerRegistry({ helper.start() }, { helper.stop() })
   private val snapshotState = AtomicReference(SnapshotState.initial())
 
   @Volatile
@@ -52,31 +52,16 @@ class ImeHelperAppService : Disposable, ImeHelperProcess.Listener {
   }
 
   fun acquireConsumer(consumerId: String) {
-    synchronized(helperConsumers) {
-      helperConsumers.add(consumerId)
-    }
-    helper.start()
+    helperConsumers.acquire(consumerId)
   }
 
   fun releaseConsumer(consumerId: String) {
-    val empty = synchronized(helperConsumers) {
-      helperConsumers.remove(consumerId)
-      helperConsumers.isEmpty()
-    }
-    if (empty) {
-      helper.stop()
-    }
+    helperConsumers.release(consumerId)
   }
 
   /** Releases every consumer carrying [consumerSuffix]; called when a project is disposed. */
   fun releaseConsumersMatching(consumerSuffix: String) {
-    val becameEmpty = synchronized(helperConsumers) {
-      val removed = helperConsumers.removeAll { it.endsWith(consumerSuffix) }
-      removed && helperConsumers.isEmpty()
-    }
-    if (becameEmpty) {
-      helper.stop()
-    }
+    helperConsumers.releaseMatching(consumerSuffix)
   }
 
   fun addListener(listener: Listener) {
@@ -121,9 +106,7 @@ class ImeHelperAppService : Disposable, ImeHelperProcess.Listener {
     helper.removeListener(this)
     helper.dispose()
     listeners.clear()
-    synchronized(helperConsumers) {
-      helperConsumers.clear()
-    }
+    helperConsumers.clear()
   }
 
   private fun fireChanged() {

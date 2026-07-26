@@ -7,6 +7,7 @@ import com.chestnutch.cursorimehud.model.ImeState
 import com.google.gson.JsonObject
 import com.google.gson.JsonParser
 import java.time.Instant
+import kotlin.math.floor
 
 const val PROTOCOL_VERSION: Int = 1
 const val MAX_LINE_BYTES: Int = 64 * 1024
@@ -93,5 +94,13 @@ private fun JsonObject.numberOrNull(name: String): Number? {
 private fun JsonObject.intOrNull(name: String): Int? {
   val value = get(name) ?: return null
   if (!value.isJsonPrimitive || !value.asJsonPrimitive.isNumber) return null
-  return value.asJsonPrimitive.asString.toIntOrNull()
+  val lexeme = value.asJsonPrimitive.asString
+  lexeme.toIntOrNull()?.let { return it }
+  // The TypeScript client cannot distinguish 1.0 from 1 after JSON.parse, so
+  // integral-valued decimals in Int range are accepted here as well; true
+  // fractions (1.5) and out-of-range values stay rejected on both clients.
+  val parsed = lexeme.toDoubleOrNull() ?: return null
+  if (parsed != floor(parsed)) return null
+  if (parsed < Int.MIN_VALUE.toDouble() || parsed > Int.MAX_VALUE.toDouble()) return null
+  return parsed.toInt()
 }

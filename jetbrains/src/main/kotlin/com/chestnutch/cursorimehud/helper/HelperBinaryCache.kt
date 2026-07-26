@@ -1,5 +1,6 @@
 package com.chestnutch.cursorimehud.helper
 
+import com.intellij.openapi.diagnostic.Logger
 import java.io.File
 import java.io.IOException
 import java.io.InputStream
@@ -17,6 +18,7 @@ import java.security.MessageDigest
  */
 object HelperBinaryCache {
   private const val HASH_DIRECTORY_NAME_LENGTH = 12
+  private val log = Logger.getInstance(HelperBinaryCache::class.java)
 
   fun materialize(cacheRoot: Path, fileName: String, expectedSha256: String, openSource: () -> InputStream): File {
     val versionDir = cacheRoot.resolve(expectedSha256.lowercase().take(HASH_DIRECTORY_NAME_LENGTH))
@@ -72,7 +74,16 @@ object HelperBinaryCache {
     }
   }
 
-  /** Best-effort removal of cache directories left behind by other helper versions. */
+  /**
+   * Best-effort removal of cache directories left behind by other helper versions.
+   *
+   * During a dynamic plugin update the previous helper process may still be
+   * running from its old hash directory while the new version materializes.
+   * That is safe by construction: on Windows the locked executable makes the
+   * recursive delete fail, so the directory is skipped here and retried on a
+   * later materialize; on POSIX the unlinked inode keeps the running process
+   * alive until it exits. Failures are therefore only logged at debug level.
+   */
   private fun cleanupStaleVersionDirectories(cacheRoot: Path, currentVersionDir: Path) {
     val children = try {
       Files.newDirectoryStream(cacheRoot).use { it.toList() }
@@ -81,6 +92,10 @@ object HelperBinaryCache {
     }
     children
       .filter { Files.isDirectory(it) && it.fileName != currentVersionDir.fileName }
-      .forEach { it.toFile().deleteRecursively() }
+      .forEach { stale ->
+        if (!stale.toFile().deleteRecursively()) {
+          log.debug("Stale helper cache directory not fully removed (likely still in use): $stale")
+        }
+      }
   }
 }

@@ -177,8 +177,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Runs on every ref so a format drift in gradle.properties or plugin.xml
+      # (e.g. a release-please marker leaking into the version value) turns PR
+      # CI red instead of failing for the first time on a release tag. The tag
+      # equality assertion only applies to tag builds.
       - name: Verify release versions
-        if: startsWith(github.ref, 'refs/tags/')
         shell: bash
         run: |
           node <<'NODE'
@@ -190,9 +193,10 @@ jobs:
           const pluginVersion = gradle.match(/^pluginVersion=(.+)$/m)?.[1]?.trim();
           const xmlVersion = pluginXml.match(/<version>([^<]+)<\/version>/)?.[1]?.trim();
           const expectedTag = `v${pkg.version}`;
-          if (process.env.GITHUB_REF_NAME !== expectedTag) throw new Error(`Tag '${process.env.GITHUB_REF_NAME}' does not match '${expectedTag}'.`);
+          const isTagBuild = (process.env.GITHUB_REF ?? '').startsWith('refs/tags/');
+          if (isTagBuild && process.env.GITHUB_REF_NAME !== expectedTag) throw new Error(`Tag '${process.env.GITHUB_REF_NAME}' does not match '${expectedTag}'.`);
           if (lock.version !== pkg.version || lock.packages?.['']?.version !== pkg.version) throw new Error('package-lock.json does not match package.json.');
-          if (pluginVersion !== pkg.version || xmlVersion !== pkg.version) throw new Error('JetBrains plugin versions do not match package.json.');
+          if (pluginVersion !== pkg.version || xmlVersion !== pkg.version) throw new Error(`JetBrains plugin versions do not match package.json ('${pluginVersion}' / '${xmlVersion}' vs '${pkg.version}').`);
           NODE
 
       - name: Verify assembled helper resources

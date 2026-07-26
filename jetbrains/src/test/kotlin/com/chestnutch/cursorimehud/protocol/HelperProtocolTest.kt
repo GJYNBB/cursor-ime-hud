@@ -103,6 +103,16 @@ class HelperProtocolTest {
   }
 
   @Test
+  fun acceptsIntegralDecimalHelloVersion() {
+    // JSON.parse collapses 1.0 to 1 on the TypeScript side; the Kotlin parser
+    // accepts the same wire bytes so the clients stay in lockstep.
+    val hello = HelperProtocol.parseHelloLine("""{"type":"hello","version":1.0,"capabilities":[]}""")
+
+    assertNotNull(hello)
+    assertEquals(1, hello.version)
+  }
+
+  @Test
   fun rejectsInvalidHelloMessages() {
     assertNull(HelperProtocol.parseHelloLine("""{"type":"state","version":1}"""))
     assertNull(HelperProtocol.parseHelloLine("""{"type":"hello","version":1.5}"""))

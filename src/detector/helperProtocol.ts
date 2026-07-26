@@ -20,7 +20,10 @@ export function parseHelloLine(line: string): HelloMessage | undefined {
 
   // Kotlin's wire model stores the version as a signed 32-bit Int. Keep the
   // TypeScript parser on the same range so the two clients reject the same
-  // oversized numeric handshake instead of silently diverging.
+  // oversized numeric handshake instead of silently diverging. The shared
+  // contract accepts integral-valued decimals (1.0 === 1 after JSON.parse
+  // here, and Kotlin matches that) while true fractions like 1.5 fail
+  // Number.isSafeInteger on this side and the integral check on Kotlin's.
   if (
     typeof parsed.version !== "number" ||
     !Number.isSafeInteger(parsed.version) ||

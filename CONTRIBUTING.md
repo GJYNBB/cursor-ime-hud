@@ -49,9 +49,11 @@ JetBrains 插件：
 ## 发布流程
 
 - **版本号的唯一来源是 release-please 自动创建的 Release PR。** 合并该 PR 会同步更新 `package.json`、`package-lock.json`、`jetbrains/gradle.properties`、`jetbrains/src/main/resources/META-INF/plugin.xml` 四处版本号，并生成对应的 `CHANGELOG.md` 条目。不要在普通 PR 中手工修改版本号或 CHANGELOG 的发布段落。
+- **发布流水线由 release-please 显式派发。** 默认 `GITHUB_TOKEN` 创建的 tag 不会触发 `push: tags` 工作流（GitHub 会抑制该 token 产生的事件），但 `workflow_dispatch` 不受此限制。因此 `release-please.yml` 在创建 tag 和 GitHub Release 后，会以该 tag 为 ref 通过 `gh workflow run` 分别派发 `release.yml`（VSIX 链）与 `jetbrains-package.yml`（JetBrains 链），两条流水线随后把各自产物附加到同一个 Release 上。
+- **0.1.2 一次性引导：** release-please 的 manifest 已登记 0.1.2 为「已发布」，不会再为它创建 Release PR 或 tag。因此本版本合入 `main` 后，需要维护者用个人凭据手工推送一次 `v0.1.2` tag（个人凭据的 push 事件会正常触发两条发布流水线）。自 0.1.3 起全部由 release-please 接管，无需再手工打 tag。
 - **tag 一经发布不可移动或删除。** 如果某个版本有问题，发布新版本修复，而不是改写已有 tag。
 - **禁止手工创建 GitHub Release。** 发布产物必须来自 tag 触发的发布流水线；手工上传的产物无法与 CI 构建对应，也无法通过校验。
-- 发布完成后，Release 资产的完整性由自动稽核 workflow 检查，缺失或异常会在仓库中告警。
+- 发布完成后，Release 资产的完整性由自动稽核 workflow 检查：两条打包流水线针对 tag 的运行结束后会触发一次稽核，另有每周定时兜底，缺失或异常会在仓库中告警。
 
 ## 代码风格
 

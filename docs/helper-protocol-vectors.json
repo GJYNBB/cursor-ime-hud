@@ -25,6 +25,19 @@
       "expected": null
     },
     {
+      "id": "hello-valid-integral-decimal-version",
+      "kind": "hello",
+      "record": {
+        "type": "hello",
+        "version": 1.0,
+        "capabilities": ["state"]
+      },
+      "expected": {
+        "version": 1,
+        "capabilities": ["state"]
+      }
+    },
+    {
       "id": "hello-invalid-fractional-version",
       "kind": "hello",
       "record": {

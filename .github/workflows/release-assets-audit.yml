@@ -3,9 +3,18 @@ name: Release Assets Audit
 # Verifies that every published v* GitHub Release carries the complete asset
 # set: the universal VSIX, one VSIX per helper target from the manifest, the
 # JetBrains ZIP, and both CycloneDX SBOM files. Any missing asset fails the run.
+#
+# Trigger design: a `release: published` trigger would never fire here, because
+# both packaging pipelines create the release with the default GITHUB_TOKEN and
+# GitHub suppresses workflow runs for events caused by that token — and even if
+# it fired, it would race the asset uploads that happen after `gh release
+# create`. The audit therefore runs after each packaging pipeline completes for
+# a tag (workflow_run), waits until neither pipeline is still active, and keeps
+# a weekly cron as a backstop for assets removed after publication.
 on:
-  release:
-    types: [published]
+  workflow_run:
+    workflows: ["Release", "JetBrains Plugin Package"]
+    types: [completed]
   schedule:
     # Weekly sweep so assets removed after publication are still caught.
     - cron: "0 3 * * 1"
@@ -13,17 +22,52 @@ on:
 
 permissions:
   contents: read
+  # Needed to poll the packaging workflows for in-progress runs.
+  actions: read
 
 jobs:
   audit:
     name: Audit release assets
+    # workflow_run also fires for branch/PR builds of the packaging pipelines;
+    # only tag builds (head_branch is the v* tag) publish assets worth auditing.
+    if: github.event_name != 'workflow_run' || startsWith(github.event.workflow_run.head_branch, 'v')
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
         with:
           persist-credentials: false
+
+      # The VSIX and JetBrains pipelines attach their assets independently, so
+      # auditing right after the first one finishes would report the other
+      # pipeline's assets as missing. Wait until both are quiet.
+      - name: Wait for packaging pipelines to finish
+        if: github.event_name == 'workflow_run'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          deadline=$(( $(date +%s) + 1800 ))
+          while :; do
+            active=0
+            for workflow in release.yml jetbrains-package.yml; do
+              for status in in_progress queued; do
+                count=$(gh api "repos/${GITHUB_REPOSITORY}/actions/workflows/${workflow}/runs?status=${status}&per_page=1" --jq '.total_count')
+                active=$(( active + count ))
+              done
+            done
+            if [ "$active" -eq 0 ]; then
+              echo "No packaging pipeline runs active; auditing now."
+              break
+            fi
+            if [ "$(date +%s)" -ge "$deadline" ]; then
+              echo "Timed out waiting for packaging pipelines to finish." >&2
+              exit 1
+            fi
+            echo "Waiting for $active active packaging pipeline run(s)..."
+            sleep 30
+          done
 
       - name: Audit release assets
         shell: bash
