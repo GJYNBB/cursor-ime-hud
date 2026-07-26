@@ -8,7 +8,10 @@ plugins {
 }
 
 group = "com.chestnutch"
-version = providers.gradleProperty("pluginVersion").get()
+// pluginVersion carries an inline " # x-release-please-version" marker for the
+// release-please generic updater; properties files have no inline comments, so
+// strip it here.
+version = providers.gradleProperty("pluginVersion").get().substringBefore('#').trim()
 
 kotlin {
   jvmToolchain(21)
@@ -87,7 +90,6 @@ val normalizedArch = System.getProperty("os.arch", "").lowercase().let { arch ->
   when (arch) {
     "x86_64", "amd64" -> "x64"
     "aarch64", "arm64" -> "arm64"
-    "arm", "armv7", "armv7l", "armhf" -> "armhf"
     else -> arch
   }
 }
@@ -96,7 +98,6 @@ val hostPlatformKey = when {
   currentOs.isWindows -> "win-x64"
   currentOs.isMacOsX && normalizedArch in setOf("x64", "arm64") -> "darwin-$normalizedArch"
   currentOs.isLinux && normalizedArch in setOf("x64", "arm64") -> "linux-$normalizedArch"
-  currentOs.isLinux && normalizedArch == "armhf" -> "linux-armhf"
   else -> null
 }
 val verifyAllNativeHelpers = providers.gradleProperty("verifyAllNativeHelpers")

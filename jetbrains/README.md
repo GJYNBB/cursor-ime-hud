@@ -6,7 +6,7 @@ Cursor IME HUD（输入法状态提示）的跨平台 JetBrains IDE 插件。
 
 ## 功能范围
 
-- 本机助手支持 Windows x64/ARM64、macOS x64/ARM64，以及 Linux x64/ARM64/ARMHF。
+- 本机助手支持 Windows x64/ARM64、macOS x64/ARM64，以及 Linux x64/ARM64。
 - 复用 `../docs/helper-protocol.md` 中定义的 Rust JSONL 助手协议。
 - 状态栏提示：`输入法：中`、`输入法：英`、`输入法：ZH`、`输入法：EN` 或 `输入法：?`；点击打开菜单（开启/关闭光标旁图标 / 刷新 / 诊断 / 设置）。
 - 光标旁提示：在当前编辑器光标附近显示紧凑的状态图标，可选择 `中` / `英` 或 `ZH` / `EN` 标签方案。

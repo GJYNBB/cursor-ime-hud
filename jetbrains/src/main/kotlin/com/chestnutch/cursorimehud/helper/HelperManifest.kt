@@ -1,5 +1,6 @@
 package com.chestnutch.cursorimehud.helper
 
+import com.chestnutch.cursorimehud.settings.CursorImeHudBundle
 import com.intellij.openapi.util.SystemInfo
 import java.nio.charset.StandardCharsets
 
@@ -29,10 +30,8 @@ object HelperManifest {
 
   fun descriptorForCurrentHost(): HelperResourceDescriptor? = descriptorForHost(currentPlatform(), normalizedArch())
 
-  fun descriptorForHost(platform: String, arch: String): HelperResourceDescriptor? {
-    val normalizedArch = if (platform == "linux" && arch == "arm") "armhf" else arch
-    return entries.firstOrNull { it.platform == platform && it.arch == normalizedArch }?.toDescriptor()
-  }
+  fun descriptorForHost(platform: String, arch: String): HelperResourceDescriptor? =
+    entries.firstOrNull { it.platform == platform && it.arch == arch }?.toDescriptor()
 
   private fun HelperManifestEntry.toDescriptor(): HelperResourceDescriptor = HelperResourceDescriptor(
     resourcePath = resourcePath.removePrefix("resources/"),
@@ -54,21 +53,20 @@ object HelperManifest {
     return when {
       arch == "x86_64" || arch == "amd64" -> "x64"
       arch == "aarch64" || arch == "arm64" -> "arm64"
-      arch == "arm" || arch == "armv7" || arch == "armv7l" || arch == "armhf" -> "armhf"
       else -> arch
     }
   }
 
   private fun readManifestText(): String {
     val stream = HelperManifest::class.java.classLoader.getResourceAsStream("helper-manifest.json")
-      ?: throw IllegalStateException("缺少输入法助手清单资源：helper-manifest.json")
+      ?: throw IllegalStateException(CursorImeHudBundle.message("helper.error.missingManifest"))
     return stream.use { String(it.readBytes(), StandardCharsets.UTF_8) }
   }
 
   private fun parseManifest(text: String): List<HelperManifestEntry> {
     val version = text.requiredInt("version")
     if (version != SUPPORTED_MANIFEST_VERSION) {
-      throw IllegalStateException("不支持的 helper-manifest.json 版本：'$version'")
+      throw IllegalStateException(CursorImeHudBundle.message("helper.error.unsupportedManifestVersion", version.toString()))
     }
 
     return helperObjects(text)
@@ -124,12 +122,12 @@ object HelperManifest {
   private fun String.requiredInt(key: String): Int {
     val pattern = Regex("\"${Regex.escape(key)}\"\\s*:\\s*(\\d+)(?=\\s*[,}])")
     return pattern.find(this)?.groupValues?.get(1)?.toIntOrNull()
-      ?: throw IllegalStateException("helper-manifest.json 缺少整数项 '$key'")
+      ?: throw IllegalStateException(CursorImeHudBundle.message("helper.error.manifestMissingInt", key))
   }
 
   private fun String.requiredString(key: String): String {
     val pattern = Regex("\"${Regex.escape(key)}\"\\s*:\\s*\"([^\"]+)\"")
     return pattern.find(this)?.groupValues?.get(1)
-      ?: throw IllegalStateException("helper-manifest.json 缺少字段 '$key'")
+      ?: throw IllegalStateException(CursorImeHudBundle.message("helper.error.manifestMissingField", key))
   }
 }

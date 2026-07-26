@@ -1,11 +1,11 @@
 package com.chestnutch.cursorimehud.settings
 
 import com.chestnutch.cursorimehud.model.CursorImeHudLabelPreset
-import com.chestnutch.cursorimehud.ui.ImeStatusBarWidgetFactory
+import com.chestnutch.cursorimehud.ui.ImeStatusBarWidget
 import com.intellij.openapi.components.service
 import com.intellij.openapi.options.SearchableConfigurable
 import com.intellij.openapi.project.ProjectManager
-import com.intellij.openapi.wm.impl.status.widget.StatusBarWidgetsManager
+import com.intellij.openapi.wm.WindowManager
 import com.intellij.ui.components.JBCheckBox
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.components.JBTextField
@@ -128,8 +128,10 @@ class CursorImeHudConfigurable : SearchableConfigurable {
   private fun normalizedColor(value: String, fallback: String): String = CursorImeHudColors.normalizeHex(value, fallback)
 
   private fun refreshStatusBarWidgetAvailability() {
+    // Public API only: the widget listens for settings changes and hides its
+    // component itself; this just repaints installed widgets right away.
     ProjectManager.getInstance().openProjects.forEach { project ->
-      project.service<StatusBarWidgetsManager>().updateWidget(ImeStatusBarWidgetFactory::class.java)
+      WindowManager.getInstance().getStatusBar(project)?.updateWidget(ImeStatusBarWidget.WIDGET_ID)
     }
   }
 

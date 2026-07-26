@@ -30,13 +30,8 @@ class HelperManifestTest {
   }
 
   @Test
-  fun resolvesLinuxArmToArmhfDescriptorFromManifest() {
-    val descriptor = HelperManifest.descriptorForHost("linux", "arm")
-
-    assertNotNull(descriptor)
-    assertEquals("bin/linux-armhf/ImeWatcher", descriptor.resourcePath)
-    assertEquals("bin/linux-armhf/ImeWatcher.sha256", descriptor.hashPath)
-    assertEquals("linux-armhf", descriptor.platformKey)
+  fun returnsNullForLinuxArmSinceArmhfHelperWasDropped() {
+    assertNull(HelperManifest.descriptorForHost("linux", "arm"))
   }
 
   @Test

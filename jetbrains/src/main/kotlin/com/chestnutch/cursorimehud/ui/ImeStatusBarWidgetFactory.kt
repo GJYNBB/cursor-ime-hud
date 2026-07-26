@@ -1,19 +1,20 @@
 package com.chestnutch.cursorimehud.ui
 
 import com.chestnutch.cursorimehud.settings.CursorImeHudBundle
-import com.chestnutch.cursorimehud.settings.CursorImeHudSettings
-import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.wm.StatusBar
 import com.intellij.openapi.wm.StatusBarWidget
 import com.intellij.openapi.wm.StatusBarWidgetFactory
 
 class ImeStatusBarWidgetFactory : StatusBarWidgetFactory {
-  override fun getId(): String = "CursorImeHudStatusBar"
+  override fun getId(): String = ImeStatusBarWidget.WIDGET_ID
 
   override fun getDisplayName(): String = CursorImeHudBundle.message("statusBar.displayName")
 
-  override fun isAvailable(project: Project): Boolean = service<CursorImeHudSettings>().state.statusBarEnabled
+  // Always available: the widget itself hides its component and releases its
+  // helper consumer while the status-bar setting is off, so toggling the
+  // setting works live without the internal StatusBarWidgetsManager API.
+  override fun isAvailable(project: Project): Boolean = true
 
   override fun createWidget(project: Project): StatusBarWidget = ImeStatusBarWidget(project)
 

@@ -2,23 +2,24 @@ package com.chestnutch.cursorimehud.ui
 
 import com.chestnutch.cursorimehud.model.HelperLifecycleState
 import com.chestnutch.cursorimehud.model.ImeState
+import com.chestnutch.cursorimehud.settings.CursorImeHudBundle
 
-/** Short Chinese status-bar tooltip helpers (kept pure for unit tests). */
+/** Short status-bar text helpers; all user-visible strings come from the bundle. */
 object ImeStatusBarText {
   fun stateLabel(state: ImeState): String = when (state) {
-    ImeState.CN -> "中文"
-    ImeState.EN -> "英文"
-    ImeState.UNKNOWN -> "未知"
+    ImeState.CN -> CursorImeHudBundle.message("state.cn")
+    ImeState.EN -> CursorImeHudBundle.message("state.en")
+    ImeState.UNKNOWN -> CursorImeHudBundle.message("state.unknown")
   }
 
   fun lifecycleLabel(state: HelperLifecycleState): String = when (state) {
-    HelperLifecycleState.IDLE -> "空闲"
-    HelperLifecycleState.STARTING -> "启动中"
-    HelperLifecycleState.RUNNING -> "运行中"
-    HelperLifecycleState.STOPPING -> "停止中"
-    HelperLifecycleState.DISPOSED -> "已释放"
-    HelperLifecycleState.UNAVAILABLE -> "不可用"
-    HelperLifecycleState.FAILED -> "失败"
+    HelperLifecycleState.IDLE -> CursorImeHudBundle.message("lifecycle.idle")
+    HelperLifecycleState.STARTING -> CursorImeHudBundle.message("lifecycle.starting")
+    HelperLifecycleState.RUNNING -> CursorImeHudBundle.message("lifecycle.running")
+    HelperLifecycleState.STOPPING -> CursorImeHudBundle.message("lifecycle.stopping")
+    HelperLifecycleState.DISPOSED -> CursorImeHudBundle.message("lifecycle.disposed")
+    HelperLifecycleState.UNAVAILABLE -> CursorImeHudBundle.message("lifecycle.unavailable")
+    HelperLifecycleState.FAILED -> CursorImeHudBundle.message("lifecycle.failed")
   }
 
   /**
@@ -32,7 +33,7 @@ object ImeStatusBarText {
     lastError: String?
   ): String {
     val primary = buildString {
-      append("输入法：").append(stateLabel(state))
+      append(CursorImeHudBundle.message("statusBar.prefix")).append(stateLabel(state))
       val name = imeName?.trim().orEmpty()
       if (name.isNotEmpty()) {
         append(" · ").append(name)
@@ -40,9 +41,9 @@ object ImeStatusBarText {
     }
 
     return when {
-      circuitOpen -> "$primary\n熔断已开启，点击可刷新或打开菜单"
-      !lastError.isNullOrBlank() -> "$primary\n点击查看菜单与设置"
-      else -> "$primary\n点击打开菜单"
+      circuitOpen -> "$primary\n" + CursorImeHudBundle.message("tooltip.circuitOpenHint")
+      !lastError.isNullOrBlank() -> "$primary\n" + CursorImeHudBundle.message("tooltip.errorHint")
+      else -> "$primary\n" + CursorImeHudBundle.message("tooltip.clickHint")
     }
   }
 }

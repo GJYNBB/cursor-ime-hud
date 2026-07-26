@@ -1,7 +1,7 @@
 <idea-plugin>
   <id>com.chestnutch.cursor-ime-hud</id>
   <name>Cursor IME HUD</name>
-  <version>0.1.0</version>
+  <version>0.1.2</version> <!-- x-release-please-version -->
   <vendor email="support@chestnut-ch.dev" url="https://github.com/GJYNBB/cursor-ime-hud">chestnut-ch</vendor>
   <description><![CDATA[Cursor IME HUD shows the current Chinese/English input state in JetBrains IDEs.
     <p>It displays the state in the status bar and beside the editor caret, uses platform-native Rust helpers on Windows, macOS, and Linux, and never reads typed text, clipboard data, or file contents.</p>
@@ -12,6 +12,9 @@
   ]]></description>
   <change-notes><![CDATA[
     <ul>
+      <li>0.1.2：Helper 进程与快照状态改为应用级共享，多项目只启动一个助手进程；快照状态迁移改为无锁原子更新。</li>
+      <li>0.1.2：助手可执行文件改为按哈希缓存复用，不再每次启动重新解压临时副本。</li>
+      <li>0.1.2：启动活动与设置页迁移到官方公开 API（ProjectActivity / 状态栏公开刷新），界面文案统一走资源包。</li>
       <li>首公开版本：在状态栏与光标旁显示中文/英文输入法状态，覆盖 Windows / macOS / Linux。</li>
       <li>修复 Helper 在 STOPPING / STARTING 交叉时的卡死与孤儿进程问题。</li>
       <li>修复意图预览期间更新 HUD 触发的副作用异常，以及折叠展开后光标旁位置不同步。</li>

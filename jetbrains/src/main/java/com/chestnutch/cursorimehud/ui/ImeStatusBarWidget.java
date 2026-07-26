@@ -3,6 +3,7 @@ package com.chestnutch.cursorimehud.ui;
 import com.chestnutch.cursorimehud.action.ShowDiagnosticsAction;
 import com.chestnutch.cursorimehud.action.ToggleCaretHudAction;
 import com.chestnutch.cursorimehud.service.ImeHudService;
+import com.chestnutch.cursorimehud.settings.CursorImeHudBundle;
 import com.chestnutch.cursorimehud.settings.CursorImeHudConfigurable;
 import com.chestnutch.cursorimehud.settings.CursorImeHudSettings;
 import com.chestnutch.cursorimehud.settings.CursorImeHudSettingsListener;
@@ -11,12 +12,12 @@ import com.intellij.openapi.actionSystem.ActionUpdateThread;
 import com.intellij.openapi.actionSystem.AnAction;
 import com.intellij.openapi.actionSystem.AnActionEvent;
 import com.intellij.openapi.actionSystem.CommonDataKeys;
+import com.intellij.openapi.actionSystem.CustomizedDataContext;
 import com.intellij.openapi.actionSystem.DataContext;
 import com.intellij.openapi.actionSystem.DefaultActionGroup;
 import com.intellij.openapi.actionSystem.Presentation;
 import com.intellij.openapi.actionSystem.Separator;
 import com.intellij.openapi.actionSystem.Toggleable;
-import com.intellij.openapi.actionSystem.impl.SimpleDataContext;
 import com.intellij.openapi.application.ApplicationManager;
 import com.intellij.openapi.options.ShowSettingsUtil;
 import com.intellij.openapi.project.DumbAwareAction;
@@ -36,6 +37,9 @@ import javax.swing.JComponent;
 import org.jetbrains.annotations.NotNull;
 
 public final class ImeStatusBarWidget implements CustomStatusBarWidget, ImeHudService.Listener {
+  /** Shared widget id: factory registration, ID(), and settings-driven repaints all use it. */
+  public static final String WIDGET_ID = "CursorImeHudStatusBar";
+
   private static final String SERVICE_CONSUMER_ID = "status-bar";
 
   private final Project project;
@@ -43,6 +47,7 @@ public final class ImeStatusBarWidget implements CustomStatusBarWidget, ImeHudSe
   private final JBLabel component;
   private StatusBar statusBar;
   private MessageBusConnection settingsConnection;
+  private boolean consumerAcquired;
 
   public ImeStatusBarWidget(@NotNull Project project) {
     this.project = project;
@@ -61,23 +66,24 @@ public final class ImeStatusBarWidget implements CustomStatusBarWidget, ImeHudSe
 
   @Override
   public @NotNull String ID() {
-    return "CursorImeHudStatusBar";
+    return WIDGET_ID;
   }
 
   @Override
   public void install(@NotNull StatusBar statusBar) {
     this.statusBar = statusBar;
-    updateComponent();
     service.addListener(this);
     settingsConnection = ApplicationManager.getApplication().getMessageBus().connect();
     settingsConnection.subscribe(CursorImeHudSettingsListener.Companion.getTOPIC(), new CursorImeHudSettingsListener() {
       @Override
       public void settingsChanged() {
+        applyEnabledState();
         updateComponent();
         statusBar.updateWidget(ID());
       }
     });
-    service.acquireConsumer(SERVICE_CONSUMER_ID);
+    applyEnabledState();
+    updateComponent();
   }
 
   @Override
@@ -87,7 +93,7 @@ public final class ImeStatusBarWidget implements CustomStatusBarWidget, ImeHudSe
       settingsConnection = null;
     }
     service.removeListener(this);
-    service.releaseConsumer(SERVICE_CONSUMER_ID);
+    releaseServiceConsumer();
     statusBar = null;
   }
 
@@ -102,6 +108,40 @@ public final class ImeStatusBarWidget implements CustomStatusBarWidget, ImeHudSe
     if (statusBar != null) {
       statusBar.updateWidget(ID());
     }
+  }
+
+  /**
+   * The widget is always installed (the factory reports it available) and hides
+   * its component when the status-bar setting is off, so toggling the setting
+   * takes effect immediately without the internal StatusBarWidgetsManager API.
+   */
+  private void applyEnabledState() {
+    boolean enabled = ApplicationManager.getApplication()
+      .getService(CursorImeHudSettings.class)
+      .getState()
+      .getStatusBarEnabled();
+    component.setVisible(enabled);
+    if (enabled) {
+      acquireServiceConsumer();
+    } else {
+      releaseServiceConsumer();
+    }
+  }
+
+  private void acquireServiceConsumer() {
+    if (consumerAcquired) {
+      return;
+    }
+    consumerAcquired = true;
+    service.acquireConsumer(SERVICE_CONSUMER_ID);
+  }
+
+  private void releaseServiceConsumer() {
+    if (!consumerAcquired) {
+      return;
+    }
+    consumerAcquired = false;
+    service.releaseConsumer(SERVICE_CONSUMER_ID);
   }
 
   private void updateComponent() {
@@ -119,19 +159,19 @@ public final class ImeStatusBarWidget implements CustomStatusBarWidget, ImeHudSe
     group.add(Separator.getInstance());
     group.add(new ToggleCaretHudMenuAction());
     group.add(Separator.getInstance());
-    group.add(new DumbAwareAction("刷新输入法状态") {
+    group.add(new DumbAwareAction(CursorImeHudBundle.INSTANCE.message("statusBar.action.refresh")) {
       @Override
       public void actionPerformed(@NotNull AnActionEvent e) {
         service.refresh();
       }
     });
-    group.add(new DumbAwareAction("显示诊断信息") {
+    group.add(new DumbAwareAction(CursorImeHudBundle.INSTANCE.message("statusBar.action.diagnostics")) {
       @Override
       public void actionPerformed(@NotNull AnActionEvent e) {
         new ShowDiagnosticsAction().actionPerformed(e);
       }
     });
-    group.add(new DumbAwareAction("打开插件设置…") {
+    group.add(new DumbAwareAction(CursorImeHudBundle.INSTANCE.message("statusBar.action.openSettings")) {
       @Override
       public void actionPerformed(@NotNull AnActionEvent e) {
         ShowSettingsUtil.getInstance().showSettingsDialog(project, CursorImeHudConfigurable.class);
@@ -139,13 +179,13 @@ public final class ImeStatusBarWidget implements CustomStatusBarWidget, ImeHudSe
     });
 
     DataContext parent = DataManager.getInstance().getDataContext(component);
-    DataContext dataContext = SimpleDataContext.builder()
-      .setParent(parent)
-      .add(CommonDataKeys.PROJECT, project)
-      .build();
+    DataContext dataContext = CustomizedDataContext.withSnapshot(
+      parent,
+      sink -> sink.set(CommonDataKeys.PROJECT, project)
+    );
 
     ListPopup popup = JBPopupFactory.getInstance().createActionGroupPopup(
-      "输入法状态",
+      CursorImeHudBundle.INSTANCE.message("statusBar.popupTitle"),
       group,
       dataContext,
       JBPopupFactory.ActionSelectionAid.SPEEDSEARCH,
@@ -185,7 +225,7 @@ public final class ImeStatusBarWidget implements CustomStatusBarWidget, ImeHudSe
     private final ToggleCaretHudAction delegate = new ToggleCaretHudAction();
 
     private ToggleCaretHudMenuAction() {
-      super("点击开关光标旁图标");
+      super(CursorImeHudBundle.INSTANCE.message("statusBar.action.toggleCaretHud"));
     }
 
     @Override
@@ -196,8 +236,10 @@ public final class ImeStatusBarWidget implements CustomStatusBarWidget, ImeHudSe
         .getService(CursorImeHudSettings.class)
         .getState()
         .getCaretHudEnabled();
-      presentation.setText(enabled ? "关闭光标旁图标" : "开启光标旁图标");
-      presentation.setDescription("立即开关编辑器光标旁的输入法图标");
+      presentation.setText(CursorImeHudBundle.INSTANCE.message(
+        enabled ? "statusBar.action.toggleCaretHudOff" : "statusBar.action.toggleCaretHudOn"
+      ));
+      presentation.setDescription(CursorImeHudBundle.INSTANCE.message("statusBar.action.toggleCaretHudDescription"));
       Toggleable.setSelected(presentation, enabled);
     }
 

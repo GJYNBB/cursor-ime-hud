@@ -9,7 +9,9 @@ import com.chestnutch.cursorimehud.protocol.HelperProtocol
 import com.chestnutch.cursorimehud.protocol.MAX_BUFFER_BYTES
 import com.chestnutch.cursorimehud.protocol.MAX_LINE_BYTES
 import com.chestnutch.cursorimehud.protocol.PROTOCOL_VERSION
+import com.chestnutch.cursorimehud.settings.CursorImeHudBundle
 import com.intellij.openapi.application.ApplicationManager
+import com.intellij.openapi.application.PathManager
 import com.intellij.openapi.diagnostic.Logger
 import com.intellij.openapi.util.SystemInfo
 import java.io.BufferedWriter
@@ -18,8 +20,7 @@ import java.io.File
 import java.io.InputStream
 import java.io.OutputStreamWriter
 import java.nio.charset.StandardCharsets
-import java.nio.file.Files
-import java.security.MessageDigest
+import java.nio.file.Path
 import java.time.Instant
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.Executors
@@ -39,6 +40,7 @@ class ImeHelperProcess {
     private const val SHUTDOWN_TIMEOUT_MS = 2_000L
     private const val STARTUP_TIMEOUT_MS = 4_000L
     private const val RESTART_STABILITY_MS = 30_000L
+    private const val CACHE_DIRECTORY_NAME = "cursor-ime-hud-helper"
   }
 
   private val log = Logger.getInstance(ImeHelperProcess::class.java)
@@ -91,7 +93,7 @@ class ImeHelperProcess {
     if (circuitOpen) {
       // Automatic callers must not bypass the circuit breaker.  refresh()
       // explicitly clears it and is the documented manual recovery path.
-      lastError = "输入法助手自动重启已熔断，请执行“刷新输入法状态”后手动重试。"
+      lastError = CursorImeHudBundle.message("helper.error.circuitOpen")
       emitDebug()
       return
     }
@@ -99,7 +101,11 @@ class ImeHelperProcess {
     val descriptor = helperDescriptor()
     if (descriptor == null) {
       lifecycleState = HelperLifecycleState.UNAVAILABLE
-      lastError = "没有可用的原生输入法助手：${System.getProperty("os.name")}/${System.getProperty("os.arch")}。"
+      lastError = CursorImeHudBundle.message(
+        "helper.error.unsupportedHost",
+        System.getProperty("os.name"),
+        System.getProperty("os.arch")
+      )
       emitDebug()
       emitSnapshot(ImeSnapshot(state = ImeState.UNKNOWN, reason = "unsupported-os", confidence = 0.0, rawStateAvailable = false))
       return
@@ -156,7 +162,7 @@ class ImeHelperProcess {
           }
         }
         if (!shouldFail) return@executeOnPooledThread
-        emitLog("error", "启动 ImeWatcher 输入法助手失败：$lastError")
+        emitLog("error", CursorImeHudBundle.message("helper.log.startFailed", lastError.orEmpty()))
         emitSnapshot(ImeSnapshot(state = ImeState.UNKNOWN, reason = "helper-start-failed", confidence = 0.0, rawStateAvailable = false))
         emitDebug()
         scheduleRestartIfNeeded()
@@ -212,7 +218,7 @@ class ImeHelperProcess {
       }
       lifecycleState = HelperLifecycleState.FAILED
       startupTimeoutTask = null
-      val errorMessage = "ImeWatcher 未在 ${STARTUP_TIMEOUT_MS} 毫秒内产生启动快照。"
+      val errorMessage = CursorImeHudBundle.message("helper.error.startupTimeout", STARTUP_TIMEOUT_MS.toString())
       lastError = errorMessage
       val writer = stdin
       process = null
@@ -286,7 +292,7 @@ class ImeHelperProcess {
         writer.write(HelperProtocol.refreshCommand())
         writer.flush()
       } catch (error: Exception) {
-        emitLog("warn", "向输入法助手发送刷新命令失败：${error.message}")
+        emitLog("warn", CursorImeHudBundle.message("helper.log.refreshFailed", error.message.orEmpty()))
       }
     }
     val application = ApplicationManager.getApplication()
@@ -425,14 +431,20 @@ class ImeHelperProcess {
   private fun materializeHelper(descriptor: HelperResourceDescriptor): File {
     val classLoader = javaClass.classLoader
     val hashText = classLoader.getResourceAsStream(descriptor.hashPath)?.bufferedReader(StandardCharsets.US_ASCII)?.use { it.readText().trim() }
-      ?: throw IllegalStateException("缺少输入法助手 SHA-256 资源：${descriptor.hashPath}")
-    val input = classLoader.getResourceAsStream(descriptor.resourcePath)
-      ?: throw IllegalStateException("缺少输入法助手可执行资源：${descriptor.resourcePath}。请在打包前构建 ${descriptor.platformKey} 助手。")
+      ?: throw IllegalStateException(CursorImeHudBundle.message("helper.error.missingHashResource", descriptor.hashPath))
 
-    val dir = Files.createTempDirectory("cursor-ime-hud-jetbrains").toFile().apply { deleteOnExit() }
-    val target = File(dir, descriptor.fileName)
-    input.use { source -> target.outputStream().use { source.copyTo(it) } }
-    target.setExecutable(true)
+    // Stable per-hash cache: a matching copy is reused across restarts, a
+    // missing/corrupted one is re-unpacked from the plugin resources.
+    val target = HelperBinaryCache.materialize(
+      cacheRoot = Path.of(PathManager.getSystemPath(), CACHE_DIRECTORY_NAME),
+      fileName = descriptor.fileName,
+      expectedSha256 = hashText
+    ) {
+      classLoader.getResourceAsStream(descriptor.resourcePath)
+        ?: throw IllegalStateException(
+          CursorImeHudBundle.message("helper.error.missingBinaryResource", descriptor.resourcePath, descriptor.platformKey)
+        )
+    }
     synchronized(this) {
       helperFile = target
       expectedSha256 = hashText
@@ -442,16 +454,18 @@ class ImeHelperProcess {
 
   private fun verifySha256(file: File, descriptor: HelperResourceDescriptor) {
     val expected = synchronized(this) {
-      expectedSha256 ?: throw IllegalStateException("缺少输入法助手的预期 SHA-256。")
+      expectedSha256 ?: throw IllegalStateException(CursorImeHudBundle.message("helper.error.missingExpectedHash"))
     }
-    val actual = sha256(file)
+    val actual = HelperBinaryCache.sha256(file)
     val matches = actual.equals(expected, ignoreCase = true)
     synchronized(this) {
       actualSha256 = actual
       hashMatches = matches
     }
     if (!matches) {
-      throw IllegalStateException("${descriptor.fileName} SHA-256 不匹配：expected=$expected actual=$actual")
+      throw IllegalStateException(
+        CursorImeHudBundle.message("helper.error.hashMismatch", descriptor.fileName, expected, actual)
+      )
     }
   }
 
@@ -461,12 +475,14 @@ class ImeHelperProcess {
       if (process !== child || disposed.get()) return@readBoundedJsonLines
       if (!helloReceived) {
         val hello = HelperProtocol.parseHelloLine(line)
-          ?: throw IllegalStateException("输入法助手 stdout 的首行不是 hello 消息。")
+          ?: throw IllegalStateException(CursorImeHudBundle.message("helper.error.invalidHello"))
         if (hello.version != PROTOCOL_VERSION) {
-          throw IllegalStateException("不支持输入法助手协议版本 ${hello.version}；expected=$PROTOCOL_VERSION。")
+          throw IllegalStateException(
+            CursorImeHudBundle.message("helper.error.unsupportedProtocol", hello.version.toString(), PROTOCOL_VERSION.toString())
+          )
         }
         helloReceived = true
-        emitLog("info", "已收到 ImeWatcher hello：capabilities=${hello.capabilities.joinToString(",")}")
+        emitLog("info", CursorImeHudBundle.message("helper.log.helloReceived", hello.capabilities.joinToString(",")))
         return@readBoundedJsonLines
       }
 
@@ -475,7 +491,7 @@ class ImeHelperProcess {
         markRunningAfterFirstSnapshot(child)
         emitSnapshot(snapshot)
       } else {
-        emitLog("warn", "已忽略输入法助手 stdout 中的无效行。")
+        emitLog("warn", CursorImeHudBundle.message("helper.log.invalidStdoutLine"))
       }
     }
   }
@@ -502,7 +518,9 @@ class ImeHelperProcess {
         val byte = chunk[index]
         bufferedBytes++
         if (bufferedBytes > MAX_BUFFER_BYTES) {
-          throw IllegalStateException("输入法助手 $streamName 超过滚动缓冲区上限：$MAX_BUFFER_BYTES bytes。")
+          throw IllegalStateException(
+            CursorImeHudBundle.message("helper.error.streamBufferExceeded", streamName, MAX_BUFFER_BYTES.toString())
+          )
         }
 
         if (byte.toInt() == '\n'.code) {
@@ -512,7 +530,9 @@ class ImeHelperProcess {
         } else {
           line.write(byte.toInt())
           if (line.size() > MAX_LINE_BYTES) {
-            throw IllegalStateException("输入法助手 $streamName 单行超过上限：$MAX_LINE_BYTES bytes。")
+            throw IllegalStateException(
+              CursorImeHudBundle.message("helper.error.streamLineExceeded", streamName, MAX_LINE_BYTES.toString())
+            )
           }
         }
       }
@@ -543,7 +563,7 @@ class ImeHelperProcess {
         null
       } else {
         lifecycleState = HelperLifecycleState.FAILED
-        val message = "ImeWatcher 已退出：exitCode=$code"
+        val message = CursorImeHudBundle.message("helper.log.exited", code.toString())
         lastError = message
         message
       }
@@ -573,7 +593,7 @@ class ImeHelperProcess {
       FailSnapshot(writer, redacted)
     }
 
-    emitLog("error", "ImeWatcher $stream 处理失败：${snapshot.redacted}")
+    emitLog("error", CursorImeHudBundle.message("helper.log.streamFailed", stream, snapshot.redacted))
     emitSnapshot(ImeSnapshot(state = ImeState.UNKNOWN, reason = "helper-$stream-stream-failed", confidence = 0.0, rawStateAvailable = false))
     emitDebug()
     forceKillChildAsync(child, snapshot.writer)
@@ -625,16 +645,19 @@ class ImeHelperProcess {
 
     if (!restartPlan.shouldRestart) {
       shouldRestartOnExit = false
-      lastError = "输入法助手在 ${HelperRestartPolicy.FAILURE_WINDOW_MS / 60_000} 分钟内失败 " +
-        "${restartPlan.attempt} 次，已停止自动重启。请执行“刷新输入法状态”后手动重试。"
-      emitLog("error", lastError ?: "输入法助手自动重启已熔断。")
+      lastError = CursorImeHudBundle.message(
+        "helper.error.restartExhausted",
+        (HelperRestartPolicy.FAILURE_WINDOW_MS / 60_000).toString(),
+        restartPlan.attempt.toString()
+      )
+      emitLog("error", lastError ?: CursorImeHudBundle.message("helper.error.circuitOpened"))
       emitDebug()
       return
     }
 
     emitLog(
       "warn",
-      "输入法助手发生故障，${restartPlan.delayMs} 毫秒后将进行第 ${restartPlan.attempt} 次自动重启。"
+      CursorImeHudBundle.message("helper.log.restartScheduled", restartPlan.delayMs.toString(), restartPlan.attempt.toString())
     )
     restartTask = timerExecutor.schedule({
       val shouldStart = synchronized(this) {
@@ -743,18 +766,5 @@ class ImeHelperProcess {
     } else {
       application.invokeLater { action() }
     }
-  }
-
-  private fun sha256(file: File): String {
-    val digest = MessageDigest.getInstance("SHA-256")
-    file.inputStream().use { input ->
-      val buffer = ByteArray(DEFAULT_BUFFER_SIZE)
-      while (true) {
-        val read = input.read(buffer)
-        if (read < 0) break
-        digest.update(buffer, 0, read)
-      }
-    }
-    return digest.digest().joinToString("") { "%02x".format(it) }
   }
 }

@@ -1,71 +1,55 @@
 package com.chestnutch.cursorimehud.service
 
-import com.chestnutch.cursorimehud.helper.ImeHelperProcess
 import com.chestnutch.cursorimehud.model.CursorImeHudLabels
-import com.chestnutch.cursorimehud.model.DetectorLogEntry
-import com.chestnutch.cursorimehud.model.HelperDebugInfo
-import com.chestnutch.cursorimehud.model.HelperLifecycleState
 import com.chestnutch.cursorimehud.model.ImeSnapshot
-import com.chestnutch.cursorimehud.model.ImeState
 import com.chestnutch.cursorimehud.settings.CursorImeHudBundle
 import com.chestnutch.cursorimehud.settings.CursorImeHudSettings
+import com.chestnutch.cursorimehud.ui.ImeStatusBarText
 import com.intellij.openapi.Disposable
+import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.Service
 import com.intellij.openapi.components.service
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.application.ApplicationManager
-import java.time.Instant
 import java.util.concurrent.CopyOnWriteArrayList
 
+/**
+ * Project-level facade over [ImeHelperAppService]. Keeps the public API used by
+ * the status-bar widget, caret HUD, and actions, while the helper process and
+ * its shared state live at application level.
+ */
 @Service(Service.Level.PROJECT)
-class ImeHudService(private val project: Project) : Disposable, ImeHelperProcess.Listener {
+class ImeHudService(private val project: Project) : Disposable {
   interface Listener {
     fun onImeHudChanged()
   }
 
   private val listeners = CopyOnWriteArrayList<Listener>()
-  private val helperConsumers = mutableSetOf<String>()
-  private val logs = ArrayDeque<DetectorLogEntry>()
-  private val helper = ImeHelperProcess()
-  private var listenerRegistered = false
-  private var latestSnapshot = ImeSnapshot(
-    state = ImeState.UNKNOWN,
-    timestamp = Instant.EPOCH.toString(),
-    reason = "service-idle",
-    confidence = 0.0,
-    rawStateAvailable = false
-  )
-  private var lastStableSnapshot: ImeSnapshot? = null
-  private var unknownObservedAtMillis: Long? = null
-  private var debugInfo = helper.debugInfo()
+  private val appListener = ImeHelperAppService.Listener { fireChanged() }
+  private val projectConsumerSuffix = CONSUMER_SCOPE_SEPARATOR + project.locationHash
 
-  @Synchronized
+  private val appService: ImeHelperAppService
+    get() = service<ImeHelperAppService>()
+
+  init {
+    appService.addListener(appListener)
+  }
+
+  private companion object {
+    private const val CONSUMER_SCOPE_SEPARATOR = ":"
+  }
+
   fun start() {
     if (project.isDisposed) return
-    ensureHelperListener()
-    helper.start()
+    appService.start()
   }
 
-  @Synchronized
   fun acquireConsumer(consumerId: String) {
     if (project.isDisposed) return
-    helperConsumers.add(consumerId)
-    start()
+    appService.acquireConsumer(consumerId + projectConsumerSuffix)
   }
 
-  @Synchronized
   fun releaseConsumer(consumerId: String) {
-    helperConsumers.remove(consumerId)
-    if (helperConsumers.isEmpty()) {
-      helper.stop()
-    }
-  }
-
-  private fun ensureHelperListener() {
-    if (!listenerRegistered) {
-      listenerRegistered = true
-      helper.addListener(this)
-    }
+    appService.releaseConsumer(consumerId + projectConsumerSuffix)
   }
 
   fun addListener(listener: Listener) {
@@ -79,17 +63,20 @@ class ImeHudService(private val project: Project) : Disposable, ImeHelperProcess
 
   fun refresh() {
     start()
-    helper.refresh()
+    appService.refresh()
   }
 
-  fun snapshot(): ImeSnapshot = latestSnapshot
+  fun snapshot(): ImeSnapshot = appService.snapshotState().latestSnapshot
 
-  fun displayState(nowMillis: Long = System.currentTimeMillis()): HudDisplayState = HudDisplayStateResolver.resolve(
-    detectedSnapshot = latestSnapshot,
-    lastStableSnapshot = lastStableSnapshot,
-    unknownObservedAtMillis = unknownObservedAtMillis,
-    nowMillis = nowMillis
-  )
+  fun displayState(nowMillis: Long = System.currentTimeMillis()): HudDisplayState {
+    val state = appService.snapshotState()
+    return HudDisplayStateResolver.resolve(
+      detectedSnapshot = state.latestSnapshot,
+      lastStableSnapshot = state.lastStableSnapshot,
+      unknownObservedAtMillis = state.unknownObservedAtMillis,
+      nowMillis = nowMillis
+    )
+  }
 
   fun notifyGracePeriodExpired() {
     fireChanged()
@@ -103,7 +90,8 @@ class ImeHudService(private val project: Project) : Disposable, ImeHelperProcess
 
   fun tooltipText(): String {
     val display = displayState().displaySnapshot
-    return com.chestnutch.cursorimehud.ui.ImeStatusBarText.tooltip(
+    val debugInfo = appService.debugInfo()
+    return ImeStatusBarText.tooltip(
       state = display.state,
       imeName = display.imeName,
       circuitOpen = debugInfo.circuitOpen,
@@ -113,18 +101,23 @@ class ImeHudService(private val project: Project) : Disposable, ImeHelperProcess
 
   fun statusSummaryLine(): String {
     val display = displayState().displaySnapshot
-    val stateLabel = com.chestnutch.cursorimehud.ui.ImeStatusBarText.stateLabel(display.state)
+    val stateLabel = ImeStatusBarText.stateLabel(display.state)
     val ime = display.imeName?.trim().orEmpty()
     return if (ime.isEmpty()) {
-      "当前状态：$stateLabel"
+      CursorImeHudBundle.message("statusBar.summary", stateLabel)
     } else {
-      "当前状态：$stateLabel · $ime"
+      CursorImeHudBundle.message("statusBar.summaryWithIme", stateLabel, ime)
     }
   }
 
   fun diagnostics(): String = buildString {
     val notAvailable = notAvailableText()
     val present = CursorImeHudBundle.message("diagnostics.present")
+    // One atomic read keeps the current/stable/display sections consistent
+    // even while helper callbacks keep updating the shared state.
+    val snapshotState = appService.snapshotState()
+    val latestSnapshot = snapshotState.latestSnapshot
+    val debugInfo = appService.debugInfo()
     appendLine(CursorImeHudBundle.message("diagnostics.header"))
     appendLine(CursorImeHudBundle.message("diagnostics.projectPresent"))
     appendLine()
@@ -133,6 +126,7 @@ class ImeHudService(private val project: Project) : Disposable, ImeHelperProcess
     appendLine("  timestamp=${latestSnapshot.timestamp}")
     appendLine("  imeName=${latestSnapshot.imeName ?: notAvailable}")
     appendLine("  isOpen=${latestSnapshot.isOpen ?: notAvailable}")
+    appendLine("  conversionNative=${latestSnapshot.conversionNative ?: notAvailable}")
     appendLine("  layoutHex=${latestSnapshot.layoutHex ?: notAvailable}")
     appendLine("  threadId=${latestSnapshot.threadId ?: notAvailable}")
     appendLine("  hwnd=${latestSnapshot.hwnd ?: notAvailable}")
@@ -143,11 +137,16 @@ class ImeHudService(private val project: Project) : Disposable, ImeHelperProcess
     appendLine(
       CursorImeHudBundle.message(
         "diagnostics.lastStableSnapshot",
-        lastStableSnapshot?.state?.wireValue ?: notAvailable
+        snapshotState.lastStableSnapshot?.state?.wireValue ?: notAvailable
       )
     )
     appendLine(CursorImeHudBundle.message("diagnostics.displayState"))
-    val displayState = displayState()
+    val displayState = HudDisplayStateResolver.resolve(
+      detectedSnapshot = snapshotState.latestSnapshot,
+      lastStableSnapshot = snapshotState.lastStableSnapshot,
+      unknownObservedAtMillis = snapshotState.unknownObservedAtMillis,
+      nowMillis = System.currentTimeMillis()
+    )
     appendLine("  state=${displayState.displaySnapshot.state.wireValue}")
     appendLine("  reason=${displayState.displayReason}")
     appendLine("  graceExpiresAtMillis=${displayState.graceExpiresAtMillis ?: notAvailable}")
@@ -180,6 +179,7 @@ class ImeHudService(private val project: Project) : Disposable, ImeHelperProcess
     appendLine("  hideWhenEditorUnfocused=${settings.hideWhenEditorUnfocused}")
     appendLine()
     appendLine(CursorImeHudBundle.message("diagnostics.recentLogs"))
+    val logs = appService.logsSnapshot()
     if (logs.isEmpty()) {
       appendLine("  ${CursorImeHudBundle.message("diagnostics.none")}")
     } else {
@@ -187,39 +187,9 @@ class ImeHudService(private val project: Project) : Disposable, ImeHelperProcess
     }
   }
 
-  override fun onSnapshot(snapshot: ImeSnapshot) {
-    ApplicationManager.getApplication().runWriteAction {
-      val previousState = latestSnapshot.state
-      latestSnapshot = snapshot
-      if (snapshot.state != ImeState.UNKNOWN) {
-        lastStableSnapshot = snapshot
-        unknownObservedAtMillis = null
-      } else if (previousState != ImeState.UNKNOWN) {
-        unknownObservedAtMillis = System.currentTimeMillis()
-      }
-      fireChanged()
-    }
-  }
-
-  override fun onLog(entry: DetectorLogEntry) {
-    logs.addLast(entry)
-    while (logs.size > 200) {
-      logs.removeFirst()
-    }
-    fireChanged()
-  }
-
-  override fun onDebugChanged(debugInfo: HelperDebugInfo) {
-    this.debugInfo = debugInfo
-    if (debugInfo.lifecycleState == HelperLifecycleState.UNAVAILABLE || debugInfo.lifecycleState == HelperLifecycleState.FAILED) {
-      fireChanged()
-    }
-  }
-
   override fun dispose() {
-    helperConsumers.clear()
-    helper.removeListener(this)
-    helper.dispose()
+    appService.removeListener(appListener)
+    appService.releaseConsumersMatching(projectConsumerSuffix)
     listeners.clear()
   }
 
