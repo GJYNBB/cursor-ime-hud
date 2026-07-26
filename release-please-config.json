@@ -1,0 +1,20 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "packages": {
+    ".": {
+      "release-type": "node",
+      "changelog-path": "CHANGELOG.md",
+      "include-component-in-tag": false,
+      "extra-files": [
+        {
+          "type": "generic",
+          "path": "jetbrains/gradle.properties"
+        },
+        {
+          "type": "generic",
+          "path": "jetbrains/src/main/resources/META-INF/plugin.xml"
+        }
+      ]
+    }
+  }
+}

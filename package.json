@@ -2,7 +2,7 @@
   "name": "cursor-ime-hud",
   "displayName": "%extension.displayName%",
   "description": "%extension.description%",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "publisher": "chestnut-ch",
   "license": "MIT",
   "icon": "resources/icon.png",
@@ -21,6 +21,7 @@
   "files": [
     "out/*.js",
     "out/commands/**/*.js",
+    "out/contracts/**/*.js",
     "out/controller/**/*.js",
     "out/detector/**/*.js",
     "out/model/**/*.js",

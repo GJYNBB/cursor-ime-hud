@@ -41,10 +41,17 @@ JetBrains 插件：
 
 - 目标分支使用 `main`。
 - 所有 CI 检查必须通过。主 CI 会运行 lint、格式检查、VS Code 扩展测试，并在各平台验证 native helper；JetBrains 工作流负责插件测试和打包检查。
-- 行为或打包方式发生变化时，请在 `CHANGELOG.md` 的 `## [Unreleased]` 下记录变更。
+- 提交信息遵循 [Conventional Commits](https://www.conventionalcommits.org/zh-hans/v1.0.0/)（如 `feat:`、`fix:`）。`CHANGELOG.md` 的发布条目由 release-please 根据提交信息生成，无需在 PR 中手工维护，详见下方[发布流程](#发布流程)。
 - 修改包元数据、README 链接或 VSIX 文件白名单后，请运行 `npx @vscode/vsce ls --no-dependencies`，确认包内文件符合预期。
 - 需要一名审阅者批准。
 - PR 使用 squash merge。可以在本地使用聚焦的小提交；PR 正文应说明改动内容、原因及关联 issue。
+
+## 发布流程
+
+- **版本号的唯一来源是 release-please 自动创建的 Release PR。** 合并该 PR 会同步更新 `package.json`、`package-lock.json`、`jetbrains/gradle.properties`、`jetbrains/src/main/resources/META-INF/plugin.xml` 四处版本号，并生成对应的 `CHANGELOG.md` 条目。不要在普通 PR 中手工修改版本号或 CHANGELOG 的发布段落。
+- **tag 一经发布不可移动或删除。** 如果某个版本有问题，发布新版本修复，而不是改写已有 tag。
+- **禁止手工创建 GitHub Release。** 发布产物必须来自 tag 触发的发布流水线；手工上传的产物无法与 CI 构建对应，也无法通过校验。
+- 发布完成后，Release 资产的完整性由自动稽核 workflow 检查，缺失或异常会在仓库中告警。
 
 ## 代码风格
 
